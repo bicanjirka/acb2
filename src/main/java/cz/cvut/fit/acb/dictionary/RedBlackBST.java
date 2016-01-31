@@ -509,7 +509,7 @@ public class RedBlackBST<Key> {
      *     <em>N</em> &minus; 1
      */
     public Key select(int k) {
-        if (k < 0 || k >= size()) throw new IllegalArgumentException();
+        if (k < 0 || k >= size()) throw new IllegalArgumentException("Bad argument for select: " + k);
         Node x = select(root, k);
         return x.key;
     }

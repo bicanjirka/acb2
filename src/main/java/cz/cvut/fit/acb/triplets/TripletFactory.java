@@ -10,8 +10,17 @@ public class TripletFactory {
 		if (type == null) {
 			return null;
 		}
-		if (type.equalsIgnoreCase("default")) {
+		if ("default".equalsIgnoreCase(type)) {
 			return new DefaultTripletWriter(log2(maxDistance * 2), log2(maxLength), out);
+		}
+		if ("salomon".equalsIgnoreCase(type)) {
+			return new SalomonTripletWriter(log2(maxDistance * 2), log2(maxLength), out);
+		}
+		if ("salomon+".equalsIgnoreCase(type)) {
+			return new Salomon2TripletWriter(log2(maxDistance * 2), log2(maxLength), out);
+		}
+		if ("valach".equalsIgnoreCase(type)) {
+			return new ValachTripletWriter(log2(maxDistance * 2), log2(maxLength), out);
 		}
 
 		return null;
@@ -22,8 +31,17 @@ public class TripletFactory {
 		if (type == null) {
 			return null;
 		}
-		if (type.equalsIgnoreCase("default")) {
+		if ("default".equalsIgnoreCase(type)) {
 			return new DefaultTripletReader(log2(maxDistance * 2), log2(maxLength), in);
+		}
+		if ("salomon".equalsIgnoreCase(type)) {
+			return new SalomonTripletReader(log2(maxDistance * 2), log2(maxLength), in);
+		}
+		if ("salomon+".equalsIgnoreCase(type)) {
+			return new Salomon2TripletReader(log2(maxDistance * 2), log2(maxLength), in);
+		}
+		if ("valach".equalsIgnoreCase(type)) {
+			return new ValachTripletReader(log2(maxDistance * 2), log2(maxLength), in);
 		}
 
 		return null;

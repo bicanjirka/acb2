@@ -96,6 +96,7 @@ public class Dictionary {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		int index = bst.size();
+		if (index == 0) return "[]";
 		for (Integer key : bst.keys()) {
 			int val = key.intValue();
 			int rank = bst.rank(key);
