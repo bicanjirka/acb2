@@ -19,13 +19,13 @@ public class ValachTripletReader extends BaseTripletReader {
 		Triplet t;
 		
 		if (length == 0) {
-			int ch = in.read(); // TODO different encoding
-			t = eof(length, ch) ? null : new Triplet(0, 0, (char) ch);
+			int ch = in.read();
+			t = eof(length, ch) ? null : new Triplet(0, 0, ch);
 		} else {
 			int read = in.read(distBits);
 			int distance = BitUtils.isNegative(read, distBits) ? BitUtils.negateLeadingZeros(read) : read;
-			int ch = in.read(); // TODO different encoding
-			t = eof(read, length, ch) ? null : new Triplet(distance, length, (char) ch);
+			int ch = in.read();
+			t = eof(read, length, ch) ? null : new Triplet(distance, length, ch);
 		}
 		if (print) System.out.println(cnt++ + ") read " + TripletUtils.printValach(t));
 		return t;

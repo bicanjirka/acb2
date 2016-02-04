@@ -16,7 +16,7 @@ public class ValachTripletWriter extends BaseTripletWriter implements TripletWri
 		if (print) System.out.println(cnt++ + ") write " + TripletUtils.printValach(t));
 		int dist = t.getDistance();
 		int leng = t.getLenght();
-		char ch = t.getSymbol();
+		byte ch = t.getSymbol();
 		out.write(leng, lengBits);
 		if (leng != 0) {
 			out.write(dist, distBits);

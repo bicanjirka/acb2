@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -17,8 +18,8 @@ import cz.cvut.fit.acb.coding.RangeCoding;
 
 public class ACBClient {
 
-	// static String in = "corpuses/mailflder out/out.txt";
-	static String in = "corpuses/xmlevent out/out.txt";
+	static String in = "corpuses/mailflder out/out.txt";
+	// static String in = "corpuses/xmlevent out/out.txt";
 
 	public static void main(String[] args) {
 		args = in.split(" ");
@@ -37,7 +38,7 @@ public class ACBClient {
 			try {
 				byte[] b = Files.readAllBytes(input);
 				// b = "mississippi".getBytes();
-				System.out.println(trip);
+				System.out.println("\n" + trip);
 				System.out.println("RAW         file size " + b.length + " ratio " + (b.length / (double) b.length));
 
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -55,10 +56,7 @@ public class ACBClient {
 				ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
 				acb.decompress(new ByteArrayInputStream(decoded), baos2);
 
-				String finalText = new String(baos2.toByteArray());
-				System.out.println("input output equals == " + new String(b).equals(finalText));
-				System.out.println();
-				// System.out.println(finalText);
+				System.out.println("input output equals == " + Arrays.equals(b, baos2.toByteArray()));
 				// Files.deleteIfExists(output);
 				// Files.write(output, baos2.toByteArray(), StandardOpenOption.CREATE);
 

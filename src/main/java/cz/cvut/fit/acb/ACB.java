@@ -3,8 +3,9 @@ package cz.cvut.fit.acb;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
 
+import cz.cvut.fit.acb.dictionary.ByteArray;
+import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.triplets.Triplet;
 import cz.cvut.fit.acb.triplets.TripletFactory;
@@ -28,68 +29,79 @@ public class ACB {
 
 	public void compress(byte[] in, OutputStream out) {
 		// http://www.javamex.com/tutorials/memory/ascii_charsequence.shtml
+		// https://github.com/boonproject/boon/wiki/Auto-Growable-Byte-Buffer-like-a-ByteBuilder
 		int idx = 0;
-		String txt = new String(in, Charset.defaultCharset());
+		ByteArray txt = new ByteArray(in);
 		int ceiling = txt.length();
 		dict = new Dictionary(txt, dist, leng);
 
 		try (TripletWriter writer = TripletFactory.getWriter(tripletEncoding, out, dist, leng)) {
-			if (print) print(idx, txt, 0, -1, 0, dict);
+			// TripletProvider bude interface factory constructor ktery na parametr triplet-coding vrati triplet providera a z toho dostanu writer/reader
+			// a triplet strategy na zprocesovani tripletu ve slovniku
+			// vylepseni:
+			// 1) do tripletu poslu delku contentu minus lcp s druhym nej contentem
+			// 2) do tripletu enbudu kodovat delku, ale budu ji predpokladat jako lcp viz 1
+			// 3) 
+			if (print) print(idx, txt.toString(), 0, -1, 0, dict);
 			dict.update(idx, 1);
-			writer.write(new Triplet(0, 0, (char) in[idx]));
+			writer.write(new Triplet(0, 0, in[idx]));
 			idx++;
 			while (idx < ceiling) {
 				int ctx = dict.searchContext(idx);
 				int[] cntArr = dict.searchContent(ctx, idx);
 				int cnt = cntArr[0];
 				int leng = cntArr[1];
-				if (print) print(idx, txt, ctx, cnt, leng, dict);
+				if (print) print(idx, txt.toString(), ctx, cnt, leng, dict);
+				
 				if ("default".equals(tripletEncoding)) {
 					dict.update(idx, leng + 1);
 					idx += leng;
-					int dist = cnt == -1 ? 0 : cnt - ctx;
-					writer.write(new Triplet(dist, leng, (char) in[idx]));
+					int dist = cnt == -1 ? 0 : ctx - cnt;
+					writer.write(new Triplet(dist, leng, in[idx]));
 					idx++;
 				}
+				
 				if ("salomon".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : cnt - ctx;
+					int dist = cnt == -1 ? 0 : ctx - cnt;
 					if (dist == 0 && leng == 0) {
 						// flag 0
 						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, (char) in[idx]));
+						writer.write(new Triplet(0, 0, in[idx]));
 						idx++;
 					} else {
 						// flag 1
 						dict.update(idx, leng);
-						writer.write(new Triplet(dist, leng, (char) 0));
+						writer.write(new Triplet(dist, leng, (byte) 0));
 						idx += leng;
 					}
 				}
+				
 				if ("salomon+".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : cnt - ctx;
+					int dist = cnt == -1 ? 0 : ctx - cnt;
 					if (dist == 0 && leng == 0) {
 						// flag 0
 						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, (char) in[idx]));
+						writer.write(new Triplet(0, 0, in[idx]));
 						idx++;
 					} else {
 						// flag 1
 						dict.update(idx, leng + 1);
 						idx += leng;
-						writer.write(new Triplet(dist, leng, (char) in[idx]));
+						writer.write(new Triplet(dist, leng, in[idx]));
 						idx++;
 					}
 				}
+				
 				if ("valach".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : cnt - ctx;
+					int dist = cnt == -1 ? 0 : ctx - cnt;
 					if (leng == 0) {
 						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, (char) in[idx]));
+						writer.write(new Triplet(0, 0, in[idx]));
 						idx++;
 					} else {
 						dict.update(idx, leng + 1);
 						idx += leng;
-						writer.write(new Triplet(dist, leng, (char) in[idx]));
+						writer.write(new Triplet(dist, leng, in[idx]));
 						idx++;
 					}
 				}
@@ -111,7 +123,7 @@ public class ACB {
 
 	public void decompress(InputStream in, OutputStream out) {
 		int idx = 0;
-		StringBuffer txt = new StringBuffer();
+		ByteBuilder txt = new ByteBuilder();
 		dict = new Dictionary(txt, dist, leng);
 
 		try (TripletReader reader = TripletFactory.getReader(tripletEncoding, in, dist, leng)) {
@@ -119,25 +131,26 @@ public class ACB {
 			while ((t = reader.read()) != null) {
 				int dist = t.getDistance();
 				int leng = t.getLenght();
-				char ch = t.getSymbol();
+				byte b = t.getSymbol();
 				int ctx = dict.searchContext(idx);
-				int cnt = dist + ctx;
+				int cnt = ctx - dist;
+				
 				if (leng > 0) {
-					CharSequence seq;
-					seq = dict.copy(cnt, leng);
+					byte[] seq = dict.copy(cnt, leng);
 					txt.append(seq);
 				}
 				
 				if ("default".equals(tripletEncoding)) {
-					txt.append(ch);
+					txt.append(b);
 					leng++;
 					dict.update(idx, leng);
 					idx += leng;
 				}
+				
 				if ("salomon".equals(tripletEncoding)) {
 					if (dist == 0 && leng == 0) {
 						// flag 0
-						txt.append(ch);
+						txt.append(b);
 						dict.update(idx, 1);
 						idx++;
 					} else {
@@ -146,27 +159,29 @@ public class ACB {
 						idx += leng;
 					}
 				}
+				
 				if ("salomon+".equals(tripletEncoding)) {
 					if (dist == 0 && leng == 0) {
 						// flag 0
-						txt.append(ch);
+						txt.append(b);
 						dict.update(idx, 1);
 						idx++;
 					} else {
 						// flag 1
-						txt.append(ch);
+						txt.append(b);
 						leng++;
 						dict.update(idx, leng);
 						idx += leng;
 					}
 				}
+				
 				if ("valach".equals(tripletEncoding)) {
 					if (leng == 0) {
-						txt.append(ch);
+						txt.append(b);
 						dict.update(idx, 1);
 						idx++;
 					} else {
-						txt.append(ch);
+						txt.append(b);
 						leng++;
 						dict.update(idx, leng);
 						idx += leng;

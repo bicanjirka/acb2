@@ -16,7 +16,7 @@ public class Salomon2TripletWriter extends BaseTripletWriter implements TripletW
 		if (print) System.out.println(cnt++ + ") write " + TripletUtils.printSalomon2(t));
 		int dist = t.getDistance();
 		int leng = t.getLenght();
-		char ch = t.getSymbol();
+		byte ch = t.getSymbol();
 		if (dist == 0 && leng == 0) {
 			out.write(0, 1);
 			out.write(ch);

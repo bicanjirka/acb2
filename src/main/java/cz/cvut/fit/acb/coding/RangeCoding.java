@@ -1,5 +1,7 @@
 package cz.cvut.fit.acb.coding;
 
+import java.io.ByteArrayOutputStream;
+
 /**
  * Implementation of Range Coding Compression/Decompression
  * Range encoding is a lossless data compression method defined by G N N Martin in his
@@ -29,7 +31,6 @@ package cz.cvut.fit.acb.coding;
  */
 
 import java.io.IOException;
-import java.io.ByteArrayOutputStream;
 
 public class RangeCoding {
 	

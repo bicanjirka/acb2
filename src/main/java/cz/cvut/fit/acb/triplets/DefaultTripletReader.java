@@ -17,9 +17,9 @@ public class DefaultTripletReader extends BaseTripletReader {
 		int read = in.read(distBits);
 		int distance = BitUtils.isNegative(read, distBits) ? BitUtils.negateLeadingZeros(read) : read;
 		int length = in.read(lengBits);
-		int ch = in.read(); // TODO different encoding
+		int ch = in.read();
 
-		Triplet t = eof(read, length, ch) ? null : new Triplet(distance, length, (char) ch);
+		Triplet t = eof(read, length, ch) ? null : new Triplet(distance, length, ch);
 		if (print) System.out.println(cnt++ + ") read " + t);
 		return t;
 	}

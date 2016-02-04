@@ -4,21 +4,27 @@ public class Triplet {
 
 	private int distance;
 	private int lenght;
-	private char symbol;
+	private byte symbol;
 
-	public Triplet(int distance, int lenght, char ch) {
+	public Triplet(int distance, int lenght, byte b) {
 		this.distance = distance;
 		this.lenght = lenght;
-		this.symbol = ch;
+		this.symbol = b;
 	}
+
+	public Triplet(int distance, int lenght, int i) {
+		this(distance, lenght, (byte) i);
+	}
+
 	public int getDistance() {
 		return distance;
 	}
+
 	public int getLenght() {
 		return lenght;
 	}
 
-	public char getSymbol() {
+	public byte getSymbol() {
 		return symbol;
 	}
 
@@ -26,5 +32,5 @@ public class Triplet {
 	public String toString() {
 		return "(" + distance + ", " + lenght + ", " + symbol + ")";
 	}
-	
+
 }

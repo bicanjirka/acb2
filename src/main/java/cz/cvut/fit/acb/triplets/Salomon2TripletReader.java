@@ -19,14 +19,14 @@ public class Salomon2TripletReader extends BaseTripletReader {
 		Triplet t;
 		
 		if (flag == 0) {
-			int ch = in.read(); // TODO different encoding
-			t = eof(flag, ch) ? null : new Triplet(0, 0, (char) ch);
+			int ch = in.read();
+			t = eof(flag, ch) ? null : new Triplet(0, 0, ch);
 		} else {
 			int read = in.read(distBits);
 			int distance = BitUtils.isNegative(read, distBits) ? BitUtils.negateLeadingZeros(read) : read;
 			int length = in.read(lengBits);
-			int ch = in.read(); // TODO different encoding
-			t = eof(flag, read, length, ch) ? null : new Triplet(distance, length, (char) ch);
+			int ch = in.read();
+			t = eof(flag, read, length, ch) ? null : new Triplet(distance, length, ch);
 		}
 		if (print) System.out.println(cnt++ + ") read " + TripletUtils.printSalomon2(t));
 		return t;
