@@ -3,117 +3,63 @@ package cz.cvut.fit.acb;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.NumberFormat;
 
 import cz.cvut.fit.acb.dictionary.ByteArray;
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
+import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.triplets.Triplet;
-import cz.cvut.fit.acb.triplets.TripletFactory;
-import cz.cvut.fit.acb.triplets.TripletReader;
-import cz.cvut.fit.acb.triplets.TripletWriter;
+import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.triplets.decode.TripletDecoder;
+import cz.cvut.fit.acb.triplets.encode.TripletEncoder;
 
 public class ACB {
 
-	private Dictionary dict;
-	private int dist;
-	private int leng;
-	private String tripletEncoding;
-	
-	private static boolean print = false;
+	public static boolean print_dict = false;
+	public static boolean print_trip = true;
+	private ACBProvider provider;
 
-	public ACB(int distance, int length, String tripletEncoding) {
-		this.dist = distance;
-		this.leng = length;
-		this.tripletEncoding = tripletEncoding;
+	public ACB(ACBProvider provider) {
+		this.provider = provider;
 	}
 
 	public void compress(byte[] in, OutputStream out) {
 		// http://www.javamex.com/tutorials/memory/ascii_charsequence.shtml
 		// https://github.com/boonproject/boon/wiki/Auto-Growable-Byte-Buffer-like-a-ByteBuilder
+		long time = System.currentTimeMillis();
 		int idx = 0;
-		ByteArray txt = new ByteArray(in);
-		int ceiling = txt.length();
-		dict = new Dictionary(txt, dist, leng);
+		ByteArray arr = new ByteArray(in);
+		int ceiling = arr.length();
+		Dictionary dict = provider.getDictionary(arr);
 
-		try (TripletWriter writer = TripletFactory.getWriter(tripletEncoding, out, dist, leng)) {
-			// TripletProvider bude interface factory constructor ktery na parametr triplet-coding vrati triplet providera a z toho dostanu writer/reader
-			// a triplet strategy na zprocesovani tripletu ve slovniku
+		try (TripletEncoder coder = provider.getCoder(arr, dict, out)) {
+			
 			// vylepseni:
-			// 1) do tripletu poslu delku contentu minus lcp s druhym nej contentem
-			// 2) do tripletu enbudu kodovat delku, ale budu ji predpokladat jako lcp viz 1
+			//✓1) do tripletu poslu delku contentu minus lcp s druhym nej contentem
+			//✓2) do tripletu nebudu kodovat delku, ale budu ji predpokladat jako lcp viz 1
 			// 3) 
-			if (print) print(idx, txt.toString(), 0, -1, 0, dict);
-			dict.update(idx, 1);
-			writer.write(new Triplet(0, 0, in[idx]));
-			idx++;
+			// dotazy: eof souboru, vyhledavat content pres opakovany select
+			
+			// genericky write
+			// pri poslednim readu a writu se porvadi dictionary update zbytecne, prehazet poradi?
+			
 			while (idx < ceiling) {
-				int ctx = dict.searchContext(idx);
-				int[] cntArr = dict.searchContent(ctx, idx);
-				int cnt = cntArr[0];
-				int leng = cntArr[1];
-				if (print) print(idx, txt.toString(), ctx, cnt, leng, dict);
-				
-				if ("default".equals(tripletEncoding)) {
-					dict.update(idx, leng + 1);
-					idx += leng;
-					int dist = cnt == -1 ? 0 : ctx - cnt;
-					writer.write(new Triplet(dist, leng, in[idx]));
-					idx++;
-				}
-				
-				if ("salomon".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : ctx - cnt;
-					if (dist == 0 && leng == 0) {
-						// flag 0
-						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, in[idx]));
-						idx++;
-					} else {
-						// flag 1
-						dict.update(idx, leng);
-						writer.write(new Triplet(dist, leng, (byte) 0));
-						idx += leng;
-					}
-				}
-				
-				if ("salomon+".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : ctx - cnt;
-					if (dist == 0 && leng == 0) {
-						// flag 0
-						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, in[idx]));
-						idx++;
-					} else {
-						// flag 1
-						dict.update(idx, leng + 1);
-						idx += leng;
-						writer.write(new Triplet(dist, leng, in[idx]));
-						idx++;
-					}
-				}
-				
-				if ("valach".equals(tripletEncoding)) {
-					int dist = cnt == -1 ? 0 : ctx - cnt;
-					if (leng == 0) {
-						dict.update(idx, 1);
-						writer.write(new Triplet(0, 0, in[idx]));
-						idx++;
-					} else {
-						dict.update(idx, leng + 1);
-						idx += leng;
-						writer.write(new Triplet(dist, leng, in[idx]));
-						idx++;
-					}
-				}
+				DictionaryInfo info = dict.search(idx);
+				if (print_dict) print(idx, arr, info.getContext(), info.getContent(), info.getLength(), dict);
+				idx = coder.proccess(idx, info); // vnorit search do coderu? a treba i celou smycku? nebo dat procces do hlavicky whilu?
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		long time2 = System.currentTimeMillis();
+		
+		String t = NumberFormat.getInstance().format(time2 - time);
+		System.out.println("compress took "+t+" ms.");
 	}
 
-	private static void print(int idx, String text, int ctx, int cnt, int length, Dictionary dict) {
+	public static void print(int idx, ByteSequence arr, int ctx, int cnt, int length, Dictionary dict) {
 		System.out.println();
-		System.out.println(text.substring(0, idx) + "|" + text.substring(idx));
+		System.out.println(new String(arr.array(0, idx)) + "|" + new String(arr.array(idx, arr.length())));
 		System.out.println();
 		System.out.println(dict);
 		System.out.println("context " + ctx);
@@ -122,86 +68,26 @@ public class ACB {
 	}
 
 	public void decompress(InputStream in, OutputStream out) {
-		int idx = 0;
-		ByteBuilder txt = new ByteBuilder();
-		dict = new Dictionary(txt, dist, leng);
+		long time = System.currentTimeMillis();
+		ByteBuilder arr = new ByteBuilder();
+		Dictionary dict = provider.getDictionary(arr);
 
-		try (TripletReader reader = TripletFactory.getReader(tripletEncoding, in, dist, leng)) {
-			Triplet t;
-			while ((t = reader.read()) != null) {
-				int dist = t.getDistance();
-				int leng = t.getLenght();
-				byte b = t.getSymbol();
-				int ctx = dict.searchContext(idx);
-				int cnt = ctx - dist;
-				
-				if (leng > 0) {
-					byte[] seq = dict.copy(cnt, leng);
-					txt.append(seq);
-				}
-				
-				if ("default".equals(tripletEncoding)) {
-					txt.append(b);
-					leng++;
-					dict.update(idx, leng);
-					idx += leng;
-				}
-				
-				if ("salomon".equals(tripletEncoding)) {
-					if (dist == 0 && leng == 0) {
-						// flag 0
-						txt.append(b);
-						dict.update(idx, 1);
-						idx++;
-					} else {
-						// flag 1
-						dict.update(idx, leng);
-						idx += leng;
-					}
-				}
-				
-				if ("salomon+".equals(tripletEncoding)) {
-					if (dist == 0 && leng == 0) {
-						// flag 0
-						txt.append(b);
-						dict.update(idx, 1);
-						idx++;
-					} else {
-						// flag 1
-						txt.append(b);
-						leng++;
-						dict.update(idx, leng);
-						idx += leng;
-					}
-				}
-				
-				if ("valach".equals(tripletEncoding)) {
-					if (leng == 0) {
-						txt.append(b);
-						dict.update(idx, 1);
-						idx++;
-					} else {
-						txt.append(b);
-						leng++;
-						dict.update(idx, leng);
-						idx += leng;
-					}
-				}
-				if (print) print(idx, txt.toString(), ctx, cnt, leng, dict);
+		try (TripletDecoder decoder = provider.getDecoder(arr, dict, in)) {
+			while (decoder.proccess()) {
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		long time2 = System.currentTimeMillis();
+		String t = NumberFormat.getInstance().format(time2 - time);
+		System.out.println("decompress took "+t+" ms.");
 
 		try {
-			out.write(txt.toString().getBytes());
+			out.write(arr.array());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	public Dictionary getDictionary() {
-		return dict;
 	}
 
 }

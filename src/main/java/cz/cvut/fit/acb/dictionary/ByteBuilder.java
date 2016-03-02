@@ -16,7 +16,7 @@ public class ByteBuilder implements ByteSequence {
 		append(arr);
 	}
 
-	ByteBuilder(int capacity) {
+	public ByteBuilder(int capacity) {
 		value = new byte[capacity];
 	}
 
@@ -51,6 +51,10 @@ public class ByteBuilder implements ByteSequence {
 
 	public int capacity() {
 		return value.length;
+	}
+	
+	public void crop(int amount) {
+		count -= amount;
 	}
 
 	private void ensureCapacityInternal(int minimumCapacity) {

@@ -2,39 +2,13 @@ package cz.cvut.fit.acb.dictionary;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
 
 public class Dictionary {
 
-	private final class ReverseIndexComparator implements Comparator<Integer> {
-		ByteSequence s;
-
-		public ReverseIndexComparator(ByteSequence s) {
-			this.s = s;
-		}
-
-		@Override
-		public int compare(Integer o1, Integer o2) {
-			int len1 = o1;
-			int len2 = o2;
-			int lim = Math.min(len1, len2);
-
-			int k = 1;
-			while (k <= lim) {
-				byte b1 = s.byteAt(len1 - k);
-				byte b2 = s.byteAt(len2 - k);
-				if (b1 != b2) {
-					return b1 - b2;
-				}
-				k++;
-			}
-			return len1 - len2;
-		}
-	}
-	private RedBlackBST<Integer> bst;
+	protected RedBlackBST<Integer> bst;
 	private ByteSequence seq;
-	private int maxDistance;
-	private int maxLength;
+	protected int maxDistance;
+	protected int maxLength;
 
 	public Dictionary(ByteSequence sequence, int maxDistance, int maxLength) {
 		seq = sequence;
@@ -55,31 +29,33 @@ public class Dictionary {
 		return bb.array();
 	}
 
-	private boolean match(int i, int j) {
-		if (i >= seq.length())
+	protected boolean match(int i, int j) {
+		if (i >= seq.length()/* || i >= bst.size()*/) // is this if needed?
 			return false;
 		byte b1 = seq.byteAt(i);
 		byte b2 = seq.byteAt(j);
 		return b1 == b2;
 	}
+	
+	public DictionaryInfo search(int idx) {
+		int ctx = searchContext(idx);
+		return searchContent(ctx, idx);
+	}
 
-	public int[] searchContent(int ctx, int idx) {
+	public DictionaryInfo searchContent(int ctx, int idx) {
 		int lo = Math.max(0, ctx - maxDistance);
-		int hi = Math.min(bst.size() - 1, ctx + maxDistance - 1);
+		int hi = Math.min(bst.size() - 1, ctx + maxDistance);
 		return searchContent(ctx, idx, lo, hi);
 	}
 
-	private int[] searchContent(int cnt, int idx, int lo, int hi) {
+	protected DictionaryInfo searchContent(int ctx, int idx, int lo, int hi) {
 		int bestIdx = -1;
 		int bestLen = 0;
-		Integer loKey = bst.select(lo);
-		Integer hiKey = bst.select(hi);
-		int i = lo;
-		for (Iterator<Integer> iterator = bst.keys(loKey, hiKey).iterator(); iterator.hasNext(); i++) {
-			Integer key = iterator.next();
-			int cntIdx = key;
+		for (int i = lo; i < hi; i++) {
+			Integer key = bst.select(i);
+			int cnt = key.intValue();
 			int comLen = 0;
-			while (match(idx + comLen, cntIdx + comLen) && comLen < maxLength) {
+			while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
 				comLen++;
 			}
 			if (comLen > bestLen) {
@@ -90,12 +66,13 @@ public class Dictionary {
 				}
 			}
 		}
-		return new int[] { bestIdx, bestLen };
+		return new DictionaryInfo(ctx, bestIdx, bestLen);
 	}
 
-	public Integer searchContext(int idx) {
+	public int searchContext(int idx) {
 		int rank = bst.rank(idx);
-		return Math.min(rank, bst.size() - 1);
+//		return Math.min(rank, bst.size() - 1);
+		return rank - 1;
 	};
 
 	@Override
@@ -122,6 +99,36 @@ public class Dictionary {
 		for (int i = 0; i < count; i++) {
 			int key = idx + i;
 			bst.put(key);
+		}
+	}
+
+	public int select(int idx) {
+		return bst.select(idx);
+	}
+
+	private static class ReverseIndexComparator implements Comparator<Integer> {
+		ByteSequence s;
+	
+		public ReverseIndexComparator(ByteSequence s) {
+			this.s = s;
+		}
+	
+		@Override
+		public int compare(Integer o1, Integer o2) {
+			int len1 = o1;
+			int len2 = o2;
+			int lim = Math.min(len1, len2);
+	
+			int k = 1;
+			while (k <= lim) {
+				byte b1 = s.byteAt(len1 - k);
+				byte b2 = s.byteAt(len2 - k);
+				if (b1 != b2) {
+					return b1 - b2;
+				}
+				k++;
+			}
+			return len1 - len2;
 		}
 	}
 

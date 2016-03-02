@@ -33,4 +33,9 @@ public class ByteArray implements ByteSequence {
 	public int length() {
 		return value.length;
 	}
+
+	@Override
+	public String toString() {
+		return new String(value);
+	}
 }
