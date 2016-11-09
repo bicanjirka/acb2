@@ -6,7 +6,7 @@ import java.util.Comparator;
 public class Dictionary {
 
 	protected RedBlackBST<Integer> bst;
-	private ByteSequence seq;
+	protected ByteSequence seq;
 	protected int maxDistance;
 	protected int maxLength;
 
@@ -14,7 +14,7 @@ public class Dictionary {
 		seq = sequence;
 		this.maxDistance = maxDistance;
 		this.maxLength = maxLength;
-		bst = new RedBlackBST<Integer>(new ReverseIndexComparator(seq));
+		bst = new RedBlackBST<>(new ReverseIndexComparator(seq));
 	}
 
 	public byte[] copy(int cnt, int leng) {
@@ -37,6 +37,16 @@ public class Dictionary {
 		return b1 == b2;
 	}
 	
+	protected int compare(int i, int j) {
+		if (i >= seq.length())
+			return Byte.MAX_VALUE;
+		if (j >= seq.length())
+			return Byte.MIN_VALUE;
+		byte b1 = seq.byteAt(i);
+		byte b2 = seq.byteAt(j);
+		return Byte.compare(b1, b2);
+	}
+	
 	public DictionaryInfo search(int idx) {
 		int ctx = searchContext(idx);
 		return searchContent(ctx, idx);
@@ -52,8 +62,8 @@ public class Dictionary {
 		int bestIdx = -1;
 		int bestLen = 0;
 		for (int i = lo; i < hi; i++) {
-			Integer key = bst.select(i);
-			int cnt = key.intValue();
+			Integer key = bst.select(i); // TODO do not select for every node, utilize neighbour links
+			int cnt = key;
 			int comLen = 0;
 			while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
 				comLen++;
@@ -73,7 +83,7 @@ public class Dictionary {
 		int rank = bst.rank(idx);
 //		return Math.min(rank, bst.size() - 1);
 		return rank - 1;
-	};
+	}
 
 	@Override
 	public String toString() {
@@ -82,7 +92,7 @@ public class Dictionary {
 		if (index == 0)
 			return "[]";
 		for (Integer key : bst.keys()) {
-			int val = key.intValue();
+			int val = key;
 			int rank = bst.rank(key);
 			sb.append(rank);
 			int indent = bst.size() - val + (String.valueOf(bst.size()).length() - String.valueOf(rank).length());
@@ -98,7 +108,7 @@ public class Dictionary {
 	public void update(int idx, int count) {
 		for (int i = 0; i < count; i++) {
 			int key = idx + i;
-			bst.put(key);
+			bst.put(key); // TODO put all values at once, do less shifts in BST
 		}
 	}
 
@@ -108,6 +118,7 @@ public class Dictionary {
 
 	private static class ReverseIndexComparator implements Comparator<Integer> {
 		ByteSequence s;
+		private static final int MAGIC_CONST = 10;
 	
 		public ReverseIndexComparator(ByteSequence s) {
 			this.s = s;
@@ -118,6 +129,7 @@ public class Dictionary {
 			int len1 = o1;
 			int len2 = o2;
 			int lim = Math.min(len1, len2);
+			lim = Math.min(lim, MAGIC_CONST);
 	
 			int k = 1;
 			while (k <= lim) {

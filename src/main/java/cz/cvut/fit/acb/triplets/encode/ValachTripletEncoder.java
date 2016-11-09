@@ -1,22 +1,31 @@
 package cz.cvut.fit.acb.triplets.encode;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
-import cz.cvut.fit.acb.triplets.Triplet;
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
 
 public class ValachTripletEncoder extends BaseTripletEncoder {
+	
+	private final TripletFieldId distField;
+	private final TripletFieldId lengField;
+	private final TripletFieldId byteField;
+	private final int distanceMask;
 
-
-	public ValachTripletEncoder(ByteSequence sequence, Dictionary dictionary, OutputStream out, int distanceBits, int lengthBits) {
+	public ValachTripletEncoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
 		super(sequence, dictionary);
-		this.writer = new BaseTripletWriter(distanceBits, lengthBits, out) {
+		this.distanceMask = (1 << distanceBits) - 1;
+		this.lengField = new TripletFieldId(0, lengthBits);
+		this.distField = new TripletFieldId(1, distanceBits);
+		this.byteField = new TripletFieldId(2, Byte.SIZE);
+		
+		/*this.writer = new BaseTripletWriter(distanceBits, lengthBits, out) {
 			@Override
-			public void write(Triplet t) throws IOException {
+			public void write(TripletSupplier t) throws IOException {
 				if (print) System.out.println(cnt++ + ") write " + TripletUtils.printValach(t));
 				int dist = t.getDistance();
 				int leng = t.getLenght();
@@ -27,11 +36,11 @@ public class ValachTripletEncoder extends BaseTripletEncoder {
 				}
 				out.write(ch);
 			}
-		};
+		};*/
 	}
-
+	
 	@Override
-	public int proccess(int idx, DictionaryInfo info) throws IOException {
+	protected int step(int idx, DictionaryInfo info, Consumer<TripletSupplier> output) {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
 		int leng = info.getLength();
@@ -39,12 +48,27 @@ public class ValachTripletEncoder extends BaseTripletEncoder {
 		int dist = cnt == -1 ? 0 : ctx - cnt;
 		if (leng == 0) {
 			dictionary.update(idx, 1);
-			writer.write(new Triplet(0, 0, sequence.byteAt(idx)));
+			byte b = sequence.byteAt(idx);
+			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			output.accept(visitor -> {
+				visitor.set(lengField, 0);
+				visitor.set(byteField, b);
+			});
+//			writer.write(new TripletSupplier(0, 0, sequence.byteAt(idx)));
 		} else {
-			dictionary.update(idx, leng + 1);
-			idx += leng;
-			writer.write(new Triplet(dist, leng, sequence.byteAt(idx)));
+			int leng2 = leng + idx == sequence.length() ? leng-1 : leng;
+			dictionary.update(idx, leng2 + 1);
+			idx += leng2;
+			byte b = sequence.byteAt(idx);
+			logger.debug("Triplet {}", TripletUtils.tripletString(leng2, dist, b));
+			output.accept(visitor -> {
+				visitor.set(lengField, leng2);
+				visitor.set(distField, dist & distanceMask);
+				visitor.set(byteField, b);
+			});
+//			writer.write(new TripletSupplier(dist, leng, sequence.byteAt(idx)));
 		}
 		return idx + 1;
 	}
+	
 }

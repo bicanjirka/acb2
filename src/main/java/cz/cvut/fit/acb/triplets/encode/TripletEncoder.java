@@ -1,10 +1,9 @@
 package cz.cvut.fit.acb.triplets.encode;
 
-import java.io.Closeable;
-import java.io.IOException;
+import java.util.function.Consumer;
 
-import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.triplets.TripletSupplier;
 
-public interface TripletEncoder extends Closeable {
-	int proccess(int idx, DictionaryInfo info) throws IOException;
+public interface TripletEncoder {
+    void process(Consumer<TripletSupplier> output);
 }

@@ -33,5 +33,4 @@ public class DictionaryInfo {
 	public int getLcp() {
 		return longestCommonPrefix;
 	}
-
 }

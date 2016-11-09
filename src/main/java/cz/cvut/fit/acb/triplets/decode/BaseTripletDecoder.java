@@ -7,33 +7,19 @@
  */
 package cz.cvut.fit.acb.triplets.decode;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public abstract class BaseTripletDecoder implements TripletDecoder {
-
+	
+	protected final Logger logger = LogManager.getLogger(getClass());
 	protected Dictionary dictionary;
 	protected ByteBuilder sequence;
-	protected int idx = 0;
-	private Closeable closeable;
 
 	public BaseTripletDecoder(ByteBuilder sequence, Dictionary dictionary) {
 		this.sequence = sequence;
 		this.dictionary = dictionary;
 	}
-	
-	protected void setCloseable(Closeable closeable) {
-		this.closeable = closeable;
-	}
-
-	@Override
-	public void close() throws IOException {
-		if (closeable != null) {
-			closeable.close();
-		}
-	}
-
 }

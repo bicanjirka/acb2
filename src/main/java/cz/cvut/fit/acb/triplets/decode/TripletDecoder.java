@@ -1,8 +1,7 @@
 package cz.cvut.fit.acb.triplets.decode;
 
-import java.io.Closeable;
-import java.io.IOException;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
 
-public interface TripletDecoder extends Closeable {
-	boolean proccess() throws IOException;
+public interface TripletDecoder {
+	void process(TripletProcessor input);
 }

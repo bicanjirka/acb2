@@ -1206,4 +1206,3 @@ def manage_addMailFolder(container, id=None, server_name ='',
     if REQUEST is not None:
         ob = container._getOb(ob.getId())
         REQUEST.RESPONSE.redirect(ob.absolute_url()+'/manage_main')
-~

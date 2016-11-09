@@ -1,71 +1,99 @@
 package cz.cvut.fit.acb.triplets.decode;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.util.function.IntUnaryOperator;
 
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.triplets.Triplet;
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.utils.BitUtils;
 import cz.cvut.fit.acb.utils.TripletUtils;
 
 public class Salomon2TripletDecoder extends BaseTripletDecoder {
-
-	private BaseTripletReader<Triplet> reader;
-
-	public Salomon2TripletDecoder(ByteBuilder sequence, Dictionary dictionary, InputStream in, int distanceBits, int lengthBits) {
+	
+	private static final int BIT_FLAG = 1;
+	private final TripletFieldId flagField;
+	private final TripletFieldId distField;
+	private final TripletFieldId lengField;
+	private final TripletFieldId byteField;
+	private final IntUnaryOperator distFunc;
+	
+	public Salomon2TripletDecoder(ByteBuilder sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
 		super(sequence, dictionary);
-		this.reader = new BaseTripletReader<Triplet>(distanceBits, lengthBits, in) {
-			@Override
-			public Triplet read() throws IOException {
-				int flag = in.read(1);
-				Triplet t;
-				
-				if (flag == 0) {
-					int ch = in.read();
-					t = eof(flag, ch) ? null : new Triplet(0, 0, ch);
-				} else {
-					int read = in.read(distBits);
-					int distance = BitUtils.isNegative(read, distBits) ? BitUtils.fillHighBits(read) : read;
-					int length = in.read(lengBits);
-					int ch = in.read();
-					t = eof(flag, read, length, ch) ? null : new Triplet(distance, length, ch);
+		this.distFunc = value -> BitUtils.isNegative(value, distanceBits) ? BitUtils.fillHighBits(value) : value;
+		this.flagField = new TripletFieldId(0, BIT_FLAG);
+		this.distField = new TripletFieldId(1, distanceBits);
+		this.lengField = new TripletFieldId(2, lengthBits);
+		this.byteField = new TripletFieldId(3, Byte.SIZE);
+	}
+	
+	@Override
+	public void process(TripletProcessor input) {
+		int idx = 0;
+		while (true) {
+			int flag = input.get(flagField);
+			if (flag == 0) {
+				byte b = (byte) input.get(byteField);
+				if (b == -1) {
+					break; // eof
 				}
-				if (print) System.out.println(cnt++ + ") read " + TripletUtils.printSalomon2(t));
-				return t;
+				logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+				sequence.append(b);
+				dictionary.update(idx, 1);
+				idx++;
+				
+			} else {
+				int tempDist = input.get(distField);
+				int dist = distFunc.applyAsInt(tempDist);
+				int leng = input.get(lengField);
+				byte b = (byte) input.get(byteField);
+				
+				if (tempDist == leng && leng == b && b == -1) {
+					break; // eof
+				}
+				logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng, b));
+				
+				int ctx = dictionary.searchContext(idx);
+				int cnt = ctx - dist;
+				
+				byte[] seq = dictionary.copy(cnt, leng);
+				sequence.append(seq);
+				sequence.append(b);
+				leng++;
+				dictionary.update(idx, leng);
+				idx += leng;
 			}
-		};
+		}
 	}
 
-	@Override
-	public boolean proccess() throws IOException {
-		Triplet t = reader.read();
-		if (t == null)
-			return false;
-		int dist = t.getDistance();
-		int leng = t.getLenght();
-		byte b = t.getSymbol();
-		int ctx = dictionary.searchContext(idx);
-		int cnt = ctx - dist;
-		
-		if (leng > 0) {
-			byte[] seq = dictionary.copy(cnt, leng);
-			sequence.append(seq);
-		}
-		
-		if (dist == 0 && leng == 0) {
-			// flag 0
-			sequence.append(b);
-			dictionary.update(idx, 1);
-			idx++;
-		} else {
-			// flag 1
-			sequence.append(b);
-			leng++;
-			dictionary.update(idx, leng);
-			idx += leng;
-		}
-		return true;
-	}
+//	public boolean process() throws IOException {
+//		TripletSupplier t = reader.read();
+//		if (t == null)
+//			return false;
+//		int dist = t.getDistance();
+//		int leng = t.getLenght();
+//		byte b = t.getSymbol();
+//		int ctx = dictionary.searchContext(idx);
+//		int cnt = ctx - dist;
+//
+//		if (leng > 0) {
+//			byte[] seq = dictionary.copy(cnt, leng);
+//			sequence.append(seq);
+//		}
+//
+//		if (dist == 0 && leng == 0) {
+//			// flag 0
+//			sequence.append(b);
+//			dictionary.update(idx, 1);
+//			idx++;
+//		} else {
+//			// flag 1
+//			sequence.append(b);
+//			leng++;
+//			dictionary.update(idx, leng);
+//			idx += leng;
+//		}
+//		return true;
+//	}
 
 }

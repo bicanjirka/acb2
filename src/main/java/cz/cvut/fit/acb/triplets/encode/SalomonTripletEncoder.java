@@ -1,54 +1,61 @@
 package cz.cvut.fit.acb.triplets.encode;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
-import cz.cvut.fit.acb.triplets.Triplet;
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
 
 public class SalomonTripletEncoder extends BaseTripletEncoder {
-
-
-	public SalomonTripletEncoder(ByteSequence sequence, Dictionary dictionary, OutputStream out, int distanceBits, int lengthBits) {
+	
+	private static final int BIT_FLAG = 1;
+	private final TripletFieldId flagField;
+	private final TripletFieldId distField;
+	private final TripletFieldId lengField;
+	private final TripletFieldId byteField;
+	private final int distanceMask;
+	
+	public SalomonTripletEncoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
 		super(sequence, dictionary);
-		this.writer = new BaseTripletWriter(distanceBits, lengthBits, out) {
-			@Override
-			public void write(Triplet t) throws IOException {
-				if (print) System.out.println(cnt++ + ") write " + TripletUtils.printSalomon(t));
-				int dist = t.getDistance();
-				int leng = t.getLenght();
-				if (dist == 0 && leng == 0) {
-					out.write(0, 1);
-					out.write(t.getSymbol());
-				} else {
-					out.write(1, 1);
-					out.write(dist, distBits);
-					out.write(leng, lengBits);
-				}
-			}
-		};
+		this.distanceMask = (1 << distanceBits) - 1;
+		this.flagField = new TripletFieldId(0, BIT_FLAG);
+		this.distField = new TripletFieldId(1, distanceBits);
+		this.lengField = new TripletFieldId(2, lengthBits);
+		this.byteField = new TripletFieldId(3, Byte.SIZE);
 	}
-
+	
 	@Override
-	public int proccess(int idx, DictionaryInfo info) throws IOException {
+	public int step(int idx, DictionaryInfo info, Consumer<TripletSupplier> output) {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
 		int leng = info.getLength();
-
+		
 		int dist = cnt == -1 ? 0 : ctx - cnt;
+		
 		if (dist == 0 && leng == 0) {
 			// flag 0
 			dictionary.update(idx, 1);
-			writer.write(new Triplet(0, 0, sequence.byteAt(idx)));
+			byte b = sequence.byteAt(idx);
+			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			output.accept(visitor -> {
+				visitor.set(flagField, 0);
+				visitor.set(byteField, b);
+			});
 			return idx + 1;
 		} else {
 			// flag 1
 			dictionary.update(idx, leng);
-			writer.write(new Triplet(dist, leng, 0b0));
+			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng));
+			output.accept(visitor -> {
+				visitor.set(flagField, 1);
+				visitor.set(distField, dist & distanceMask); // TODO add bit mask to TripletFieldId
+				visitor.set(lengField, leng);
+			});
 			return idx + leng;
 		}
 	}
+	
 }

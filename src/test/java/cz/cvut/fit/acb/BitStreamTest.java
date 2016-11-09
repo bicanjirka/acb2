@@ -1,12 +1,12 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.triplets.BitStreamOutputStream;
+import junit.framework.TestCase;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
-
-import cz.cvut.fit.acb.triplets.BitStreamOutputStream;
-import junit.framework.TestCase;
 
 public class BitStreamTest extends TestCase {
 
