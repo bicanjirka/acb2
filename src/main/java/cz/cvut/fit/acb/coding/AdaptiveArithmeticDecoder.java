@@ -7,9 +7,9 @@
  */
 package cz.cvut.fit.acb.coding;
 
-import java.util.List;
-
 import cz.cvut.fit.acb.triplets.TripletFieldId;
+
+import java.util.List;
 
 /**
  * @author jiri.bican

@@ -1,16 +1,5 @@
 package cz.cvut.fit.acb;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-
 import cz.cvut.fit.acb.coding.TripletToByteConverter;
 import cz.cvut.fit.acb.utils.ChainAdapter;
 import cz.cvut.fit.acb.utils.ChainBuilder;
@@ -21,15 +10,21 @@ import org.apache.commons.cli.Options;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+
 public class ACBClient {
+
+	private static final Logger logger = LogManager.getLogger();
+	static String in = "corpuses/mailflder corpuses/out";
 
 	static {
 		System.setProperty("log4j.configurationFile", "log4j2.xml");
 	}
-
-	private static final Logger logger = LogManager.getLogger();
-
-	static String in = "corpuses/mailflder corpuses/out";
 
 	public static void main(String[] args) {
 //		try {

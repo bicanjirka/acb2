@@ -7,10 +7,10 @@
  */
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+
 import java.util.ArrayList;
 import java.util.Collection;
-
-import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 /**
  * @author jiri.bican

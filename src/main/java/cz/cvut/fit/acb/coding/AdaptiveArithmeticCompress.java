@@ -7,14 +7,10 @@
  */
 package cz.cvut.fit.acb.coding;
 
+import nayuki.arithcode.*;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import nayuki.arithcode.ArithmeticEncoder;
-import nayuki.arithcode.BitOutputStream;
-import nayuki.arithcode.FlatFrequencyTable;
-import nayuki.arithcode.FrequencyTable;
-import nayuki.arithcode.SimpleFrequencyTable;
 
 /**
  * @author jiri.bican

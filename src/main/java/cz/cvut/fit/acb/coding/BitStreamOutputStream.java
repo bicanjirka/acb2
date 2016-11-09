@@ -1,4 +1,4 @@
-package cz.cvut.fit.acb.triplets;
+package cz.cvut.fit.acb.coding;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;

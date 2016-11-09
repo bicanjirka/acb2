@@ -1,13 +1,13 @@
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
+import cz.cvut.fit.acb.utils.Chainable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
-import cz.cvut.fit.acb.triplets.TripletFieldId;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.utils.Chainable;
 
 public abstract class ByteToTripletConverter<T> implements Chainable<List<byte[]>, TripletProcessor>, TripletProcessor {
 

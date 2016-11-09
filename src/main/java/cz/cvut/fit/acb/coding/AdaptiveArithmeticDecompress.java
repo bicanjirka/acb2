@@ -7,16 +7,12 @@
  */
 package cz.cvut.fit.acb.coding;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-
-import nayuki.arithcode.ArithmeticDecoder;
-import nayuki.arithcode.BitInputStream;
-import nayuki.arithcode.FlatFrequencyTable;
-import nayuki.arithcode.FrequencyTable;
-import nayuki.arithcode.SimpleFrequencyTable;
+import nayuki.arithcode.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
 /**
  * @author jiri.bican
@@ -24,9 +20,9 @@ import org.apache.logging.log4j.Logger;
 class AdaptiveArithmeticDecompress {
 
     private static final Logger logger = LogManager.getLogger();
-    private ArithmeticDecoder dec;
     private final FrequencyTable freq;
     private final int eof;
+    private ArithmeticDecoder dec;
 
     public AdaptiveArithmeticDecompress(int bitSize, byte[] array) {
         try {

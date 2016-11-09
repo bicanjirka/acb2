@@ -7,13 +7,12 @@
  */
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.dictionary.ByteBuilder;
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
-
-import cz.cvut.fit.acb.dictionary.ByteBuilder;
-import cz.cvut.fit.acb.triplets.BitStreamInputStream;
-import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 /**
  * @author jiri.bican

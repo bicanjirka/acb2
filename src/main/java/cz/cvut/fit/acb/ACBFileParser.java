@@ -7,16 +7,16 @@
  */
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.utils.Chainable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
-
-import cz.cvut.fit.acb.utils.Chainable;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * @author jiri.bican
