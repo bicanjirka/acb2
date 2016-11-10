@@ -12,12 +12,15 @@ import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 
+/**
+ * @author jiri.bican
+ */
 public class ACBProvider {
 	private DictionaryProvider dictionary;
 	private TripletCoderProvider coder;
 	private TripletToByteConverterProvider t2bConverter;
 	private ByteToTripletConverterProvider b2tConverter;
-
+	
 	private int distanceBits;
 	private int lengthBits;
 	
@@ -82,7 +85,7 @@ public class ACBProvider {
 	public Dictionary getDictionary(ByteSequence sequence) {
 		return dictionary.provide(sequence, 1 << distanceBits - 2, 1 << lengthBits - 1);
 	}
-
+	
 	public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
 		return coder.provide(sequence, dictionary, distanceBits, lengthBits);
 	}
@@ -90,7 +93,7 @@ public class ACBProvider {
 	public TripletToByteConverter<?> getT2BConverter() {
 		return t2bConverter.provide();
 	}
-
+	
 	public ByteToTripletConverter<?> getB2TConverter() {
 		return b2tConverter.provide();
 	}
@@ -99,7 +102,7 @@ public class ACBProvider {
 	interface DictionaryProvider {
 		Dictionary provide(ByteSequence sequence, int maxDistance, int maxLength);
 	}
-
+	
 	interface TripletCoderProvider {
 		TripletCoder provide(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits);
 	}
@@ -107,7 +110,7 @@ public class ACBProvider {
 	interface TripletToByteConverterProvider {
 		TripletToByteConverter provide();
 	}
-
+	
 	interface ByteToTripletConverterProvider {
 		ByteToTripletConverter provide();
 	}

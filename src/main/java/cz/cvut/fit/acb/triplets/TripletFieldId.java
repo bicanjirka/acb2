@@ -11,24 +11,24 @@ package cz.cvut.fit.acb.triplets;
  * @author jiri.bican
  */
 public class TripletFieldId {
-    private final int index;
-    private final int bitSize;
-
-    public TripletFieldId(int index, int bitSize) {
-        this.index = index;
-        this.bitSize = bitSize;
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public int getBitSize() {
-        return bitSize;
-    }
-    
-    @Override
-    public String toString() {
-        return "[" + index + ", " + bitSize + ']';
-    }
+	private final int index;
+	private final int bitSize;
+	
+	public TripletFieldId(int index, int bitSize) {
+		this.index = index;
+		this.bitSize = bitSize;
+	}
+	
+	public int getIndex() {
+		return index;
+	}
+	
+	public int getBitSize() {
+		return bitSize;
+	}
+	
+	@Override
+	public String toString() {
+		return "[" + index + ", " + bitSize + ']';
+	}
 }

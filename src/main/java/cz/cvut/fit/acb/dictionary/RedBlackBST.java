@@ -5,7 +5,7 @@ package cz.cvut.fit.acb.dictionary;
  *  Execution:    java RedBlackBST < input.txt
  *  Dependencies: StdIn.java System.out.java  
  *  Data files:   http://algs4.cs.princeton.edu/33balanced/tinyST.txt  
- *    
+ *
  *  A symbol table implemented using a left-leaning red-black BST.
  *  This is the 2-3 version.
  *
@@ -14,7 +14,7 @@ package cz.cvut.fit.acb.dictionary;
  *
  *  % more tinyST.txt
  *  S E A R C H E X A M P L E
- *  
+ *
  *  % java RedBlackBST < tinyST.txt
  *  A 8
  *  C 4
@@ -57,65 +57,41 @@ import java.util.concurrent.SynchronousQueue;
  */
 
 public class RedBlackBST<Key> {
-
-	// BST helper node data type
-	private class Node {
-		private Key key; // key
-		private Node left, right; // links to left and right subtrees
-		private boolean color; // color of parent link
-		private int N; // subtree count
-
-		public Node(Key key, boolean color, int N) {
-			this.key = key;
-			this.color = color;
-			this.N = N;
-		}
-
-		@Override
-		public String toString() {
-			return String.valueOf(key) + " [" + String.valueOf(left.key) + "<>" + String.valueOf(right.key) + " "
-					+ (color ? "red" : "black") + ", N=" + N + "]";
-		}
-	}
+	
 	private static final boolean RED = true;
-
 	private static final boolean BLACK = false;
-	private Node root; // root of the BST
-
 	private final Comparator<Key> cmpt;
-
+	private Node root; // root of the BST
+	
 	/**
 	 * Initializes an empty symbol table.
 	 */
 	public RedBlackBST(Comparator<Key> comparator) {
 		cmpt = comparator;
 	}
-
+	
 	// restore red-black tree invariant
 	private Node balance(Node h) {
 		assert (h != null);
-
+		
 		if (isRed(h.right))
 			h = rotateLeft(h);
 		if (isRed(h.left) && isRed(h.left.left))
 			h = rotateRight(h);
 		if (isRed(h.left) && isRed(h.right))
 			flipColors(h);
-
+		
 		h.N = size(h.left) + size(h.right) + 1;
 		return h;
 	}
-
+	
 	/**
 	 * Returns the smallest key in the symbol table greater than or equal to <tt>key</tt>.
-	 * 
-	 * @param key
-	 *            the key
+	 *
+	 * @param key the key
 	 * @return the smallest key in the symbol table greater than or equal to <tt>key</tt>
-	 * @throws NoSuchElementException
-	 *             if there is no such key
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 * @throws NoSuchElementException if there is no such key
+	 * @throws NullPointerException   if <tt>key</tt> is <tt>null</tt>
 	 */
 	public Key ceiling(Key key) {
 		if (isEmpty())
@@ -126,7 +102,7 @@ public class RedBlackBST<Key> {
 		else
 			return x.key;
 	}
-
+	
 	// the smallest key in the subtree rooted at x greater than or equal to the given key
 	private Node ceiling(Node x, Key key) {
 		if (x == null)
@@ -142,7 +118,7 @@ public class RedBlackBST<Key> {
 		else
 			return x;
 	}
-
+	
 	/***************************************************************************
 	 * Check integrity of red-black tree data structure.
 	 ***************************************************************************/
@@ -159,52 +135,48 @@ public class RedBlackBST<Key> {
 			System.out.println("Not balanced");
 		return isBST() && isSizeConsistent() && isRankConsistent() && is23() && isBalanced();
 	}
-
+	
 	/**
 	 * Does this symbol table contain the given key?
-	 * 
-	 * @param key
-	 *            the key
+	 *
+	 * @param key the key
 	 * @return <tt>true</tt> if this symbol table contains <tt>key</tt> and <tt>false</tt> otherwise
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 * @throws NullPointerException if <tt>key</tt> is <tt>null</tt>
 	 */
 	public boolean contains(Key key) {
 		return get(root, key) != null;
 	}
-
+	
 	/**
 	 * Removes the key and associated value from the symbol table (if the key is in the symbol table).
-	 * 
-	 * @param key
-	 *            the key
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 *
+	 * @param key the key
+	 * @throws NullPointerException if <tt>key</tt> is <tt>null</tt>
 	 */
 	public void delete(Key key) {
 		if (!contains(key)) {
 			System.err.println("symbol table does not contain " + key);
 			return;
 		}
-
+		
 		// if both children of root are black, set root to red
 		if (!isRed(root.left) && !isRed(root.right))
 			root.color = RED;
-
+		
 		root = delete(root, key);
 		if (!isEmpty())
 			root.color = BLACK;
 		assert check();
 	}
-
+	
 	/***************************************************************************
 	 * Red-black tree insertion.
 	 ***************************************************************************/
-
+	
 	// delete the key-value pair with the given key rooted at h
 	private Node delete(Node h, Key key) {
 		assert get(h, key) != null;
-
+		
 		if (cmpt.compare(key, h.key) < 0) {
 			if (!isRed(h.left) && !isRed(h.left.left))
 				h = moveRedLeft(h);
@@ -228,79 +200,77 @@ public class RedBlackBST<Key> {
 		}
 		return balance(h);
 	}
-
+	
 	/**
 	 * Removes the largest key and associated value from the symbol table.
-	 * 
-	 * @throws NoSuchElementException
-	 *             if the symbol table is empty
+	 *
+	 * @throws NoSuchElementException if the symbol table is empty
 	 */
 	public void deleteMax() {
 		if (isEmpty())
 			throw new NoSuchElementException("BST underflow");
-
+		
 		// if both children of root are black, set root to red
 		if (!isRed(root.left) && !isRed(root.right))
 			root.color = RED;
-
+		
 		root = deleteMax(root);
 		if (!isEmpty())
 			root.color = BLACK;
 		assert check();
 	}
-
+	
 	/***************************************************************************
 	 * Red-black tree deletion.
 	 ***************************************************************************/
-
+	
 	// delete the key-value pair with the maximum key rooted at h
 	private Node deleteMax(Node h) {
 		if (isRed(h.left))
 			h = rotateRight(h);
-
+		
 		if (h.right == null)
 			return null;
-
+		
 		if (!isRed(h.right) && !isRed(h.right.left))
 			h = moveRedRight(h);
-
+		
 		h.right = deleteMax(h.right);
-
+		
 		return balance(h);
 	}
-
+	
 	/**
 	 * Removes the smallest key and associated value from the symbol table.
-	 * 
-	 * @throws NoSuchElementException
-	 *             if the symbol table is empty
+	 *
+	 * @throws NoSuchElementException if the symbol table is empty
 	 */
 	public void deleteMin() {
 		if (isEmpty())
 			throw new NoSuchElementException("BST underflow");
-
+		
 		// if both children of root are black, set root to red
 		if (!isRed(root.left) && !isRed(root.right))
 			root.color = RED;
-
+		
 		root = deleteMin(root);
 		if (!isEmpty())
 			root.color = BLACK;
 		assert check();
 	}
-
+	
 	// delete the key-value pair with the minimum key rooted at h
 	private Node deleteMin(Node h) {
 		if (h.left == null)
 			return null;
-
+		
 		if (!isRed(h.left) && !isRed(h.left.left))
 			h = moveRedLeft(h);
-
+		
 		h.left = deleteMin(h.left);
 		return balance(h);
 	}
-
+	
 	// flip the colors of a node and its two children
 	private void flipColors(Node h) {
 		// h must have opposite color of its two children
@@ -310,17 +280,14 @@ public class RedBlackBST<Key> {
 		h.left.color = !h.left.color;
 		h.right.color = !h.right.color;
 	}
-
+	
 	/**
 	 * Returns the largest key in the symbol table less than or equal to <tt>key</tt>.
-	 * 
-	 * @param key
-	 *            the key
+	 *
+	 * @param key the key
 	 * @return the largest key in the symbol table less than or equal to <tt>key</tt>
-	 * @throws NoSuchElementException
-	 *             if there is no such key
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 * @throws NoSuchElementException if there is no such key
+	 * @throws NullPointerException   if <tt>key</tt> is <tt>null</tt>
 	 */
 	public Key floor(Key key) {
 		if (isEmpty())
@@ -331,7 +298,7 @@ public class RedBlackBST<Key> {
 		else
 			return x.key;
 	}
-
+	
 	// the largest key in the subtree rooted at x less than or equal to the given key
 	private Node floor(Node x, Key key) {
 		if (x == null)
@@ -347,11 +314,11 @@ public class RedBlackBST<Key> {
 		else
 			return x;
 	}
-
+	
 	/***************************************************************************
 	 * Standard BST search without get() method
 	 ***************************************************************************/
-
+	
 	// value associated with the given key in subtree rooted at x; null if no such key
 	private Node get(Node x, Key key) {
 		while (x != null) {
@@ -365,28 +332,28 @@ public class RedBlackBST<Key> {
 		}
 		return null;
 	}
-
+	
 	/**
 	 * Returns the height of the BST (for debugging).
-	 * 
+	 *
 	 * @return the height of the BST (a 1-node tree has height 0)
 	 */
 	public int height() {
 		return height(root);
 	}
-
+	
 	private int height(Node x) {
 		if (x == null)
 			return -1;
 		return 1 + Math.max(height(x.left), height(x.right));
 	}
-
+	
 	// Does the tree have no red right links, and at most one (left)
 	// red links in a row on any path?
 	private boolean is23() {
 		return is23(root);
 	}
-
+	
 	private boolean is23(Node x) {
 		if (x == null)
 			return true;
@@ -396,7 +363,7 @@ public class RedBlackBST<Key> {
 			return false;
 		return is23(x.left) && is23(x.right);
 	}
-
+	
 	// do all paths from root to leaf have same number of black edges?
 	private boolean isBalanced() {
 		int black = 0; // number of black links on path from root to min
@@ -408,11 +375,11 @@ public class RedBlackBST<Key> {
 		}
 		return isBalanced(root, black);
 	}
-
+	
 	/***************************************************************************
 	 * Utility functions.
 	 ***************************************************************************/
-
+	
 	// does every path from the root to a leaf have the given number of black links?
 	private boolean isBalanced(Node x, int black) {
 		if (x == null)
@@ -421,17 +388,17 @@ public class RedBlackBST<Key> {
 			black--;
 		return isBalanced(x.left, black) && isBalanced(x.right, black);
 	}
-
+	
 	// does this binary tree satisfy symmetric order?
 	// Note: this test also ensures that data structure is a binary tree since order is strict
 	private boolean isBST() {
 		return isBST(root, null, null);
 	}
-
+	
 	/***************************************************************************
 	 * Ordered symbol table methods.
 	 ***************************************************************************/
-
+	
 	// is the tree rooted at x a BST with all keys strictly between min and max
 	// (if min or max is null, treat as empty constraint)
 	// Credit: Bob Dondero's elegant solution
@@ -444,16 +411,16 @@ public class RedBlackBST<Key> {
 			return false;
 		return isBST(x.left, min, x.key) && isBST(x.right, x.key, max);
 	}
-
+	
 	/**
 	 * Is this symbol table empty?
-	 * 
+	 *
 	 * @return <tt>true</tt> if this symbol table is empty and <tt>false</tt> otherwise
 	 */
 	public boolean isEmpty() {
 		return root == null;
 	}
-
+	
 	// check that ranks are consistent
 	private boolean isRankConsistent() {
 		for (int i = 0; i < size(); i++)
@@ -464,7 +431,7 @@ public class RedBlackBST<Key> {
 				return false;
 		return true;
 	}
-
+	
 	/***************************************************************************
 	 * Node helper methods.
 	 ***************************************************************************/
@@ -474,12 +441,12 @@ public class RedBlackBST<Key> {
 			return false;
 		return x.color == RED;
 	}
-
+	
 	// are the size fields correct?
 	private boolean isSizeConsistent() {
 		return isSizeConsistent(root);
 	}
-
+	
 	private boolean isSizeConsistent(Node x) {
 		if (x == null)
 			return true;
@@ -487,33 +454,32 @@ public class RedBlackBST<Key> {
 			return false;
 		return isSizeConsistent(x.left) && isSizeConsistent(x.right);
 	}
-
+	
 	/**
 	 * Returns all keys in the symbol table as an <tt>Iterable</tt>. To iterate over all of the keys in the symbol table named <tt>st</tt>,
 	 * use the foreach notation: <tt>for (Key key : st.keys())</tt>.
-	 * 
+	 *
 	 * @return all keys in the sybol table as an <tt>Iterable</tt>
 	 */
 	public Iterable<Key> keys() {
 		if (isEmpty())
-			return new SynchronousQueue<Key>();
+			return new SynchronousQueue<>();
 		return keys(min(), max());
 	}
-
+	
 	/**
 	 * Returns all keys in the symbol table in the given range, as an <tt>Iterable</tt>.
-	 * 
+	 *
 	 * @return all keys in the sybol table between <tt>lo</tt> (inclusive) and <tt>hi</tt> (exclusive) as an <tt>Iterable</tt>
-	 * @throws NullPointerException
-	 *             if either <tt>lo</tt> or <tt>hi</tt> is <tt>null</tt>
+	 * @throws NullPointerException if either <tt>lo</tt> or <tt>hi</tt> is <tt>null</tt>
 	 */
 	public Iterable<Key> keys(Key lo, Key hi) {
-		Queue<Key> queue = new LinkedBlockingQueue<Key>();
+		Queue<Key> queue = new LinkedBlockingQueue<>();
 		// if (isEmpty() || lo.compareTo(hi) > 0) return queue;
 		keys(root, queue, lo, hi);
 		return queue;
 	}
-
+	
 	// add the keys between lo and hi in the subtree rooted at x
 	// to the queue
 	private void keys(Node x, Queue<Key> queue, Key lo, Key hi) {
@@ -528,20 +494,19 @@ public class RedBlackBST<Key> {
 		if (cmphi > 0)
 			keys(x.right, queue, lo, hi);
 	}
-
+	
 	/**
 	 * Returns the largest key in the symbol table.
-	 * 
+	 *
 	 * @return the largest key in the symbol table
-	 * @throws NoSuchElementException
-	 *             if the symbol table is empty
+	 * @throws NoSuchElementException if the symbol table is empty
 	 */
 	public Key max() {
 		if (isEmpty())
 			throw new NoSuchElementException("called max() with empty symbol table");
 		return max(root).key;
 	}
-
+	
 	// the largest key in the subtree rooted at x; null if no such key
 	private Node max(Node x) {
 		assert x != null;
@@ -550,24 +515,23 @@ public class RedBlackBST<Key> {
 		else
 			return max(x.right);
 	}
-
+	
 	/**
 	 * Returns the smallest key in the symbol table.
-	 * 
+	 *
 	 * @return the smallest key in the symbol table
-	 * @throws NoSuchElementException
-	 *             if the symbol table is empty
+	 * @throws NoSuchElementException if the symbol table is empty
 	 */
 	public Key min() {
 		if (isEmpty())
 			throw new NoSuchElementException("called min() with empty symbol table");
 		return min(root).key;
 	}
-
+	
 	/***************************************************************************
 	 * Range count and range search.
 	 ***************************************************************************/
-
+	
 	// the smallest key in subtree rooted at x; null if no such key
 	private Node min(Node x) {
 		assert x != null;
@@ -576,13 +540,13 @@ public class RedBlackBST<Key> {
 		else
 			return min(x.left);
 	}
-
+	
 	// Assuming that h is red and both h.left and h.left.left
 	// are black, make h.left or one of its children red.
 	private Node moveRedLeft(Node h) {
 		assert (h != null);
 		assert isRed(h) && !isRed(h.left) && !isRed(h.left.left);
-
+		
 		flipColors(h);
 		if (isRed(h.right.left)) {
 			h.right = rotateRight(h.right);
@@ -591,7 +555,7 @@ public class RedBlackBST<Key> {
 		}
 		return h;
 	}
-
+	
 	// Assuming that h is red and both h.right and h.right.left
 	// are black, make h.right or one of its children red.
 	private Node moveRedRight(Node h) {
@@ -604,17 +568,14 @@ public class RedBlackBST<Key> {
 		}
 		return h;
 	}
-
+	
 	/**
 	 * Inserts the key-value pair into the symbol table, overwriting the old value with the new value if the key is already in the symbol
 	 * table. If the value is <tt>null</tt>, this effectively deletes the key from the symbol table.
-	 * 
-	 * @param key
-	 *            the key
-	 * @param val
-	 *            the value
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 *
+	 * @param key the key
+	 * @param val the value
+	 * @throws NullPointerException if <tt>key</tt> is <tt>null</tt>
 	 */
 	public void put(Key key) {
 		if (key == null)
@@ -623,19 +584,19 @@ public class RedBlackBST<Key> {
 		root.color = BLACK;
 		assert check();
 	}
-
+	
 	// insert the key-value pair in the subtree rooted at h
 	private Node put(Node h, Key key) {
 		if (h == null)
 			return new Node(key, RED, 1);
-
+		
 		int cmp = cmpt.compare(key, h.key);
 		if (cmp < 0)
 			h.left = put(h.left, key);
 		else if (cmp > 0)
 			h.right = put(h.right, key);
 		// else do nothing on duplicate keys, TODO throw error
-
+		
 		// fix-up any right-leaning links
 		if (isRed(h.right) && !isRed(h.left))
 			h = rotateLeft(h);
@@ -644,23 +605,21 @@ public class RedBlackBST<Key> {
 		if (isRed(h.left) && isRed(h.right))
 			flipColors(h);
 		h.N = size(h.left) + size(h.right) + 1;
-
+		
 		return h;
 	}
-
+	
 	/**
 	 * Return the number of keys in the symbol table strictly less than <tt>key</tt>.
-	 * 
-	 * @param key
-	 *            the key
+	 *
+	 * @param key the key
 	 * @return the number of keys in the symbol table strictly less than <tt>key</tt>
-	 * @throws NullPointerException
-	 *             if <tt>key</tt> is <tt>null</tt>
+	 * @throws NullPointerException if <tt>key</tt> is <tt>null</tt>
 	 */
 	public int rank(Key key) {
 		return rank(key, root);
 	}
-
+	
 	// number of keys less than key in the subtree rooted at x
 	private int rank(Key key, Node x) {
 		if (x == null)
@@ -673,7 +632,7 @@ public class RedBlackBST<Key> {
 		else
 			return size(x.left);
 	}
-
+	
 	// make a right-leaning link lean to the left
 	private Node rotateLeft(Node h) {
 		assert (h != null) && isRed(h.right);
@@ -686,11 +645,11 @@ public class RedBlackBST<Key> {
 		h.N = size(h.left) + size(h.right) + 1;
 		return x;
 	}
-
+	
 	/***************************************************************************
 	 * Red-black tree helper functions.
 	 ***************************************************************************/
-
+	
 	// make a left-leaning link lean to the right
 	private Node rotateRight(Node h) {
 		assert (h != null) && isRed(h.left);
@@ -703,15 +662,13 @@ public class RedBlackBST<Key> {
 		h.N = size(h.left) + size(h.right) + 1;
 		return x;
 	}
-
+	
 	/**
 	 * Return the kth smallest key in the symbol table.
-	 * 
-	 * @param k
-	 *            the order statistic
+	 *
+	 * @param k the order statistic
 	 * @return the kth smallest key in the symbol table
-	 * @throws IllegalArgumentException
-	 *             unless <tt>k</tt> is between 0 and <em>N</em> &minus; 1
+	 * @throws IllegalArgumentException unless <tt>k</tt> is between 0 and <em>N</em> &minus; 1
 	 */
 	public Key select(int k) {
 		if (k < 0 || k >= size())
@@ -719,7 +676,7 @@ public class RedBlackBST<Key> {
 		Node x = select(root, k);
 		return x.key;
 	}
-
+	
 	// the key of rank k in the subtree rooted at x
 	private Node select(Node x, int k) {
 		assert x != null;
@@ -732,22 +689,21 @@ public class RedBlackBST<Key> {
 		else
 			return x;
 	}
-
+	
 	/**
 	 * Returns the number of key-value pairs in this symbol table.
-	 * 
+	 *
 	 * @return the number of key-value pairs in this symbol table
 	 */
 	public int size() {
 		return size(root);
 	}
-
+	
 	/**
 	 * Returns the number of keys in the symbol table in the given range.
-	 * 
+	 *
 	 * @return the number of keys in the sybol table between <tt>lo</tt> (inclusive) and <tt>hi</tt> (exclusive)
-	 * @throws NullPointerException
-	 *             if either <tt>lo</tt> or <tt>hi</tt> is <tt>null</tt>
+	 * @throws NullPointerException if either <tt>lo</tt> or <tt>hi</tt> is <tt>null</tt>
 	 */
 	public int size(Key lo, Key hi) {
 		if (cmpt.compare(lo, hi) > 0)
@@ -757,14 +713,14 @@ public class RedBlackBST<Key> {
 		else
 			return rank(hi) - rank(lo);
 	}
-
+	
 	// number of node in subtree rooted at x; 0 if x is null
 	private int size(Node x) {
 		if (x == null)
 			return 0;
 		return x.N;
 	}
-
+	
 	/**
 	 * User readable display of <tt>LinkedRedBlackBST</tt> data type.
 	 */
@@ -773,7 +729,7 @@ public class RedBlackBST<Key> {
 		// return keys().toString();
 		return keys().toString() + "\n" + toString("", root);
 	}
-
+	
 	private String toString(String prefix, Node node) {
 		if (node == null)
 			return "";
@@ -783,5 +739,25 @@ public class RedBlackBST<Key> {
 		if (node.left != null)
 			string = string + "\n" + toString("    " + prefix, node.left);
 		return string;
+	}
+	
+	// BST helper node data type
+	private class Node {
+		private Key key; // key
+		private Node left, right; // links to left and right subtrees
+		private boolean color; // color of parent link
+		private int N; // subtree count
+		
+		public Node(Key key, boolean color, int N) {
+			this.key = key;
+			this.color = color;
+			this.N = N;
+		}
+		
+		@Override
+		public String toString() {
+			return String.valueOf(key) + " [" + String.valueOf(left.key) + "<>" + String.valueOf(right.key) + " "
+					+ (color ? "red" : "black") + ", N=" + N + "]";
+		}
 	}
 }

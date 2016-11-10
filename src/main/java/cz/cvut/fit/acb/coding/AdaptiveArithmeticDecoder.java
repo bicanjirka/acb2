@@ -7,22 +7,22 @@
  */
 package cz.cvut.fit.acb.coding;
 
-import cz.cvut.fit.acb.triplets.TripletFieldId;
-
 import java.util.List;
+
+import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 /**
  * @author jiri.bican
  */
 public class AdaptiveArithmeticDecoder extends ByteToTripletConverter<AdaptiveArithmeticDecompress> {
-
-    @Override
-    protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes) {
-        return new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()));
-    }
-
-    @Override
-    protected int decompress(AdaptiveArithmeticDecompress object) {
-        return object.decompress();
-    }
+	
+	@Override
+	protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes) {
+		return new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()));
+	}
+	
+	@Override
+	protected int decompress(AdaptiveArithmeticDecompress object) {
+		return object.decompress();
+	}
 }

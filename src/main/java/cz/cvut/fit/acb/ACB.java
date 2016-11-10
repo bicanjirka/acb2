@@ -1,5 +1,7 @@
 package cz.cvut.fit.acb;
 
+import java.nio.ByteBuffer;
+
 import cz.cvut.fit.acb.dictionary.ByteArray;
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
@@ -10,16 +12,17 @@ import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 import cz.cvut.fit.acb.utils.ChainAdapter;
 import cz.cvut.fit.acb.utils.Chainable;
 
-import java.nio.ByteBuffer;
-
+/**
+ * @author jiri.bican
+ */
 public class ACB {
-
+	
 	private ACBProvider provider;
-
+	
 	public ACB(ACBProvider provider) {
 		this.provider = provider;
 	}
-
+	
 	public static void print(int idx, ByteSequence arr, int ctx, int cnt, int length, Dictionary dict) {
 		System.out.println();
 		System.out.println(new String(arr.array(0, idx)) + "|" + new String(arr.array(idx, arr.length())));
@@ -35,7 +38,7 @@ public class ACB {
 		System.out.println(new String(arr.array(0, idx)) + "|" + new String(arr.array(idx, arr.length())));
 		System.out.println();
 	}
-
+	
 	public static void printInfo(int idx, int ctx, int cnt, int length, Dictionary dict) {
 		System.out.println();
 		System.out.println(dict);
@@ -44,7 +47,7 @@ public class ACB {
 		System.out.println("length  " + length);
 		System.out.println("append  " + (length > 0 ? new String(dict.copy(cnt, length)) : "nothing"));
 	}
-
+	
 	public Chainable<ByteBuffer, TripletSupplier> compress() {
 		return new ChainAdapter<>((byteBuffer, tripletSupplierConsumer) -> {
 			ByteArray arr = new ByteArray(byteBuffer.array());
@@ -53,12 +56,12 @@ public class ACB {
 			coder.encode(tripletSupplierConsumer);
 		});
 	}
-
+	
 	public Chainable<TripletProcessor, ByteBuffer> decompress() {
 		return new ChainAdapter<>((tripletProcessor, byteBufferConsumer) -> {
 			ByteBuilder arr = new ByteBuilder();
 			Dictionary dict = provider.getDictionary(arr);
-
+			
 			TripletCoder coder = provider.getCoder(arr, dict);
 			coder.decode(tripletProcessor);
 

@@ -20,13 +20,13 @@ public class BitStreamInputStream extends FilterInputStream {
 	
 	protected short buffer; // our BYTE bitstream read-ahead buffer declared as short to cope with EOF
 	protected int bitsInCache; // how many unread bits left in our byte
-
+	
 	// ------------------------------------------------------------------
 	public BitStreamInputStream(InputStream in) {
 		super(in);
 		bitsInCache = 0; // we haven't got any cached bits
 	}
-
+	
 	// ------------------------------------------------------------------
 	// Read a bitfield from the input stream. The number of bits read is
 	// the current bitfield length. Bitfield can be on arbitrary bit boundaries.
@@ -34,7 +34,7 @@ public class BitStreamInputStream extends FilterInputStream {
 	public int read(int fieldSize) throws IOException {
 		if (fieldSize > 32 || fieldSize < 1)
 			throw new IllegalArgumentException("BitField size (" + fieldSize + ") no good. Has to be between 1 and 32.");
-
+		
 		int bitField; // what we're going to return to caller
 		int bitsToRead; // remaining bits to assemble into BF
 		int availableNumberOfBits;
@@ -43,7 +43,7 @@ public class BitStreamInputStream extends FilterInputStream {
 		bitField = 0; // start with empty jigsaw
 		bitsToRead = fieldSize;
 		OR_position = fieldSize;
-
+		
 		while (bitsToRead > 0) {
 			if (bitsInCache == 0) {
 				if ((buffer = (short) in.read()) == -1) {
@@ -61,13 +61,13 @@ public class BitStreamInputStream extends FilterInputStream {
 			bitField |= rightAlignedBFPartial << OR_position;
 			// track # of cached bits
 			// track how much left to do
-
+			
 			bitsInCache -= availableNumberOfBits;
 			bitsToRead -= availableNumberOfBits;
 		}
 		return bitField;
 	}
-
+	
 	// ---------------------------------------------
 	// The remaining methods are methods we override
 	// from our parent class: FilterInputStream
@@ -78,7 +78,7 @@ public class BitStreamInputStream extends FilterInputStream {
 	public int read() throws IOException {
 		return read(EIGHT);
 	}
-
+	
 	// ------------------------------------------------------------------
 	// Override block read() methods to use basic read() as building block.
 	// The implementation we want for this read() is the same as that
@@ -90,9 +90,9 @@ public class BitStreamInputStream extends FilterInputStream {
 	// Unfortunately neither work, so I am forced to paste in the
 	// original code for InputStream.read(byte b[], int off, int len).
 	// ------------------------------------------------------------------
-
+	
 	public int read(byte b[], int off, int len) throws IOException {
-
+		
 		if (len <= 0) {
 			return 0;
 		}
@@ -101,7 +101,7 @@ public class BitStreamInputStream extends FilterInputStream {
 			return -1;
 		}
 		b[off] = (byte) c;
-
+		
 		int i = 1;
 		try {
 			for (; i < len; i++) {
@@ -109,22 +109,20 @@ public class BitStreamInputStream extends FilterInputStream {
 				if (c == -1) {
 					break;
 				}
-				if (b != null) {
-					b[off + i] = (byte) c;
-				}
+				b[off + i] = (byte) c;
 			}
-		} catch (IOException ee) {
+		} catch (IOException ignored) {
 		}
 		return i;
 	}
-
+	
 	// ------------------------------------------------------------------
 	// Overridden FilterInputStream.read(byte b[])
 	// ------------------------------------------------------------------
 	public int read(byte b[]) throws IOException {
 		return read(b, 0, b.length);
 	}
-
+	
 	// ------------------------------------------------------------------
 	// Overridden FilterInputStream.skip(long n)
 	// If any client relies heavily on skipping multi-byte strings in
@@ -133,7 +131,7 @@ public class BitStreamInputStream extends FilterInputStream {
 	// ------------------------------------------------------------------
 	public long skip(long n) throws IOException {
 		long i;
-
+		
 		for (i = 0; i < n; i++) {
 			if (read() == -1)
 				break;

@@ -6,5 +6,5 @@ import java.util.function.Consumer;
  * @author jiri.bican
  */
 public interface Chainable<T, U> extends Consumer<T> {
-    void setConsumer(Consumer<U> consumer);
+	void setConsumer(Consumer<U> consumer);
 }
