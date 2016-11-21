@@ -9,6 +9,7 @@ package cz.cvut.fit.acb.coding;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 import nayuki.arithcode.ArithmeticEncoder;
 import nayuki.arithcode.BitOutputStream;
@@ -32,6 +33,16 @@ class AdaptiveArithmeticCompress {
 		int numSymbols = eof + 1;
 		// Initialize with all symbol frequencies at 1
 		freq = new SimpleFrequencyTable(new FlatFrequencyTable(numSymbols));
+	}
+	
+	public AdaptiveArithmeticCompress(int bitSize, int[] freqVal) {
+		eof = 1 << bitSize; // last symbol is EOF flag
+		int numSymbols = eof + 1;
+		int[] freq1 = Arrays.copyOf(freqVal, numSymbols);
+		if (freqVal.length < numSymbols) {
+			Arrays.fill(freq1, freqVal.length, numSymbols, 1);
+		}
+		freq = new SimpleFrequencyTable(freq1);
 	}
 	
 	public void compress(int b) {

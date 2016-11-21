@@ -1,17 +1,25 @@
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.triplets.BitStreamOutputStream;
-import junit.framework.TestCase;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
+import cz.cvut.fit.acb.coding.BitStreamOutputStream;
+import junit.framework.TestCase;
+
 public class BitStreamTest extends TestCase {
 
 	public BitStreamTest() {
 		super("BitStream input and output tests");
+	}
+	
+	private static void fill(int[] arr, int offset) {
+		Random r = new Random();
+		int bound = 1 << offset;
+		for (int i = 0; i < arr.length; i++) {
+			arr[i] = r.nextInt(bound);
+		}
 	}
 	
 	public void testOutputLength() throws IOException {
@@ -53,13 +61,5 @@ public class BitStreamTest extends TestCase {
 //			assertEquals("offset="+offset, expLeng, out.size());
 		}
 		bit.close();
-	}
-
-	private static void fill(int[] arr, int offset) {
-		Random r = new Random();
-		int bound = 1 << offset;
-		for (int i = 0; i < arr.length; i++) {
-			arr[i] = r.nextInt(bound);
-		}
 	}
 }

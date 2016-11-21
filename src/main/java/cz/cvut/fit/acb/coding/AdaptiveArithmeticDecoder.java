@@ -16,9 +16,13 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
  */
 public class AdaptiveArithmeticDecoder extends ByteToTripletConverter<AdaptiveArithmeticDecompress> {
 	
+	private final int[] lengthFreq = {45, 13, 10, 7, 5, 4};
+	
 	@Override
 	protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes) {
-		return new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()));
+		return index.isLength() ?
+				new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()), lengthFreq) :
+				new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()));
 	}
 	
 	@Override

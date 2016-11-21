@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.dictionary.ByteArray;
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
@@ -9,8 +10,6 @@ import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
-import cz.cvut.fit.acb.utils.ChainAdapter;
-import cz.cvut.fit.acb.utils.Chainable;
 
 /**
  * @author jiri.bican
@@ -48,29 +47,43 @@ public class ACB {
 		System.out.println("append  " + (length > 0 ? new String(dict.copy(cnt, length)) : "nothing"));
 	}
 	
-	public Chainable<ByteBuffer, TripletSupplier> compress() {
+	/*public Chainable<ByteBuffer, TripletSupplier> compress() {
 		return new ChainAdapter<>((byteBuffer, tripletSupplierConsumer) -> {
 			ByteArray arr = new ByteArray(byteBuffer.array());
 			Dictionary dict = provider.getDictionary(arr);
 			TripletCoder coder = provider.getCoder(arr, dict);
 			coder.encode(tripletSupplierConsumer);
 		});
+	}*/
+	
+	public void compress(ByteBuffer byteBuffer, Consumer<TripletSupplier> tripletSupplierConsumer) {
+		ByteArray arr = new ByteArray(byteBuffer.array());
+		Dictionary dict = provider.getDictionary(arr);
+		TripletCoder coder = provider.getCoder(arr, dict);
+		coder.encode(tripletSupplierConsumer);
 	}
 	
-	public Chainable<TripletProcessor, ByteBuffer> decompress() {
+	/*public Chainable<TripletProcessor, ByteBuffer> decompress() {
 		return new ChainAdapter<>((tripletProcessor, byteBufferConsumer) -> {
 			ByteBuilder arr = new ByteBuilder();
 			Dictionary dict = provider.getDictionary(arr);
 			
 			TripletCoder coder = provider.getCoder(arr, dict);
 			coder.decode(tripletProcessor);
-
-//				long time2 = System.currentTimeMillis();
-//				String t = NumberFormat.getInstance().format(time2 - time);
-//				System.out.println("decompress took "+t+" ms.");
 			
 			ByteBuffer buffer = ByteBuffer.wrap(arr.array());
 			byteBufferConsumer.accept(buffer);
 		});
+	}*/
+	
+	public void decompress(TripletProcessor tripletProcessor, Consumer<ByteBuffer> byteBufferConsumer) {
+		ByteBuilder arr = new ByteBuilder();
+		Dictionary dict = provider.getDictionary(arr);
+		
+		TripletCoder coder = provider.getCoder(arr, dict);
+		coder.decode(tripletProcessor);
+		
+		ByteBuffer buffer = ByteBuffer.wrap(arr.array());
+		byteBufferConsumer.accept(buffer);
 	}
 }

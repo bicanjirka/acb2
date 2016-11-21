@@ -7,6 +7,7 @@
  */
 package cz.cvut.fit.acb.utils;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -25,10 +26,20 @@ public class ChainBuilder<T, U, V> {
 		return new ChainBuilder<>(firstProcess, firstProcess);
 	}
 	
+	public static <T, U> ChainBuilder<T, U, T> create(BiConsumer<T, Consumer<U>> first) {
+		return create(new ChainAdapter<T, U>(first));
+	}
+	
+	
 	public <R> ChainBuilder<U, R, V> chain(Chainable<U, R> nextProcess) {
 		process.setConsumer(nextProcess);
 		return new ChainBuilder<>(nextProcess, firstProcess);
 	}
+	
+	public <R> ChainBuilder<U, R, V> chain(BiConsumer<U, Consumer<R>> next) {
+		return chain(new ChainAdapter<U, R>(next));
+	}
+	
 	
 	public Consumer<V> end(Consumer<U> lastProcess) {
 		process.setConsumer(lastProcess);

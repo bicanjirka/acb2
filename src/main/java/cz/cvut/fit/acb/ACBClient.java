@@ -3,16 +3,14 @@ package cz.cvut.fit.acb;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.coding.TripletToByteConverter;
-import cz.cvut.fit.acb.utils.ChainAdapter;
 import cz.cvut.fit.acb.utils.ChainBuilder;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -26,6 +24,8 @@ import org.apache.logging.log4j.Logger;
  */
 public class ACBClient {
 	
+	private static final int EXIT_CODE_OK = 0;
+	private static final int EXIT_CODE_FATAL = 2;
 	private static final Logger logger = LogManager.getLogger();
 	static String in = "corpuses/mailflder corpuses/out";
 	
@@ -34,13 +34,21 @@ public class ACBClient {
 	}
 	
 	public static void main(String[] args) {
-//		try {
-//			System.in.read();
-//		} catch (IOException e1) {
-//			e1.printStackTrace();
-//		}
-		args = in.split(" ");
-//		System.setProperty("org.apache.logging.log4j.simplelog.StatusLogger.level", "info");
+		
+		try {
+			ACBClient app = new ACBClient();
+			int exitCode = app.run(args);
+			if (exitCode != EXIT_CODE_OK) {
+				System.exit(exitCode);
+			}
+			
+		} catch (Throwable t) {
+			t.printStackTrace();
+			System.exit(EXIT_CODE_FATAL);
+		}
+	}
+	
+	private int run(String[] args) {
 		
 		CommandLineParser parser = new DefaultParser();
 		Options o = new Options();
@@ -49,41 +57,29 @@ public class ACBClient {
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.printHelp("ant", o);
 		}
+		
+		args = in.split(" ");
 		Path input = Paths.get(args[0]);
 		
-		for (String trip : new String[]{"default", "salomon", "salomon+", "valach"/*, "lcp", "lengthless"*/}) {
+		for (String trip : new String[]{"default"/*, "salomon", "salomon+", "valach"/*, "lcp", "lengthless"*/}) {
 			Path output = Paths.get(args[1] + "-" + trip);
 			
 			ACBFileParser fileParser = new ACBFileParser();
-			ACBProvider provider = new ACBProvider(6, 4, trip);
+			ACBProvider provider = new ACBProvider(trip);
+			provider.distanceBits = 6;
+			provider.lengthBits = 4;
 			ACB acb = new ACB(provider);
 			TripletToByteConverter<?> encoder = provider.getT2BConverter();
 			
-			ChainBuilder.create(fileParser).chain(acb.compress()).chain(encoder).end(bytes -> {
-				try {
-					Files.deleteIfExists(output);
-					OutputStream os = Files.newOutputStream(output);
-					ObjectOutputStream oos = new ObjectOutputStream(os);
-					oos.writeObject(bytes);
-					oos.close();
-					
-					int byteSize = bytes.stream().mapToInt(value -> value.length).sum();
-					long finalSize = Files.size(output);
-					logger.info("Compressed into '{}' [size = {}, bytes = {}]", output, finalSize, byteSize);
-					StringBuilder sb = new StringBuilder("Outputted byte array:");
-					for (int i = 0; i < bytes.size(); i++) {
-						byte[] b = bytes.get(i);
-						sb.append("\n").append(i).append(": ").append(b.length);
-					}
-					logger.info(sb.toString());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}).accept(input);
+			ChainBuilder.create(fileParser::open)
+					.chain(acb::compress)
+					.chain(encoder)
+					.end(bytes -> fileParser.arrayObjectSave(bytes, output))
+					.accept(input);
 			
 			//////////////////////////////////////////////////////
 			
-			ChainBuilder.create(new ChainAdapter<Path, List<byte[]>>((path, listConsumer) -> {
+			ChainBuilder.create((Path path, Consumer<List<byte[]>> listConsumer) -> {
 				try {
 					InputStream is = Files.newInputStream(path);
 					ObjectInputStream ois = new ObjectInputStream(is);
@@ -92,7 +88,9 @@ public class ACBClient {
 				} catch (IOException | ClassNotFoundException e) {
 					e.printStackTrace();
 				}
-			})).chain(provider.getB2TConverter()).chain(acb.decompress()).end(byteBuffer -> {
+			}).chain(provider.getB2TConverter())
+					.chain(acb::decompress)
+					.end(byteBuffer -> {
 				try {
 					byte[] inBytes = Files.readAllBytes(input);
 					byte[] outBytes = byteBuffer.array();
@@ -105,6 +103,8 @@ public class ACBClient {
 			}).accept(output);
 			
 		}
+		
+		return EXIT_CODE_OK;
 		
 		// Files.newBufferedReader(path, cs);
 		// Files.newInputStream(path, options);

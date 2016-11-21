@@ -16,17 +16,15 @@ import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
  * @author jiri.bican
  */
 public class ACBProvider {
+	// default values TODO make private, create setters
+	public int distanceBits = 6;
+	public int lengthBits = 4;
 	private DictionaryProvider dictionary;
 	private TripletCoderProvider coder;
 	private TripletToByteConverterProvider t2bConverter;
 	private ByteToTripletConverterProvider b2tConverter;
 	
-	private int distanceBits;
-	private int lengthBits;
-	
-	public ACBProvider(int dist, int leng, String s) {
-		distanceBits = dist;
-		lengthBits = leng;
+	public ACBProvider(String s) {
 		
 		///////////// DICTIONARY
 		switch (s) {

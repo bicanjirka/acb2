@@ -26,7 +26,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 		super(sequence, dictionary, distanceBits);
 		this.flagField = new TripletFieldId(0, BIT_FLAG);
 		this.distField = new TripletFieldId(1, distanceBits);
-		this.lengField = new TripletFieldId(2, lengthBits);
+		this.lengField = new TripletFieldId(2, lengthBits, true);
 		this.byteField = new TripletFieldId(3, Byte.SIZE);
 	}
 	
