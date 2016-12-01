@@ -18,5 +18,10 @@ import cz.cvut.fit.acb.triplets.TripletSupplier;
 public interface TripletCoder {
 	void encode(Consumer<TripletSupplier> output);
 	
-	void decode(TripletProcessor input);
+	DecodeFlag decode(TripletProcessor input);
+	
+	enum DecodeFlag {
+		EOF,
+		END_OF_PARTITION
+	}
 }

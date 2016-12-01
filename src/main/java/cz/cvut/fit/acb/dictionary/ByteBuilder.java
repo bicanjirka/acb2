@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * @author jiri.bican
@@ -52,6 +53,11 @@ public class ByteBuilder implements ByteSequence {
 		return value[index];
 	}
 	
+	@Override
+	public ByteSequence clone() {
+		return new ByteBuilder(value.clone());
+	}
+	
 	public int capacity() {
 		return value.length;
 	}
@@ -66,7 +72,7 @@ public class ByteBuilder implements ByteSequence {
 			expandCapacity(minimumCapacity);
 	}
 	
-	void expandCapacity(int minimumCapacity) {
+	private void expandCapacity(int minimumCapacity) {
 		int newCapacity = value.length * 2 + 2;
 		if (newCapacity - minimumCapacity < 0)
 			newCapacity = minimumCapacity;
@@ -86,5 +92,19 @@ public class ByteBuilder implements ByteSequence {
 	@Override
 	public String toString() {
 		return new String(array());
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof ByteBuilder)) return false;
+		ByteBuilder that = (ByteBuilder) o;
+		return count == that.count &&
+				Arrays.equals(value, that.value);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(value, count);
 	}
 }

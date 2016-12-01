@@ -44,8 +44,8 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			dictionary.update(idx, 1);
 			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
-				visitor.set(flagField, 0);
-				visitor.set(byteField, b);
+				visitor.write(flagField, 0);
+				visitor.write(byteField, b);
 			});
 			return idx + 1;
 		} else {
@@ -59,12 +59,12 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 	@Override
 	protected int decodeStep(int idx, TripletProcessor input) {
 		ByteBuilder builder = ((ByteBuilder) sequence);
-		int flag = input.get(flagField);
+		int flag = input.read(flagField);
 		
 		if (flag == 0) {
-			byte b = (byte) input.get(byteField);
+			byte b = (byte) input.read(byteField);
 			if (b == -1) {
-				return -1;
+				return Integer.MAX_VALUE;
 			}
 			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
 			builder.append(b);
@@ -72,12 +72,12 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			
 			return idx + 1;
 		} else {
-			int tempDist = input.get(distField);
+			int tempDist = input.read(distField);
 			int dist = distFunc.applyAsInt(tempDist);
-			int leng = input.get(lengField);
+			int leng = input.read(lengField);
 			
 			if (tempDist == leng && leng == -1) {
-				return -1;
+				return Integer.MAX_VALUE;
 			}
 			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng));
 			
@@ -104,9 +104,9 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			dictionary.update(idx, leng);
 			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng));
 			output.accept(visitor -> {
-				visitor.set(flagField, 1);
-				visitor.set(distField, dist & distanceMask);
-				visitor.set(lengField, leng);
+				visitor.write(flagField, 1);
+				visitor.write(distField, dist & distanceMask);
+				visitor.write(lengField, leng);
 			});
 			return idx + leng;
 		}
@@ -131,17 +131,17 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			byte b = sequence.byteAt(idx + leng2);
 			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng2, b));
 			output.accept(visitor -> {
-				visitor.set(flagField, 1);
-				visitor.set(distField, dist & distanceMask);
-				visitor.set(lengField, leng2);
-				visitor.set(byteField, b);
+				visitor.write(flagField, 1);
+				visitor.write(distField, dist & distanceMask);
+				visitor.write(lengField, leng2);
+				visitor.write(byteField, b);
 			});
 			return idx + leng2 + 1;
 		}
 		
 		@Override
 		protected int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input) {
-			byte b = (byte) input.get(byteField);
+			byte b = (byte) input.read(byteField);
 			builder.append(b);
 			dictionary.update(idx, leng + 1);
 			return idx + leng + 1;

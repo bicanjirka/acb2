@@ -36,4 +36,14 @@ public class DictionaryInfo {
 	public int getLcp() {
 		return longestCommonPrefix;
 	}
+	
+	@Override
+	public String toString() {
+		return "DictionaryInfo{" +
+				"ctx=" + context +
+				", cnt=" + content +
+				", len=" + length +
+				", lcp=" + longestCommonPrefix +
+				'}';
+	}
 }

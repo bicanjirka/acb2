@@ -46,20 +46,4 @@ public class BitStreamTest extends TestCase {
 		bit.close();
 	}
 	
-	public void testOutputLengthSameBitOffsets() throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		BitStreamOutputStream bit = new BitStreamOutputStream(out);
-		
-		int[] in = new int[256];
-		for (int offset = 1; offset < 31; offset++) {
-			fill(in, offset);
-			for (int i : in) {
-				bit.write(i, offset);
-			}
-			int expLeng = (int) Math.ceil(in.length / 8d * offset);
-			System.out.println("offset="+offset+" length="+out.size()+" exp="+expLeng+", "+(out.size()/(float)expLeng));
-//			assertEquals("offset="+offset, expLeng, out.size());
-		}
-		bit.close();
-	}
 }

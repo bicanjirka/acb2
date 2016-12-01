@@ -27,8 +27,8 @@ public interface FrequencyTable {
 	/**
 	 * Sets the frequency of the specified symbol to the specified value. The frequency value must be at least 0. An exception should be thrown if the symbol is out of range.
 	 *
-	 * @param symbol the symbol to set
-	 * @param freq   the frequency value to set
+	 * @param symbol the symbol to write
+	 * @param freq   the frequency value to write
 	 */
 	void set(int symbol, int freq);
 	

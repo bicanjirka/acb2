@@ -43,9 +43,9 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		
 		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
 		output.accept(visitor -> {
-			visitor.set(distField, dist & distanceMask);
-			visitor.set(lengField, leng);
-			visitor.set(byteField, b);
+			visitor.write(distField, dist & distanceMask);
+			visitor.write(lengField, leng);
+			visitor.write(byteField, b);
 		});
 		
 		idx++;
@@ -54,14 +54,14 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 	
 	@Override
 	protected int decodeStep(int idx, TripletProcessor input) {
-		int tempDist = input.get(distField);
+		int tempDist = input.read(distField);
 		int dist = distFunc.applyAsInt(tempDist);
-		int leng = input.get(lengField);
-		byte b = (byte) input.get(byteField);
+		int leng = input.read(lengField);
+		byte b = (byte) input.read(byteField);
 		ByteBuilder builder = ((ByteBuilder) sequence);
 		
 		if (tempDist == leng && leng == b && b == -1) {
-			return -1;
+			return Integer.MAX_VALUE;
 		}
 		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
 		

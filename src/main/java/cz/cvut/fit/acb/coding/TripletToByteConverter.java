@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 	
 	private Consumer<List<byte[]>> consumer;
 	private Map<Integer, T> map = new HashMap<>();
+	private int segmentSize;
 	
 	@Override
 	public void setConsumer(Consumer<List<byte[]>> consumer) {
@@ -34,18 +36,29 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 	}
 	
 	@Override
-	public void set(TripletFieldId fieldId, int value) {
-		T object = ensure(fieldId);
+	public int getSize() {
+		throw new UnsupportedOperationException();
+	}
+	
+	@Override
+	public void setSize(int size) {
+		segmentSize = size;
+	}
+	
+	@Override
+	public void write(TripletFieldId fieldId, int value) {
+		T object = map.computeIfAbsent(fieldId.getIndex(), k -> createNew(fieldId));
 		compress(object, value);
 	}
 	
 	@Override
-	public int get(TripletFieldId fieldId) {
+	public int read(TripletFieldId fieldId) {
 		throw new UnsupportedOperationException();
 	}
 	
 	protected void terminate() {
-		List<byte[]> ret = new ArrayList<>(map.size());
+		List<byte[]> ret = new ArrayList<>(map.size() + 1);
+		ret.add(ByteBuffer.allocate(Integer.BYTES).putInt(segmentSize).array());
 		for (T object : map.values()) {
 			byte[] bytes = getArray(object);
 			if (bytes != null) {
@@ -53,15 +66,6 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 			}
 		}
 		consumer.accept(ret);
-	}
-	
-	private T ensure(TripletFieldId fieldId) {
-		T val = map.get(fieldId.getIndex());
-		if (val == null) {
-			val = createNew(fieldId);
-			map.put(fieldId.getIndex(), val);
-		}
-		return val;
 	}
 	
 	protected abstract byte[] getArray(T object);

@@ -17,6 +17,7 @@ import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 public class ACB {
 	
 	private ACBProvider provider;
+	private boolean first = true;
 	
 	public ACB(ACBProvider provider) {
 		this.provider = provider;
@@ -47,43 +48,35 @@ public class ACB {
 		System.out.println("append  " + (length > 0 ? new String(dict.copy(cnt, length)) : "nothing"));
 	}
 	
-	/*public Chainable<ByteBuffer, TripletSupplier> compress() {
-		return new ChainAdapter<>((byteBuffer, tripletSupplierConsumer) -> {
-			ByteArray arr = new ByteArray(byteBuffer.array());
-			Dictionary dict = provider.getDictionary(arr);
-			TripletCoder coder = provider.getCoder(arr, dict);
-			coder.encode(tripletSupplierConsumer);
-		});
-	}*/
-	
 	public void compress(ByteBuffer byteBuffer, Consumer<TripletSupplier> tripletSupplierConsumer) {
+		if (first) {
+			tripletSupplierConsumer.accept(visitor -> visitor.setSize(byteBuffer.capacity()));
+			first = false;
+		}
+		if (byteBuffer == null) {
+			tripletSupplierConsumer.accept(null);
+			return;
+		}
 		ByteArray arr = new ByteArray(byteBuffer.array());
 		Dictionary dict = provider.getDictionary(arr);
 		TripletCoder coder = provider.getCoder(arr, dict);
 		coder.encode(tripletSupplierConsumer);
 	}
 	
-	/*public Chainable<TripletProcessor, ByteBuffer> decompress() {
-		return new ChainAdapter<>((tripletProcessor, byteBufferConsumer) -> {
+	public void decompress(TripletProcessor tripletProcessor, Consumer<ByteBuffer> byteBufferConsumer) {
+		TripletCoder.DecodeFlag flag = null;
+		while (flag != TripletCoder.DecodeFlag.EOF) {
 			ByteBuilder arr = new ByteBuilder();
 			Dictionary dict = provider.getDictionary(arr);
 			
 			TripletCoder coder = provider.getCoder(arr, dict);
-			coder.decode(tripletProcessor);
+			flag = coder.decode(tripletProcessor);
 			
-			ByteBuffer buffer = ByteBuffer.wrap(arr.array());
-			byteBufferConsumer.accept(buffer);
-		});
-	}*/
-	
-	public void decompress(TripletProcessor tripletProcessor, Consumer<ByteBuffer> byteBufferConsumer) {
-		ByteBuilder arr = new ByteBuilder();
-		Dictionary dict = provider.getDictionary(arr);
-		
-		TripletCoder coder = provider.getCoder(arr, dict);
-		coder.decode(tripletProcessor);
-		
-		ByteBuffer buffer = ByteBuffer.wrap(arr.array());
-		byteBufferConsumer.accept(buffer);
+			if (arr.length() > 0) {
+				ByteBuffer buffer = ByteBuffer.wrap(arr.array());
+				byteBufferConsumer.accept(buffer);
+			}
+		}
+		byteBufferConsumer.accept(null);
 	}
 }

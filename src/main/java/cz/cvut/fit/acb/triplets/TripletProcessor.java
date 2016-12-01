@@ -4,7 +4,11 @@ package cz.cvut.fit.acb.triplets;
  * @author jiri.bican
  */
 public interface TripletProcessor {
-	void set(TripletFieldId fieldId, int value);
+	int read(TripletFieldId fieldId);
 	
-	int get(TripletFieldId fieldId);
+	void write(TripletFieldId fieldId, int value);
+	
+	int getSize();
+	
+	void setSize(int size);
 }

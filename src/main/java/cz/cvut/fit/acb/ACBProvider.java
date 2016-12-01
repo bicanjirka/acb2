@@ -1,115 +1,32 @@
+/*
+ * Copyright 2002-2016 Ataccama Software, s.r.o. All rights reserved.
+ * ATACCAMA PROPRIETARY/CONFIDENTIAL.
+ * Any use of this source code is prohibited without prior written
+ * permission of Ataccama Software, s.r.o.; Czech Republic, Id.no.: 28235550
+ * http://www.ataccama.com
+ */
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.coding.AdaptiveArithmeticDecoder;
-import cz.cvut.fit.acb.coding.AdaptiveArithmeticEncoder;
+import java.util.Comparator;
+
 import cz.cvut.fit.acb.coding.ByteToTripletConverter;
 import cz.cvut.fit.acb.coding.TripletToByteConverter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.dictionary.DictionaryLCP;
-import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
-import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
+import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
-import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 
 /**
  * @author jiri.bican
  */
-public class ACBProvider {
-	// default values TODO make private, create setters
-	public int distanceBits = 6;
-	public int lengthBits = 4;
-	private DictionaryProvider dictionary;
-	private TripletCoderProvider coder;
-	private TripletToByteConverterProvider t2bConverter;
-	private ByteToTripletConverterProvider b2tConverter;
+public interface ACBProvider {
+	Dictionary getDictionary(ByteSequence sequence);
 	
-	public ACBProvider(String s) {
-		
-		///////////// DICTIONARY
-		switch (s) {
-			case "lcp":
-			case "lengthless":
-				dictionary = DictionaryLCP::new;
-				break;
-			case "salomon+":
-			case "salomon":
-			case "valach":
-			default:
-				dictionary = Dictionary::new;
-		}
-		
-		/////////////// ENCODER
-		switch (s) {
-//			case "lcp":
-//				coder = new TripletCoderProvider() {
-//					@Override
-//					public TripletEncoder provide(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
-//						return new LCPTripletEncoder(sequence, dictionary, distanceBits, lengthBits);
-//					}
-//				};
-//				break;
-//			case "lengthless":
-//				coder = new TripletCoderProvider() {
-//					@Override
-//					public TripletEncoder provide(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
-//						return new LengthlessTripletEncoder(sequence, dictionary, distanceBits, lengthBits);
-//					}
-//				};
-//				break;
-			case "salomon+":
-				coder = SalomonTripletCoder.SalomonByteful::new;
-				break;
-			case "salomon":
-				coder = SalomonTripletCoder.SalomonByteless::new;
-				break;
-			case "valach":
-				coder = ValachTripletCoder::new;
-				break;
-			
-			default:
-				coder = SimpleTripletCoder::new;
-				break;
-		}
-		
-		/////////////// TRIPLET CODING STRATEGY
-		t2bConverter = AdaptiveArithmeticEncoder::new;
-		b2tConverter = AdaptiveArithmeticDecoder::new;
-//		t2bConverter = BitArrayComposer::new;
-//		b2tConverter = BitArrayDecomposer::new;
-	}
+	TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary);
 	
+	TripletToByteConverter<?> getT2BConverter();
 	
-	public Dictionary getDictionary(ByteSequence sequence) {
-		return dictionary.provide(sequence, 1 << distanceBits - 2, 1 << lengthBits - 1);
-	}
+	ByteToTripletConverter<?> getB2TConverter();
 	
-	public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
-		return coder.provide(sequence, dictionary, distanceBits, lengthBits);
-	}
-	
-	public TripletToByteConverter<?> getT2BConverter() {
-		return t2bConverter.provide();
-	}
-	
-	public ByteToTripletConverter<?> getB2TConverter() {
-		return b2tConverter.provide();
-	}
-	
-	
-	interface DictionaryProvider {
-		Dictionary provide(ByteSequence sequence, int maxDistance, int maxLength);
-	}
-	
-	interface TripletCoderProvider {
-		TripletCoder provide(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits);
-	}
-	
-	interface TripletToByteConverterProvider {
-		TripletToByteConverter provide();
-	}
-	
-	interface ByteToTripletConverterProvider {
-		ByteToTripletConverter provide();
-	}
+	<T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator);
 }

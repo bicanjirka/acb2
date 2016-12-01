@@ -14,7 +14,7 @@ public class ByteArray implements ByteSequence {
 	}
 	
 	public ByteArray(ByteSequence original) {
-		this.value = original.array();
+		this.value = original.array().clone();
 	}
 	
 	@Override
@@ -33,6 +33,11 @@ public class ByteArray implements ByteSequence {
 	}
 	
 	@Override
+	public ByteSequence clone() {
+		return new ByteArray(this);
+	}
+	
+	@Override
 	public int length() {
 		return value.length;
 	}
@@ -40,5 +45,18 @@ public class ByteArray implements ByteSequence {
 	@Override
 	public String toString() {
 		return new String(value);
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof ByteArray)) return false;
+		ByteArray byteArray = (ByteArray) o;
+		return Arrays.equals(value, byteArray.value);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(value);
 	}
 }

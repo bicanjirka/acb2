@@ -48,7 +48,7 @@ public final class SimpleFrequencyTable implements FrequencyTable {
 	 *
 	 * @param freqTab the frequency table to copy
 	 * @throws NullPointerException     if {@code freqTab} is {@code null}
-	 * @throws IllegalArgumentException if {@code freqTab.getSymbolLimit()} &lt; 1 or any element {@code freqTab.get(i)} &lt; 0
+	 * @throws IllegalArgumentException if {@code freqTab.getSymbolLimit()} &lt; 1 or any element {@code freqTab.read(i)} &lt; 0
 	 * @throws ArithmeticException      if the total of all {@code freqTab} elements exceeds {@code Integer.MAX_VALUE}
 	 */
 	public SimpleFrequencyTable(FrequencyTable freqTab) {
@@ -103,8 +103,8 @@ public final class SimpleFrequencyTable implements FrequencyTable {
 	/**
 	 * Sets the frequency of the specified symbol to the specified value. The frequency value must be at least 0.
 	 *
-	 * @param symbol the symbol to set
-	 * @param freq   the frequency value to set
+	 * @param symbol the symbol to write
+	 * @param freq   the frequency value to write
 	 * @throws IllegalArgumentException if {@code symbol} &lt; 0 or {@code symbol} &ge; {@code getSymbolLimit()}
 	 */
 	public void set(int symbol, int freq) {

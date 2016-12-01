@@ -24,6 +24,7 @@ import org.apache.logging.log4j.Logger;
  */
 public abstract class BaseTripletCoder implements TripletCoder {
 	
+	private static int tCount = 0;
 	protected final Logger logger = LogManager.getLogger(getClass());
 	protected final Dictionary dictionary;
 	protected final ByteSequence sequence;
@@ -46,22 +47,33 @@ public abstract class BaseTripletCoder implements TripletCoder {
 			DictionaryInfo info = dictionary.search(idx);
 			idx = encodeStep(idx, info, output);
 			cnt++;
+			tCount++;
 		}
-		logger.info("Total count of triplets: " + cnt);
-		output.accept(null); // to indicate end
+		logger.info("Count of triplets in partition: " + cnt);
+		// TODO log total count of triplets tCount
 	}
 	
 	protected abstract int encodeStep(int idx, DictionaryInfo info, Consumer<TripletSupplier> output);
 	
 	@Override
-	public void decode(TripletProcessor input) {
+	public DecodeFlag decode(TripletProcessor input) {
 		int idx = 0, cnt = 0;
+		int ceiling = input.getSize();
 		
-		while (idx >= 0) {
+		while (idx < ceiling) {
 			idx = decodeStep(idx, input);
 			cnt++;
+			tCount++;
 		}
-		logger.info("Total count of triplets: " + cnt);
+		if (idx == ceiling) {
+			logger.info("Count of triplets in partition: " + cnt);
+			return DecodeFlag.END_OF_PARTITION;
+		} else {
+			assert idx == Integer.MAX_VALUE;
+			logger.info("Count of triplets in partition: " + --cnt);
+			logger.info("Total count of triplets: " + --tCount);
+			return DecodeFlag.EOF;
+		}
 	}
 	
 	protected abstract int decodeStep(int idx, TripletProcessor input);
