@@ -1,55 +1,86 @@
 package cz.cvut.fit.acb.triplets.coder;
 
-/*public class LCPTripletEncoder extends BaseTripletEncoder {
+import java.util.function.Consumer;
 
-	public LCPTripletEncoder(ByteSequence sequence, Dictionary dictionary, OutputStream out, int distanceBits, int lengthBits) {
-		super(sequence, dictionary);
-		this.writer = new BaseTripletWriter(distanceBits, lengthBits, out) {
-			@Override
-			public void write(TripletSupplier t) throws IOException {
-				if (print) System.out.print(cnt++ + ") write " + t);
-				out.write(t.getDistance(), distBits);
-				out.write(t.getLenght(), lengBits);
-				out.write(t.getSymbol());
-			}
-		};
+import cz.cvut.fit.acb.dictionary.ByteBuilder;
+import cz.cvut.fit.acb.dictionary.ByteSequence;
+import cz.cvut.fit.acb.dictionary.Dictionary;
+import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
+import cz.cvut.fit.acb.triplets.TripletSupplier;
+import cz.cvut.fit.acb.utils.TripletUtils;
+
+public class LCPTripletCoder extends BaseTripletCoder {
+	
+	private final TripletFieldId distField;
+	private final TripletFieldId lengField;
+	private final TripletFieldId byteField;
+	private final int distanceMask;
+	
+	public LCPTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
+		super(sequence, dictionary, distanceBits);
+		this.distanceMask = (1 << distanceBits) - 1;
+		this.distField = new TripletFieldId(0, distanceBits);
+		this.lengField = new TripletFieldId(1, lengthBits, true);
+		this.byteField = new TripletFieldId(2, Byte.SIZE);
 	}
-
+	
 	@Override
-	public int process(int idx, DictionaryInfo info) throws IOException {
+	protected int encodeStep(int idx, DictionaryInfo info, Consumer<TripletSupplier> output) {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
-		int leng = info.getLength();
+		int leng2 = info.getLength();
+		int leng = leng2 + idx == sequence.length() ? leng2 - 1 : leng2;
 		int lcp = info.getLcp();
-
+		
 		dictionary.update(idx, leng + lcp + 1);
 		idx += leng + lcp;
 		int dist = cnt == -1 ? 0 : ctx - cnt;
-		writer.write(new TripletSupplier(dist, leng, sequence.byteAt(idx)));
-		if (ACB.print_trip) System.out.println("\t[lcp = " + lcp + "]");
-//		if (idx + 1 >= sequence.length()) {
-//			((BaseTripletWriterExtension) writer).write((1 << distanceBits - 2) - lcp + 1);
-//		}
-		return idx + 1;
+		byte b = sequence.byteAt(idx);
+		
+		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
+		output.accept(visitor -> {
+			visitor.write(distField, dist & distanceMask);
+			visitor.write(lengField, leng);
+			visitor.write(byteField, b);
+		});
+		
+		idx++;
+		return idx;
 	}
-
-	@SuppressWarnings("unused")
-	private static class BaseTripletWriterExtension extends BaseTripletWriter {
-		private BaseTripletWriterExtension(int distBits, int lengBits, OutputStream out) {
-			super(distBits, lengBits, out);
-		}
 	
-		@Override
-		public void write(TripletSupplier t) throws IOException {
-			if (print) System.out.print(cnt++ + ") write " + t);
-			out.write(t.getDistance(), distBits);
-			out.write(t.getLenght(), lengBits);
-			out.write(t.getSymbol());
+	@Override
+	protected int decodeStep(int idx, TripletProcessor input) {
+		int tempDist = input.read(distField);
+		int dist = distFunc.applyAsInt(tempDist);
+		int leng = input.read(lengField);
+		byte b = (byte) input.read(byteField);
+		ByteBuilder builder = ((ByteBuilder) sequence);
+		
+		if (tempDist == leng && leng == b && b == -1) {
+			return Integer.MAX_VALUE;
 		}
-	
-		public void write(int i) throws IOException {
-			if (print) System.out.println(cnt++ + ") write " + i);
-			out.write(i, distBits);
+		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
+		
+		int ctx = dictionary.searchContext(idx);
+		int cnt = ctx - dist;
+		int lcp = 0;
+		
+		if (ctx > 0) {
+			int i = dictionary.select(cnt);
+			lcp = dictionary.searchContent(ctx, i).getLcp();
+			leng += lcp;
 		}
+		
+		if (leng > 0) {
+			byte[] seq = dictionary.copy(cnt, leng);
+			builder.append(seq);
+		}
+		
+		builder.append(b);
+		leng++;
+		dictionary.update(idx, leng);
+		return idx + leng;
 	}
-}*/
+}

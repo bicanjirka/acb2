@@ -151,4 +151,9 @@ public class DictionaryBase implements Dictionary {
 		}
 	}
 	
+	@Override
+	public int select(int idx) {
+		return ost.select(idx);
+	}
+	
 }

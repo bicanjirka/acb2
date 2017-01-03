@@ -17,7 +17,7 @@ public class DictionaryLCP extends DictionaryBase {
 		int bestLen = 0;
 		int lcp = 0; // longest common prefix with second best content
 		for (int i = lo; i < hi; i++) {
-			int cnt = ost.select(i); // TODO read siblings by link, not select which is O(log n)
+			int cnt = ost.select(i); // TODO do not select for every node, utilize neighbour links
 			int idxPos = idx;
 			int cntPos = cnt;
 			while (match(idxPos, cntPos)/* && cntPos < ost.size() */) {
@@ -47,7 +47,7 @@ public class DictionaryLCP extends DictionaryBase {
 	
 	private int compare(int i, int j, int offset) {
 		int cmp = 0;
-		int pos1 = ost.select(i); // TODO do not query, remember from key (select above)
+		int pos1 = ost.select(i); // TODO do not query, cash from key (select above)
 		int pos2 = ost.select(j);
 		while (cmp == 0) {
 			offset++;
@@ -57,42 +57,4 @@ public class DictionaryLCP extends DictionaryBase {
 		return cmp;
 	}
 	
-	public int searchLcp(int ctx, int idx, int cnt) {
-		int lo = Math.max(0, ctx - maxDistance);
-		int hi = Math.min(ost.size() - 1, ctx + maxDistance);
-		return searchLcp(ctx, idx, cnt, lo, hi);
-	}
-	
-	private int searchLcp(int ctx, int idx, int cnt2, int lo, int hi) {
-		int bestIdx = cnt2;
-		int bestLen = 0;
-		int lcp = 0; // longest common prefix with second best content
-		for (int i = lo; i < hi; i++) {
-			int cnt = ost.select(i); // TODO read siblings by link, not select which is O(log n)
-			int idxPos = idx;
-			int cntPos = cnt;
-			while (match(idxPos, cntPos)/* && cntPos < ost.size() */) {
-				idxPos++;
-				cntPos++;
-			}
-			int comLen = idxPos - idx;
-			if (comLen > lcp) {
-				// lcp = max lcp min spolecna delka a delka ke konci retezce
-				// lcp = Math.max(lcp, Math.min(comLen, Math.min(cntPos, ost.size()) - cnt));
-				if (comLen > bestLen) {
-					lcp = bestLen;
-					bestLen = comLen;
-					bestIdx = i;
-				} else if (comLen == bestLen) {
-					// update best index to lexicographically lowest content with same common length
-					bestIdx = compare(bestIdx, i, comLen) < 0 ? bestIdx : i;
-				} else {
-					lcp = compare(bestIdx, i, comLen) < 0 ? lcp : comLen;
-				}
-			}/* else if (comLen == lcp) {
-				
-			}*/
-		}
-		return lcp;
-	}
 }

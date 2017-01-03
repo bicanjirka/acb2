@@ -26,6 +26,8 @@ public interface Dictionary {
 	
 	void update(int idx, int count);
 	
+	int select(int idx);
+	
 	class ReverseIndexComparator implements Comparator<Integer> {
 		private static final int MAGIC_CONST = 10;
 		ByteSequence s;

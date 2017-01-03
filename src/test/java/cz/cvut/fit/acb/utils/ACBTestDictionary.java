@@ -59,6 +59,11 @@ public class ACBTestDictionary implements Dictionary {
 		strategy.accept(delegate.clone());
 	}
 	
+	@Override
+	public int select(int idx) {
+		return delegate.select(idx);
+	}
+	
 	public Dictionary store(Dictionary delegate) {
 		this.delegate = delegate;
 		stored.clear();
