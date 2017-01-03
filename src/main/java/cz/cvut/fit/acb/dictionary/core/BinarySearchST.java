@@ -103,7 +103,7 @@ public class BinarySearchST<Key> implements OrderStatisticTree<Key> {
 	
 	@Override
 	public int hashCode() {
-		return Objects.hash(keys, n);
+		return Objects.hash(keys);
 	}
 	
 	// resize the underlying arrays
@@ -171,8 +171,9 @@ public class BinarySearchST<Key> implements OrderStatisticTree<Key> {
 	@Override
 	public OrderStatisticTree<Key> clone() {
 		BinarySearchST<Key> bsst = new BinarySearchST<>(keys.length, cmpt);
+		bsst.n = n;
 		System.arraycopy(keys, 0, bsst.keys, 0, keys.length);
-		assert equals(bsst);
+		assert this.equals(bsst);
 		return bsst;
 	}
 	

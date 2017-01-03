@@ -49,13 +49,13 @@ public class ACB {
 	}
 	
 	public void compress(ByteBuffer byteBuffer, Consumer<TripletSupplier> tripletSupplierConsumer) {
-		if (first) {
-			tripletSupplierConsumer.accept(visitor -> visitor.setSize(byteBuffer.capacity()));
-			first = false;
-		}
 		if (byteBuffer == null) {
 			tripletSupplierConsumer.accept(null);
 			return;
+		}
+		if (first) {
+			tripletSupplierConsumer.accept(visitor -> visitor.setSize(byteBuffer.capacity()));
+			first = false;
 		}
 		ByteArray arr = new ByteArray(byteBuffer.array());
 		Dictionary dict = provider.getDictionary(arr);

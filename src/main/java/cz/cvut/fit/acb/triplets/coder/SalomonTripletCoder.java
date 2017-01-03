@@ -60,6 +60,9 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 	protected int decodeStep(int idx, TripletProcessor input) {
 		ByteBuilder builder = ((ByteBuilder) sequence);
 		int flag = input.read(flagField);
+		if (flag == -1) {
+			return Integer.MAX_VALUE;
+		}
 		
 		if (flag == 0) {
 			byte b = (byte) input.read(byteField);

@@ -96,7 +96,8 @@ public class ACBTest {
 				.accept(storage.readByteArray());
 		
 		assertArrayEquals(Files.readAllBytes(file.toPath()), Files.readAllBytes(out));
-		Files.deleteIfExists(out);
+		out.toFile().deleteOnExit();
+//		Files.deleteIfExists(out);
 	}
 	
 }

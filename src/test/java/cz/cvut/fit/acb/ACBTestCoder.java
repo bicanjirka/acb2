@@ -22,14 +22,14 @@ public class ACBTestCoder extends ACBTest {
 			testSegmentedExecution(provider);
 		}
 	}
-	
-	@Test
-	public void testBitArrayCoder() throws Exception {
-		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.CoderE.BIT_ARRAY)) {
-			testDictionaryConsistency(provider);
-			testSegmentedExecution(provider);
-		}
-	}
+
+//	@Test
+//	public void testBitArrayCoder() throws Exception {
+//		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.CoderE.BIT_ARRAY)) {
+//			testDictionaryConsistency(provider);
+//			testSegmentedExecution(provider);
+//		}
+//	}
 //	@Test
 //	public void testRangeCoder() throws Exception {
 //		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.CoderE.SIMPLE)) {

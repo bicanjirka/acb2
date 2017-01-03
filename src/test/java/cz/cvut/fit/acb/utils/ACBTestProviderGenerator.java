@@ -21,29 +21,29 @@ public class ACBTestProviderGenerator {
 	
 	public static Collection<ACBProvider> generate(ACBProviderParameters.TripletCoderE tc) {
 		Collection<ACBProvider> ret = new ArrayList<>();
-		for (ACBProviderParameters.CoderE coderE : ACBProviderParameters.CoderE.values()) {
+//		for (ACBProviderParameters.CoderE coderE : ACBProviderParameters.CoderE.values()) {
 			for (ACBProviderParameters.OrderStatisticTreeE treeE : ACBProviderParameters.OrderStatisticTreeE.values()) {
 				ACBProviderParameters param = new ACBProviderParameters();
-				param.cd = coderE;
+//				param.cd = coderE;
 				param.tr = treeE;
 				param.tc = tc;
 				ret.add(new ACBProviderImpl(param));
 			}
-		}
+//		}
 		return ret;
 	}
 	
 	public static Collection<ACBProvider> generate(ACBProviderParameters.OrderStatisticTreeE tr) {
 		Collection<ACBProvider> ret = new ArrayList<>();
-		for (ACBProviderParameters.CoderE coderE : ACBProviderParameters.CoderE.values()) {
+//		for (ACBProviderParameters.CoderE coderE : ACBProviderParameters.CoderE.values()) {
 			for (ACBProviderParameters.TripletCoderE tripE : ACBProviderParameters.TripletCoderE.values()) {
 				ACBProviderParameters param = new ACBProviderParameters();
-				param.cd = coderE;
+//				param.cd = coderE;
 				param.tr = tr;
 				param.tc = tripE;
 				ret.add(new ACBProviderImpl(param));
 			}
-		}
+//		}
 		return ret;
 	}
 	
@@ -52,7 +52,7 @@ public class ACBTestProviderGenerator {
 		for (ACBProviderParameters.TripletCoderE tripE : ACBProviderParameters.TripletCoderE.values()) {
 			for (ACBProviderParameters.OrderStatisticTreeE treeE : ACBProviderParameters.OrderStatisticTreeE.values()) {
 				ACBProviderParameters param = new ACBProviderParameters();
-				param.cd = cd;
+//				param.cd = cd;
 				param.tr = treeE;
 				param.tc = tripE;
 				ret.add(new ACBProviderImpl(param));
