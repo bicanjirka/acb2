@@ -82,7 +82,7 @@ public class ACBFileIO {
 	public void openParse(Path path, Consumer<ByteBuffer> byteBufferConsumer) {
 		try {
 			SeekableByteChannel sbc = Files.newByteChannel(path);
-			logger.info("Opened file '{}' [size = {}] parsed into {} units, {} bytes each", path, sbc.size(), Math.ceil(sbc.size() / (double) bufferUnit), bufferUnit);
+			logger.debug("Opened file '{}' [size = {}] parsed into {} units, {} bytes each", path, sbc.size(), Math.ceil(sbc.size() / (double) bufferUnit), bufferUnit);
 			
 			while (sbc.position() < sbc.size()) {
 				int size = (int) Math.min(bufferUnit, sbc.size() - sbc.position());
@@ -124,13 +124,13 @@ public class ACBFileIO {
 	private void logAfterSave(List<byte[]> bytes, Path output) throws IOException {
 		int byteSize = bytes.stream().mapToInt(value -> value.length).sum();
 		long finalSize = Files.size(output);
-		logger.info("Compressed into '{}' [size = {}, overhead = {}]", output, finalSize, byteSize - finalSize);
+		logger.debug("Compressed into '{}' [size = {}, overhead = {}]", output, finalSize, finalSize - byteSize);
 		StringBuilder sb = new StringBuilder("Outputted byte array:");
 		for (int i = 0; i < bytes.size(); i++) {
 			byte[] b = bytes.get(i);
 			sb.append("\n").append(i).append(": ").append(b.length);
 		}
-		logger.info(sb.toString());
+		logger.debug(sb.toString());
 	}
 	
 	public void saveArray(List<byte[]> bytes, Path output) {

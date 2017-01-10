@@ -41,7 +41,7 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		int dist = cnt == -1 ? 0 : ctx - cnt;
 		byte b = sequence.byteAt(idx);
 		
-		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
+		logger.trace("Triplet {}", TripletUtils.tripletString(dist, leng, b));
 		output.accept(visitor -> {
 			visitor.write(distField, dist & distanceMask);
 			visitor.write(lengField, leng);
@@ -63,7 +63,7 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		if (tempDist == leng && leng == b && b == -1) {
 			return Integer.MAX_VALUE;
 		}
-		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
+		logger.trace("Triplet {}", TripletUtils.tripletString(dist, leng, b));
 		
 		int ctx = dictionary.searchContext(idx);
 		int cnt = ctx - dist;

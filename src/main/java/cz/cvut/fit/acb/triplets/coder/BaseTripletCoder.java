@@ -40,16 +40,16 @@ public abstract class BaseTripletCoder implements TripletCoder {
 	
 	@Override
 	public void encode(Consumer<TripletSupplier> output) {
-		int idx = 0, cnt = 0;
+		int idx = 0, tCount1 = 0;
 		int ceiling = sequence.length();
 		
 		while (idx < ceiling) {
 			DictionaryInfo info = dictionary.search(idx);
 			idx = encodeStep(idx, info, output);
-			cnt++;
+			tCount1++;
 			tCount++;
 		}
-		logger.info("Count of triplets in partition: " + cnt);
+		logger.debug("Count of triplets in partition: " + tCount1);
 		// TODO log total count of triplets tCount
 	}
 	
@@ -57,21 +57,21 @@ public abstract class BaseTripletCoder implements TripletCoder {
 	
 	@Override
 	public DecodeFlag decode(TripletProcessor input) {
-		int idx = 0, cnt = 0;
+		int idx = 0, tCount1 = 0;
 		int ceiling = input.getSize();
 		
 		while (idx < ceiling) {
 			idx = decodeStep(idx, input);
-			cnt++;
+			tCount1++;
 			tCount++;
 		}
 		if (idx == ceiling) {
-			logger.info("Count of triplets in partition: " + cnt);
+			logger.debug("Count of triplets in partition: " + tCount1);
 			return DecodeFlag.END_OF_PARTITION;
 		} else {
 			assert idx == Integer.MAX_VALUE;
-			logger.info("Count of triplets in partition: " + --cnt);
-			logger.info("Total count of triplets: " + --tCount);
+			logger.debug("Count of triplets in partition: " + --tCount1);
+			logger.debug("Total count of triplets: " + --tCount);
 			return DecodeFlag.EOF;
 		}
 	}

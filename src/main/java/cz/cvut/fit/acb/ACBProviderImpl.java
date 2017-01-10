@@ -16,6 +16,7 @@ import cz.cvut.fit.acb.dictionary.core.BST;
 import cz.cvut.fit.acb.dictionary.core.BinarySearchST;
 import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.dictionary.core.RedBlackBST;
+import cz.cvut.fit.acb.triplets.coder.LCPTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
@@ -62,7 +63,8 @@ public class ACBProviderImpl implements ACBProvider {
 				coder = ValachTripletCoder::new;
 				break;
 			case LCP:
-//				throw new UnsupportedOperationException(); // TODO
+				coder = LCPTripletCoder::new;
+				break;
 			case SIMPLE:
 			default:
 				coder = SimpleTripletCoder::new;
@@ -84,10 +86,10 @@ public class ACBProviderImpl implements ACBProvider {
 			case RED_BLACK:
 				orderStatisticTree = RedBlackBST::new;
 				break;
-			case BINARY_SEARCH:
+			case BST:
 				orderStatisticTree = BinarySearchST::new;
 				break;
-			case BST:
+			case ST:
 				orderStatisticTree = BST::new;
 				break;
 		}
@@ -97,7 +99,7 @@ public class ACBProviderImpl implements ACBProvider {
 	
 	@Override
 	public Dictionary getDictionary(ByteSequence sequence) {
-		return dictionary.provide(this, sequence, 1 << distanceBits - 2, 1 << lengthBits - 1);
+		return dictionary.provide(this, sequence, 1 << (distanceBits - 1), (1 << lengthBits) - 1);
 	}
 	
 	@Override

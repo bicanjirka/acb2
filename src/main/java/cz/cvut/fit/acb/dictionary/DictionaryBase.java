@@ -99,7 +99,7 @@ public class DictionaryBase implements Dictionary {
 	protected DictionaryInfo searchContent(int ctx, int idx, int lo, int hi) {
 		int bestIdx = -1;
 		int bestLen = 0;
-		for (int i = lo; i < hi; i++) {
+		for (int i = lo + 1; i <= hi; i++) {
 			int cnt = ost.select(i); // TODO do not select for every node, utilize neighbour links
 			int comLen = 0;
 			while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {

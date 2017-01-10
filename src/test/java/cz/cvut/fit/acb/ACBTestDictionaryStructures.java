@@ -25,7 +25,7 @@ public class ACBTestDictionaryStructures extends ACBTest {
 	
 	@Test
 	public void testBinarySearchTree() throws Exception {
-		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.OrderStatisticTreeE.BST)) {
+		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.OrderStatisticTreeE.ST)) {
 			testDictionaryConsistency(provider);
 			testSegmentedExecution(provider);
 		}
@@ -33,7 +33,7 @@ public class ACBTestDictionaryStructures extends ACBTest {
 	
 	@Test
 	public void testBinarySearchArray() throws Exception {
-		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.OrderStatisticTreeE.BINARY_SEARCH)) {
+		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.OrderStatisticTreeE.BST)) {
 			testDictionaryConsistency(provider);
 			testSegmentedExecution(provider);
 		}

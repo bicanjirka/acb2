@@ -37,7 +37,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 		if (leng == 0) {
 			dictionary.update(idx, 1);
 			byte b = sequence.byteAt(idx);
-			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
 				visitor.write(lengField, 0);
 				visitor.write(byteField, b);
@@ -47,7 +47,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 			dictionary.update(idx, leng2 + 1);
 			idx += leng2;
 			byte b = sequence.byteAt(idx);
-			logger.debug("Triplet {}", TripletUtils.tripletString(leng2, dist, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(leng2, dist, b));
 			output.accept(visitor -> {
 				visitor.write(lengField, leng2);
 				visitor.write(distField, dist & distanceMask);
@@ -66,7 +66,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 		}
 		if (leng == 0) {
 			byte b = (byte) input.read(byteField);
-			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(0, b));
 			builder.append(b);
 			dictionary.update(idx, 1);
 			return idx + 1;
@@ -74,7 +74,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 			int tempDist = input.read(distField);
 			int dist = distFunc.applyAsInt(tempDist);
 			byte b = (byte) input.read(byteField);
-			logger.debug("Triplet {}", TripletUtils.tripletString(leng, dist, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(leng, dist, b));
 			
 			int ctx = dictionary.searchContext(idx);
 			int cnt = ctx - dist;

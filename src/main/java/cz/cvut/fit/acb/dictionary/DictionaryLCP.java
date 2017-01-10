@@ -16,27 +16,32 @@ public class DictionaryLCP extends DictionaryBase {
 		int bestIdx = -1;
 		int bestLen = 0;
 		int lcp = 0; // longest common prefix with second best content
-		for (int i = lo; i < hi; i++) {
+		int lcpIdx = 0; // index of the second best content
+		for (int i = lo + 1; i <= hi; i++) {
 			int cnt = ost.select(i); // TODO do not select for every node, utilize neighbour links
-			int idxPos = idx;
-			int cntPos = cnt;
-			while (match(idxPos, cntPos)/* && cntPos < ost.size() */) {
-				idxPos++;
-				cntPos++;
+			int comLen = 0; // common length
+			while ((cnt + comLen) < ost.size() && match(idx + comLen, cnt + comLen) && comLen < maxLength) {
+				comLen++;
 			}
-			int comLen = idxPos - idx;
 			if (comLen > lcp) {
-				// lcp = max lcp min spolecna delka a delka ke konci retezce
-				// lcp = Math.max(lcp, Math.min(comLen, Math.min(cntPos, ost.size()) - cnt));
-				if (comLen > bestLen) {
+				if (comLen > bestLen) { // if longer common prefix found, set old best to 2nd best and update the best one
 					lcp = bestLen;
 					bestLen = comLen;
+					lcpIdx = bestIdx;
 					bestIdx = i;
 				} else if (comLen == bestLen) {
-					// update best index to lexicographically lowest content with same common length
-					bestIdx = compare(bestIdx, i, comLen) < 0 ? bestIdx : i;
+					// update best index to lexicographically lower content with same common length
+					int compare = compare(cnt + comLen, bestIdx + bestLen, 1);
+					if (compare < 0) {
+						bestIdx = cnt;
+					}
+					// else do nothing, first uncommon symbol of actual best content is lower
+//					if (compare(bestIdx, i, comLen) < 0) bestIdx = bestIdx;
+//					else bestIdx = i;
 				} else {
-					lcp = compare(bestIdx, i, comLen) < 0 ? lcp : comLen;
+//					lcp = compare(bestIdx, i, comLen) < 0 ? lcp : comLen;
+					lcp = comLen;
+					lcpIdx = cnt;
 				}
 			}/* else if (comLen == lcp) {
 				
@@ -47,6 +52,26 @@ public class DictionaryLCP extends DictionaryBase {
 	
 	private int compare(int i, int j, int offset) {
 		int cmp = 0;
+		while (cmp == 0) {
+			offset++;
+			cmp = compare(i + offset, j + offset);
+		}
+		return cmp;
+	}
+	
+	@Override
+	protected int compare(int i, int j) {
+		if (i >= ost.size())
+			return Byte.MAX_VALUE;
+		if (j >= ost.size())
+			return Byte.MIN_VALUE;
+		byte b1 = seq.byteAt(i);
+		byte b2 = seq.byteAt(j);
+		return Byte.compare(b1, b2);
+	}
+	
+	/*private int compare(int i, int j, int offset) {
+		int cmp = 0;
 		int pos1 = ost.select(i); // TODO do not query, cash from key (select above)
 		int pos2 = ost.select(j);
 		while (cmp == 0) {
@@ -55,6 +80,6 @@ public class DictionaryLCP extends DictionaryBase {
 		}
 //		System.out.println("comparing "+new String(seq.array(pos1, pos1+offset))+" ["+cmp+"] "+new String(seq.array(pos2, pos2+offset)));
 		return cmp;
-	}
+	}*/
 	
 }

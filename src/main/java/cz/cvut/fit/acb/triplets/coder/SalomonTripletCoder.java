@@ -42,7 +42,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			// flag 0
 			byte b = sequence.byteAt(idx);
 			dictionary.update(idx, 1);
-			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
 				visitor.write(flagField, 0);
 				visitor.write(byteField, b);
@@ -69,7 +69,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			if (b == -1) {
 				return Integer.MAX_VALUE;
 			}
-			logger.debug("Triplet {}", TripletUtils.tripletString(0, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(0, b));
 			builder.append(b);
 			dictionary.update(idx, 1);
 			
@@ -82,7 +82,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			if (tempDist == leng && leng == -1) {
 				return Integer.MAX_VALUE;
 			}
-			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng));
+			logger.trace("Triplet {}", TripletUtils.tripletString(1, dist, leng));
 			
 			int ctx = dictionary.searchContext(idx);
 			int cnt = ctx - dist;
@@ -105,7 +105,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 		@Override
 		protected int encodeStepSpecific(int idx, Consumer<TripletSupplier> output, int leng, int dist) {
 			dictionary.update(idx, leng);
-			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng));
+			logger.trace("Triplet {}", TripletUtils.tripletString(1, dist, leng));
 			output.accept(visitor -> {
 				visitor.write(flagField, 1);
 				visitor.write(distField, dist & distanceMask);
@@ -132,7 +132,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			int leng2 = leng + idx == sequence.length() ? leng - 1 : leng;
 			dictionary.update(idx, leng2 + 1);
 			byte b = sequence.byteAt(idx + leng2);
-			logger.debug("Triplet {}", TripletUtils.tripletString(1, dist, leng2, b));
+			logger.trace("Triplet {}", TripletUtils.tripletString(1, dist, leng2, b));
 			output.accept(visitor -> {
 				visitor.write(flagField, 1);
 				visitor.write(distField, dist & distanceMask);

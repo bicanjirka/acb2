@@ -9,7 +9,6 @@ import cz.cvut.fit.acb.dictionary.DictionaryInfo;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
-import cz.cvut.fit.acb.utils.TripletUtils;
 
 public class LCPTripletCoder extends BaseTripletCoder {
 	
@@ -31,15 +30,15 @@ public class LCPTripletCoder extends BaseTripletCoder {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
 		int leng2 = info.getLength();
-		int leng = leng2 + idx == sequence.length() ? leng2 - 1 : leng2;
 		int lcp = info.getLcp();
+		int leng = leng2 + idx + lcp == sequence.length() ? leng2 - 1 : leng2;
 		
 		dictionary.update(idx, leng + lcp + 1);
 		idx += leng + lcp;
 		int dist = cnt == -1 ? 0 : ctx - cnt;
 		byte b = sequence.byteAt(idx);
 		
-		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
+		logger.trace("Triplet ({}, {}, {}), LCP {}", dist, leng, b, lcp);
 		output.accept(visitor -> {
 			visitor.write(distField, dist & distanceMask);
 			visitor.write(lengField, leng);
@@ -61,17 +60,17 @@ public class LCPTripletCoder extends BaseTripletCoder {
 		if (tempDist == leng && leng == b && b == -1) {
 			return Integer.MAX_VALUE;
 		}
-		logger.debug("Triplet {}", TripletUtils.tripletString(dist, leng, b));
 		
 		int ctx = dictionary.searchContext(idx);
 		int cnt = ctx - dist;
 		int lcp = 0;
 		
-		if (ctx > 0) {
-			int i = dictionary.select(cnt);
-			lcp = dictionary.searchContent(ctx, i).getLcp();
+		if (leng > 0) {
+			int key = dictionary.select(cnt); // find position of the best matching content in text and assume it is position of sliding window
+			lcp = dictionary.searchContent(ctx, key).getLcp();
 			leng += lcp;
 		}
+		logger.trace("Triplet ({}, {}, {}), LCP {}", dist, leng - lcp, b, lcp);
 		
 		if (leng > 0) {
 			byte[] seq = dictionary.copy(cnt, leng);

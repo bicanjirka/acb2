@@ -8,6 +8,11 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.utils.ACBTestProviderGenerator;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.junit.Test;
 
 /**
@@ -49,9 +54,17 @@ public class ACBTestTripletCoder extends ACBTest {
 	
 	@Test
 	public void testLCPCoder() throws Exception {
-		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.TripletCoderE.LCP)) {
+		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+		Configuration config = ctx.getConfiguration();
+		LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+		loggerConfig.setLevel(Level.TRACE);
+		ctx.updateLoggers();
+		ACBProviderParameters par = new ACBProviderParameters();
+		par.tc = ACBProviderParameters.TripletCoderE.LCP;
+		ACBProvider provider = new ACBProviderImpl(par);
+//		for (ACBProvider provider : ACBTestProviderGenerator.generate(ACBProviderParameters.TripletCoderE.LCP)) {
 			testDictionaryConsistency(provider);
-			testSegmentedExecution(provider);
-		}
+//			testSegmentedExecution(provider);
+//		}
 	}
 }

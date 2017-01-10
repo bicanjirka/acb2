@@ -27,6 +27,6 @@ public class ACBProviderParameters {
 	}
 	
 	public enum OrderStatisticTreeE {
-		RED_BLACK, BINARY_SEARCH, BST
+		RED_BLACK, BST, ST
 	}
 }
