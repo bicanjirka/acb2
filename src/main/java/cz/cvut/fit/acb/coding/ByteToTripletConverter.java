@@ -4,32 +4,24 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.utils.Chainable;
 
 /**
  * @author jiri.bican
  */
-public abstract class ByteToTripletConverter<T> implements Chainable<List<byte[]>, TripletProcessor>, TripletProcessor {
+public abstract class ByteToTripletConverter<T> implements TripletProcessor {
 	
-	private Consumer<TripletProcessor> consumer;
-	private Map<Integer, T> map = new HashMap<>();
+	private final Map<Integer, T> map = new HashMap<>();
 	private List<byte[]> bytes;
 	private int segmentSize;
 	
-	@Override
-	public void setConsumer(Consumer<TripletProcessor> consumer) {
-		this.consumer = consumer;
-	}
-	
-	@Override
-	public void accept(List<byte[]> bytes) {
+	/** Reads the payload a {@link TripletWriter} finished with; returns this reader. */
+	public TripletProcessor open(List<byte[]> bytes) {
 		segmentSize = ByteBuffer.wrap(bytes.get(0)).getInt();
 		this.bytes = bytes.subList(1, bytes.size());
-		consumer.accept(this);
+		return this;
 	}
 	
 	@Override

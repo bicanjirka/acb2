@@ -1,15 +1,19 @@
 package cz.cvut.fit.acb;
 
 import java.util.Comparator;
+import java.util.List;
 
-import cz.cvut.fit.acb.coding.ByteToTripletConverter;
-import cz.cvut.fit.acb.coding.TripletToByteConverter;
+import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 
 /**
+ * Builds the components one stream is coded with. {@link Compressor} asks for fresh ones per
+ * stream and segment, so implementations hold no stream state.
+ *
  * @author jiri.bican
  */
 public interface ACBProvider {
@@ -17,9 +21,9 @@ public interface ACBProvider {
 	
 	TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary);
 	
-	TripletToByteConverter<?> getT2BConverter();
+	TripletWriter getTripletWriter();
 	
-	ByteToTripletConverter<?> getB2TConverter();
+	TripletProcessor getTripletReader(List<byte[]> payload);
 	
 	<T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator);
 }

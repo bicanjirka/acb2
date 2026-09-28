@@ -35,16 +35,6 @@ The codebase predates the style in `CLAUDE.md`. These items move the compressor 
 testable core with the CLI and file I/O as thin adapters around it. Split into sub-commits, each
 green on its own.
 
-### A pure in-memory compression core
-
-`ACB` is reachable only through `ChainBuilder` callback chains wired to file I/O, so no test can
-compress a `byte[]` without a pipeline, and the CLI is the only complete caller.
-
-- **Where:** `ACB`, `ACBClient`, `ACBFileIO`.
-- **Approach:** a stateless `Compressor` with `compress(byte[])`/`decompress(byte[])` (and a
-  streaming variant over segments) that owns no file or console access. `ACBClient` and
-  `ACBFileIO` become adapters calling it. Round-trip tests drive the core directly.
-
 ### Triplets as records, coders as a sealed family
 
 Triplets travel as `TripletSupplier` lambdas writing fields through a visitor, and the coder
@@ -54,18 +44,6 @@ variants are chosen by enum `switch` statements in `ACBProviderImpl`.
 - **Approach:** a `Triplet` record per coding shape; `TripletCoder` becomes a `sealed`
   interface with `final` implementations, selected by a `switch` over the settings. The shared
   `BaseTripletCoder` state becomes `private`.
-
-### Replace the ChainBuilder pipeline
-
-`ChainBuilder`/`Chainable`/`ChainAdapter` push data through continuations and signal
-end-of-stream with `null`, which breaks the "absence is a value" rule and makes a stage's
-failure invisible to the caller.
-
-- **Where:** `utils.ChainBuilder`, `utils.ChainAdapter`, `utils.Chainable`, every chain in
-  `ACBClient` and the tests.
-- **Approach:** plain function composition over an explicit segment sequence
-  (`Stream`/`Iterator` of segments), with end-of-stream as the end of the sequence. Delete the
-  three `utils` classes once no caller remains.
 
 ### Injection, fakes and fixtures
 
@@ -91,10 +69,8 @@ Nothing checks formatting or the `CLAUDE.md` rules mechanically.
 
 ### Dead code
 
-- **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding`, `ACBFileIO.openParallel`, the
-  `ACB.print*` debug helpers.
-- **Approach:** delete what has no caller; move any debug output worth keeping behind `DEBUG`
-  logging.
+- **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding`.
+- **Approach:** delete them; neither has a caller.
 
 ### Project documentation
 
@@ -132,7 +108,7 @@ neighbours, and `update` inserts keys one at a time; nothing measures either.
 Each segment already gets its own dictionary, so segments are independent, but they are
 compressed sequentially.
 
-- **Where:** the compression core, `ACBFileIO`.
+- **Where:** `Compressor.compress`, `ACBFileIO.SegmentReader`.
 - **Approach:** compress segments on a bounded executor and write them in order; decompression
   stays sequential per stream but can decode segments in parallel once the container format
   records segment boundaries.

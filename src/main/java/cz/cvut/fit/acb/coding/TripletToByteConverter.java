@@ -5,35 +5,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.TripletSupplier;
-import cz.cvut.fit.acb.utils.Chainable;
 
 /**
  * @author jiri.bican
  */
-public abstract class TripletToByteConverter<T> implements Chainable<TripletSupplier, List<byte[]>>, TripletProcessor {
+public abstract class TripletToByteConverter<T> implements TripletWriter {
 	
-	private Consumer<List<byte[]>> consumer;
-	private Map<Integer, T> map = new HashMap<>();
+	private final Map<Integer, T> map = new HashMap<>();
 	private int segmentSize;
-	
-	@Override
-	public void setConsumer(Consumer<List<byte[]>> consumer) {
-		this.consumer = consumer;
-	}
-	
-	@Override
-	public void accept(TripletSupplier triplet) {
-		if (triplet == null) {
-			terminate();
-			return;
-		}
-		triplet.visit(this);
-	}
 	
 	@Override
 	public int getSize() {
@@ -56,7 +37,8 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 		throw new UnsupportedOperationException();
 	}
 	
-	protected void terminate() {
+	@Override
+	public List<byte[]> finish() {
 		int fieldCount = map.keySet().stream().max(Integer::compareTo).map(max -> max + 1).orElse(0);
 		List<byte[]> ret = new ArrayList<>(fieldCount + 1);
 		ret.add(ByteBuffer.allocate(Integer.BYTES).putInt(segmentSize).array());
@@ -67,7 +49,7 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 				ret.add(bytes);
 			}
 		}
-		consumer.accept(ret);
+		return ret;
 	}
 	
 	protected abstract byte[] getArray(T object);

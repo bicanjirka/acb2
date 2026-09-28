@@ -14,8 +14,6 @@ import java.util.stream.Stream;
 
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
-import cz.cvut.fit.acb.format.StreamHeader;
-import cz.cvut.fit.acb.utils.ChainBuilder;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -156,7 +154,7 @@ public class ACBClient {
 		logger.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
 		
 		ACBFileIO io = new ACBFileIO();
-		FileAction action = this.compress ? compression(io, settings) : decompression(io, settings.dictionaryStructure());
+		FileAction action = this.compress ? compression(io, settings) : decompression(io, settings);
 		
 		try {
 			List<String> measurements = new ArrayList<>();
@@ -219,26 +217,24 @@ public class ACBClient {
 	}
 	
 	private static FileAction compression(ACBFileIO io, CompressionSettings settings) {
-		ACBProvider provider = new ACBProviderImpl(settings);
-		ACB acb = new ACB(provider);
-		StreamHeader header = StreamHeader.of(settings);
-		return (source, target) -> ChainBuilder.create(io::openParse)
-				.chain(acb::compress)
-				.chain(provider.getT2BConverter())
-				.end(payload -> io.saveCompressed(new CompressedStream(header, payload), target))
-				.accept(source);
+		Compressor compressor = new Compressor(settings);
+		return (source, target) -> {
+			CompressedStream stream;
+			try (ACBFileIO.SegmentReader segments = io.readSegments(source, settings.segmentSize())) {
+				stream = compressor.compress(segments);
+			}
+			io.saveCompressed(stream, target);
+		};
 	}
 	
 	/** Coding settings come from each file's header; only the dictionary structure is chosen here. */
-	private static FileAction decompression(ACBFileIO io, DictionaryStructure structure) {
+	private static FileAction decompression(ACBFileIO io, CompressionSettings settings) {
+		Compressor compressor = new Compressor(settings);
 		return (source, target) -> {
 			CompressedStream stream = io.openCompressed(source);
-			ACBProvider provider = new ACBProviderImpl(stream.header().toSettings(structure));
-			ACB acb = new ACB(provider);
-			ChainBuilder.create(provider.getB2TConverter())
-					.chain(acb::decompress)
-					.end(io.parsedWriter(target))
-					.accept(stream.payload());
+			try (ACBFileIO.SegmentWriter segments = io.writeSegments(target)) {
+				compressor.decompress(stream, segments);
+			}
 		};
 	}
 	

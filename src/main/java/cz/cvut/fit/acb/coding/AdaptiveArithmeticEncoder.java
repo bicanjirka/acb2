@@ -2,6 +2,7 @@ package cz.cvut.fit.acb.coding;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
@@ -37,8 +38,8 @@ public class AdaptiveArithmeticEncoder extends TripletToByteConverter<AdaptiveAr
 	}
 	
 	@Override
-	protected void terminate() {
+	public List<byte[]> finish() {
 		onTerminate.forEach(Runnable::run);
-		super.terminate();
+		return super.finish();
 	}
 }

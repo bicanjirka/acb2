@@ -1,13 +1,14 @@
 package cz.cvut.fit.acb;
 
 import java.util.Comparator;
+import java.util.List;
 
 import cz.cvut.fit.acb.coding.AdaptiveArithmeticDecoder;
 import cz.cvut.fit.acb.coding.AdaptiveArithmeticEncoder;
 import cz.cvut.fit.acb.coding.BitArrayComposer;
 import cz.cvut.fit.acb.coding.BitArrayDecomposer;
 import cz.cvut.fit.acb.coding.ByteToTripletConverter;
-import cz.cvut.fit.acb.coding.TripletToByteConverter;
+import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryBase;
@@ -16,6 +17,7 @@ import cz.cvut.fit.acb.dictionary.core.BST;
 import cz.cvut.fit.acb.dictionary.core.BinarySearchST;
 import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.dictionary.core.RedBlackBST;
+import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.LCPTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
@@ -57,21 +59,22 @@ public final class ACBProviderImpl implements ACBProvider {
 	}
 
 	@Override
-	public TripletToByteConverter<?> getT2BConverter() {
+	public TripletWriter getTripletWriter() {
 		return switch (this.settings.entropyCoding()) {
 			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticEncoder(this.settings.lengthFrequencies());
 			case BIT_ARRAY -> new BitArrayComposer();
 		};
 	}
-
+	
 	@Override
-	public ByteToTripletConverter<?> getB2TConverter() {
-		return switch (this.settings.entropyCoding()) {
+	public TripletProcessor getTripletReader(List<byte[]> payload) {
+		ByteToTripletConverter<?> converter = switch (this.settings.entropyCoding()) {
 			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticDecoder(this.settings.lengthFrequencies());
 			case BIT_ARRAY -> new BitArrayDecomposer();
 		};
+		return converter.open(payload);
 	}
-
+	
 	@Override
 	public <T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator) {
 		return switch (this.settings.dictionaryStructure()) {

@@ -17,7 +17,7 @@ class RoundTripPropertiesTest {
 	void anyInputDecompressesToItself(@ForAll("settings") SettingsCombination settings,
 	                                  @ForAll("inputs") byte[] input,
 	                                  @ForAll @IntRange(min = 1, max = 64) int segmentSize) {
-		byte[] decompressed = PipelineFixtures.roundTrip(settings.provider(), input, segmentSize);
+		byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize), input);
 
 		assertThat(decompressed).isEqualTo(input);
 	}

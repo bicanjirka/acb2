@@ -1,13 +1,12 @@
 package cz.cvut.fit.acb;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import cz.cvut.fit.acb.fixtures.CorpusFile;
@@ -24,7 +23,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ACBFileIOTest {
 
-	private static final int[] BUFFER_SIZES = {1, 2, 13, 1000, 1_000_000, Integer.MAX_VALUE};
+	private static final int[] SEGMENT_SIZES = {1, 2, 13, 1000, 1_000_000, Integer.MAX_VALUE};
+
+	private final ACBFileIO io = new ACBFileIO();
 
 	@TempDir
 	Path dir;
@@ -35,38 +36,38 @@ class ACBFileIOTest {
 
 	@ParameterizedTest
 	@MethodSource("corpus")
-	void openParseCutsAFileIntoFullBuffersAndOneShorterRemainder(CorpusFile file) throws IOException {
+	void aFileReadsAsFullSegmentsAndOneShorterRemainder(CorpusFile file) throws IOException {
 		Path path = this.write(file);
 
-		for (int bufferSize : BUFFER_SIZES) {
-			List<Integer> segmentSizes = new ArrayList<>();
-			new ACBFileIO(bufferSize).openParse(path, segment -> {
-				if (segment != null) {
-					segmentSizes.add(segment.array().length);
-				}
-			});
+		for (int segmentSize : SEGMENT_SIZES) {
+			List<byte[]> segments = new ArrayList<>();
+			try (ACBFileIO.SegmentReader reader = this.io.readSegments(path, segmentSize)) {
+				reader.forEachRemaining(segments::add);
+			}
 
-			assertThat(segmentSizes).as("buffer size %d", bufferSize)
-					.isEqualTo(expectedSegmentSizes(file.bytes().length, bufferSize));
+			assertThat(segments.stream().map(segment -> segment.length)).as("segment size %d", segmentSize)
+					.containsExactlyElementsOf(expectedSegmentSizes(file.bytes().length, segmentSize));
+			assertThat(concatenated(segments)).isEqualTo(file.bytes());
 		}
 	}
 
 	@Test
-	void openParseRejectsANegativeBufferSize() throws IOException {
+	void aSegmentSizeBelowOneIsRejected() throws IOException {
 		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
 
-		assertThatThrownBy(() -> new ACBFileIO(-1).openParse(path, segment -> {
-		})).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> this.io.readSegments(path, 0)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
-	void openParseEndsTheStreamWithOneNullMarker() throws IOException {
-		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
-		List<Boolean> endMarkers = new ArrayList<>();
+	void writtenSegmentsLandInOrder() throws IOException {
+		Path path = this.dir.resolve("segments");
 
-		new ACBFileIO(7).openParse(path, segment -> endMarkers.add(segment == null));
+		try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+			writer.accept(new byte[]{1, 2});
+			writer.accept(new byte[]{3});
+		}
 
-		assertThat(endMarkers).containsOnlyOnce(true).last().isEqualTo(true);
+		assertThat(path).hasBinaryContent(new byte[]{1, 2, 3});
 	}
 
 	@Test
@@ -75,45 +76,39 @@ class ACBFileIOTest {
 		int[] sizes = IntStream.concat(IntStream.of(0, Short.MAX_VALUE), new Random(300).ints(300, 0, 64)).toArray();
 		CompressedStream saved = new CompressedStream(
 				StreamHeader.of(CompressionSettings.defaults()), randomArrays(sizes));
-		ACBFileIO io = new ACBFileIO();
-		
-		io.saveCompressed(saved, path);
-		CompressedStream read = io.openCompressed(path);
-		
+
+		this.io.saveCompressed(saved, path);
+		CompressedStream read = this.io.openCompressed(path);
+
 		assertThat(read.header()).isEqualTo(saved.header());
 		assertThat(read.payload()).containsExactlyElementsOf(saved.payload());
 	}
-	
+
 	@Test
 	void openingAFileThatIsNotAnAcbStreamFailsAsMalformed() throws IOException {
 		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
-		
-		assertThatThrownBy(() -> new ACBFileIO().openCompressed(path))
-				.isInstanceOf(MalformedStreamException.class);
-	}
-	
-	@Test
-	void aParsedWriterWritesSegmentsInOrderAndClosesOnTheEndMarker() throws IOException {
-		Path path = this.dir.resolve("parsed");
-		Consumer<ByteBuffer> writer = new ACBFileIO().parsedWriter(path);
 
-		writer.accept(ByteBuffer.wrap(new byte[]{1, 2}));
-		writer.accept(ByteBuffer.wrap(new byte[]{3}));
-		writer.accept(null);
-
-		assertThat(Files.readAllBytes(path)).containsExactly(1, 2, 3);
+		assertThatThrownBy(() -> this.io.openCompressed(path)).isInstanceOf(MalformedStreamException.class);
 	}
 
 	private Path write(CorpusFile file) throws IOException {
 		return Files.write(this.dir.resolve(file.name()), file.bytes());
 	}
 
-	private static List<Integer> expectedSegmentSizes(int length, int bufferSize) {
+	private static List<Integer> expectedSegmentSizes(int length, int segmentSize) {
 		List<Integer> sizes = new ArrayList<>();
-		for (long from = 0; from < length; from += bufferSize) {
-			sizes.add((int) Math.min(bufferSize, length - from));
+		for (long from = 0; from < length; from += segmentSize) {
+			sizes.add((int) Math.min(segmentSize, length - from));
 		}
 		return sizes;
+	}
+
+	private static byte[] concatenated(List<byte[]> segments) {
+		return segments.stream().reduce(new byte[0], (a, b) -> {
+			byte[] joined = Arrays.copyOf(a, a.length + b.length);
+			System.arraycopy(b, 0, joined, a.length, b.length);
+			return joined;
+		});
 	}
 
 	private static List<byte[]> randomArrays(int... sizes) {

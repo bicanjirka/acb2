@@ -30,12 +30,12 @@ java -jar target/acb.jar input.acb output -de   # settings come from the file
 
 ## Packages (`cz.cvut.fit.acb.*`)
 
-`ACB` (compress/decompress driver) · `ACBClient` (CLI) · `ACBFileIO` · `ACBProvider*` (wires
-the strategies below from a `CompressionSettings` record) · `dictionary` (+ `core` order-statistic
-trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) · `coding` (triplet↔byte:
-adaptive arithmetic, bit array) · `format` (the on-disk container: header, payload, CRC32) ·
-`utils` (`ChainBuilder` pipeline). `nayuki.arithcode` is
-vendored MIT code (Project Nayuki) - keep its licence notice, don't restyle it.
+`Compressor` (the in-memory core) · `ACBClient` (CLI) and `ACBFileIO` (its file side) ·
+`ACBProvider*` (wires the strategies below from a `CompressionSettings` record) · `dictionary`
+(+ `core` order-statistic trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
+`coding` (triplet↔byte: adaptive arithmetic, bit array) · `format` (the on-disk container:
+header, payload, CRC32) · `utils` (bit and triplet helpers). `nayuki.arithcode` is vendored MIT
+code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 ## Boundaries
 
@@ -46,14 +46,14 @@ vendored MIT code (Project Nayuki) - keep its licence notice, don't restyle it.
   bounds every count before allocating. Never deserialize with `ObjectInputStream`.
 - Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any
   input (`RoundTripPropertiesTest`).
-- `ACB.compress` keeps per-stream state: one instance handles streams one after another, never
-  two at once.
+- `Compressor` holds no stream state and touches no files or console; `ACBClient` and
+  `ACBFileIO` only adapt it. Coding logic goes in the core, never in the CLI.
 
 ## Tests
 
-- Round trips run in memory through `fixtures.PipelineFixtures`, over every
-  `fixtures.SettingsCombination` and every `fixtures.CorpusFile` (classpath `in/`). Files only
-  in `@TempDir`.
+- Round trips run in memory through `Compressor`, over every `fixtures.SettingsCombination` and
+  every `fixtures.CorpusFile` (classpath `in/`). `fixtures.InterceptingProvider` wraps its
+  components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.
 - A combination with an open `TODO.md` defect is skipped with its reason
   (`SettingsCombination.known*Defect`), never passed; fixing it deletes the exclusion.
 - Seed every `Random`. jqwik prints its seed on failure; keep generated inputs small.

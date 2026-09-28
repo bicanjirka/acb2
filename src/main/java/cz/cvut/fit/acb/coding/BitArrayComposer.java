@@ -2,7 +2,9 @@ package cz.cvut.fit.acb.coding;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
@@ -43,14 +45,14 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 	}
 	
 	@Override
-	protected void terminate() {
+	public List<byte[]> finish() {
 		try {
 			bitOutputStream.flush();
 			doReturn = true;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new UncheckedIOException("In-memory flush failed", e);
 		}
-		super.terminate();
+		return super.finish();
 	}
 	
 	public static class BitArrayComposerInner {

@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Snapshots the encoder's dictionary after every update, then checks the decoder's dictionary
  * against each snapshot in turn. Wrap the encoder's dictionaries with {@link #recording} and the
- * decoder's with {@link #verifying}, both through {@link DictionaryWrappingProvider}.
+ * decoder's with {@link #verifying}, both through {@link InterceptingProvider}.
  */
 public final class DictionarySnapshots {
 

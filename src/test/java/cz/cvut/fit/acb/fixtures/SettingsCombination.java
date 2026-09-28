@@ -4,8 +4,6 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import cz.cvut.fit.acb.ACBProvider;
-import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.DictionaryStructure;
 import cz.cvut.fit.acb.EntropyCoding;
@@ -41,10 +39,7 @@ public record SettingsCombination(TripletCoding tripletCoding, DictionaryStructu
 				.withDictionaryStructure(this.dictionaryStructure)
 				.withEntropyCoding(this.entropyCoding);
 	}
-	
-	public ACBProvider provider() {
-		return new ACBProviderImpl(this.settings());
-	}
+
 
 	@Override
 	public String toString() {
