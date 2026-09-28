@@ -1,18 +1,19 @@
 # ACB — Associative Coder of Buyanovsky
 
 Master-thesis compressor (CTU FIT): LZ77-style context/content dictionary producing triplets,
-then entropy-coded. Java (currently `release` 8), Maven, opened in IntelliJ from `pom.xml`.
-Runtime deps: commons-cli, Log4j 2. Tests: JUnit 4.
+then entropy-coded. Java 26, Maven, opened in IntelliJ from `pom.xml`.
+Runtime deps: commons-cli, Log4j 2 (config in `src/main/resources/log4j2.xml`; tests use the
+quieter `log4j2-test.xml`). Tests: JUnit 4.
 
 ```bash
 mvn -q compile
 mvn test                                        # runs only *Test classes - see Tests
 mvn test -Dtest='*Test*'                        # every test, including the ACB round trips
+mvn package && java -jar target/acb.jar input output [options]
 ```
 
-The CLI entry point is `cz.cvut.fit.acb.ACBClient` (`input output [options]`). The jar from
-`mvn package` expects its dependencies in `lib/` beside it, which the build does not create;
-run the CLI from IntelliJ or with the Maven test classpath.
+`target/acb.jar` is shaded (dependencies bundled); the entry point is
+`cz.cvut.fit.acb.ACBClient`.
 
 ## Working here
 

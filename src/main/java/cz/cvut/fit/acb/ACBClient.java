@@ -36,10 +36,6 @@ public class ACBClient {
 	private static final Logger logger = LogManager.getLogger();
 
 	static {
-		System.setProperty("log4j.configurationFile", "log4j2.xml");
-	}
-	
-	static {
 		options.addOption("de", "decompress", false, "decompress input (default is to compress)");
 		options.addOption("h", "help", false, "print this help");
 		options.addOption("bs", "bit-stream-array", false, "no coding is used for triplets (default is adaptive arithmetic coding)");
