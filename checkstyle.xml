@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<module name="Checker">
+    <property name="severity" value="error"/>
+
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="mainOnly"/>
+        <property name="files" value="[\/]src[\/]test[\/]"/>
+    </module>
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="cliOnly"/>
+        <property name="files" value="[\/]ACBClient\.java$"/>
+    </module>
+    <!-- Closed by the "Swallowed I/O errors in the coding layer" entry in TODO.md. -->
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="noPrintStackTrace"/>
+        <property name="files" value="[\/]coding[\/](AdaptiveArithmetic(Compress|Decompress)|BitArray(Composer|Decomposer))\.java$"/>
+    </module>
+
+    <module name="TreeWalker">
+        <module name="AvoidStarImport"/>
+
+        <module name="TodoComment">
+            <property name="format" value="(?i)\bTODO\b(?!\.md)"/>
+            <message key="todo.match" value="No inline TODO - add a TODO.md entry instead."/>
+        </module>
+
+        <module name="IllegalCatch">
+            <property name="illegalClassNames" value="Error, Throwable, java.lang.Error, java.lang.Throwable"/>
+        </module>
+
+        <module name="ImportControl">
+            <property name="id" value="mainOnly"/>
+            <property name="file" value="${basedir}/checkstyle-imports.xml"/>
+        </module>
+
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="noPrintStackTrace"/>
+            <property name="format" value="printStackTrace\s*\("/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Log or rethrow; never printStackTrace."/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="cliOnly"/>
+            <property name="format" value="System\.(out|err)\b"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Only ACBClient talks to the console; log elsewhere."/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="format"
+                      value="org\.junit\.jupiter\.api\.Assertions|(?&lt;![.\w])assert(Equals|True|False|Null|NotNull|Same|Throws|ArrayEquals)\s*\("/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Use AssertJ assertThat, not JUnit assertions."/>
+        </module>
+    </module>
+</module>

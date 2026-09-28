@@ -25,14 +25,10 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research and planning are finished; no source code has changed. Start with
-phase 0, first entry (Spotless and Checkstyle). Do not redo the research below; its numbers are
-final unless the code changes.
+State on 2026-09-28: research and planning are finished; phase 0 is under way (tooling and dead
+code done; next the coder specification, the test gaps and the two harnesses). Do not redo the
+research below; its numbers are final unless the code changes.
 
-- **Working tree:** 44 source files hold uncommitted IDE import rewrites (see "Working tree"
-  below), and an older `TODO.md` is staged under this one. Commit this `TODO.md` alone first, then
-  discard the IDE edits (`git restore --staged --worktree src`) before the formatter commit
-  rather than folding them in.
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); remove every
   `@author` tag (phase 0, dead code entry); in phase 3 keep the `ContextIndex` seam but remove
   the `-ds` option. Coders follow their source on what defines the algorithm (fields,
@@ -231,28 +227,8 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 - **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
   a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
   statistic trees, the comparator, or a stream written by an older build.
-- **Working tree.** 44 source files hold uncommitted, IDE-made import rewrites (wildcards, and
-  `java.*` moved after the others, including in vendored Nayuki code). Phase 0's formatter commit
-  settles import style for good; drop or fold those edits into it.
 
 ## Phase 0: safety net
-
-### Spotless and Checkstyle in `mvn verify`
-
-Nothing checks formatting or the `CLAUDE.md` rules mechanically, and the IDE already rewrites
-imports differently from what is committed.
-
-- **Where:** `pom.xml`, new `checkstyle.xml`, `checkstyle-imports.xml`, `.editorconfig`,
-  `.git-blame-ignore-revs`.
-- **Approach:** take jTD's setup as the template: Spotless 2.43 with import order
-  `,javax,java,\#`, unused imports removed, spaces, trailing whitespace; Checkstyle with
-  `AvoidStarImport`, `IllegalCatch`, `TodoComment`, `ImportControl` (the core may not import
-  `commons-cli`, a logging backend or `java.nio.file`), and `RegexpSinglelineJava` bans on
-  `printStackTrace` and `System.out`/`System.err` outside the CLI. Exclude `nayuki.arithcode`
-  and `dictionary.core` until they are replaced. An `.editorconfig` with IntelliJ keys (no
-  wildcard imports, the same import layout, spaces) keeps the IDE from undoing it, since `.idea/`
-  is not committed. The tabs-to-spaces reformat is its own commit, listed in
-  `.git-blame-ignore-revs`.
 
 ### A specification of every coder
 
@@ -355,7 +331,8 @@ places. In the encoder a swallowed failure produces a corrupt `.acb` without any
   `coding.AdaptiveArithmeticDecompress` (constructors, `decompress`),
   `coding.BitArrayComposer.compress`, `coding.BitArrayDecomposer.decompress`.
 - **Approach:** these are in-memory streams, so rethrow as `UncheckedIOException` on the
-  encoder side and as `MalformedStreamException` on the decoder side.
+  encoder side and as `MalformedStreamException` on the decoder side. Delete the
+  `noPrintStackTrace` suppression in `checkstyle.xml` in the same commit.
 
 ### CLI and logging hygiene
 

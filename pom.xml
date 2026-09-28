@@ -20,6 +20,8 @@
         <assertj.version>3.27.7</assertj.version>
         <jqwik.version>1.10.1</jqwik.version>
         <spotless.version>2.43.0</spotless.version>
+        <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
+        <checkstyle.version>14.1.0</checkstyle.version>
     </properties>
 
     <dependencies>
@@ -112,6 +114,15 @@
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
                 <version>${spotless.version}</version>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <java>
                         <excludes>
@@ -131,6 +142,36 @@
                         </indent>
                     </java>
                 </configuration>
+            </plugin>
+            <plugin>
+                <!-- Project rules from CLAUDE.md that a tool can check. Vendored and
+                     soon-to-be-replaced third-party code is left out. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <propertyExpansion>basedir=${project.basedir}</propertyExpansion>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <excludes>nayuki/**,cz/cvut/fit/acb/dictionary/core/**</excludes>
+                    <consoleOutput>true</consoleOutput>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

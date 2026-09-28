@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!DOCTYPE import-control PUBLIC
+        "-//Checkstyle//DTD ImportControl Configuration 1.4//EN"
+        "https://checkstyle.org/dtds/import_control_1_4.dtd">
+
+<!-- The core (Compressor and everything below it) is in-memory: no command line, no logging
+     backend, no file system. ACBClient and ACBFileIO are the adapters that may. -->
+<import-control pkg="cz.cvut.fit.acb" strategyOnMismatch="allowed">
+    <disallow pkg="org.apache.commons.cli"/>
+    <disallow pkg="org.apache.logging.log4j.core"/>
+    <disallow pkg="java.nio.file"/>
+    <file name="ACBClient">
+        <allow pkg="org.apache.commons.cli"/>
+        <allow pkg="org.apache.logging.log4j.core"/>
+        <allow pkg="java.nio.file"/>
+    </file>
+    <file name="ACBFileIO">
+        <allow pkg="java.nio.file"/>
+    </file>
+</import-control>

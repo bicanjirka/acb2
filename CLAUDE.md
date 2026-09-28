@@ -8,7 +8,8 @@ quieter `log4j2-test.xml`). Tests: JUnit 5 (Jupiter 6) + AssertJ + jqwik.
 ```bash
 mvn -q compile
 mvn test
-mvn verify                                      # + coverage report, target/site/jacoco
+mvn verify                                      # + Spotless, Checkstyle, coverage (target/site/jacoco)
+mvn spotless:apply                              # fix formatting and import order
 mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
 java -jar target/acb.jar input.acb output -de   # settings come from the file
