@@ -97,6 +97,19 @@ class ACBFileIOTest {
 	}
 
 	@Test
+	void aSavedArrayListOfMoreThan255ArraysReadsBackEqual() {
+		Path path = this.dir.resolve("many");
+		List<byte[]> saved = randomArrays(new Random(300).ints(300, 0, 16).toArray());
+		AtomicReference<List<byte[]>> read = new AtomicReference<>();
+		
+		ACBFileIO io = new ACBFileIO();
+		io.saveArray(saved, path);
+		io.openArray(path, read::set);
+		
+		assertThat(read.get()).containsExactlyElementsOf(saved);
+	}
+	
+	@Test
 	void aParsedWriterWritesSegmentsInOrderAndClosesOnTheEndMarker() throws IOException {
 		Path path = this.dir.resolve("parsed");
 		Consumer<ByteBuffer> writer = new ACBFileIO().parsedWriter(path);

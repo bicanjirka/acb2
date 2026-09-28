@@ -132,7 +132,7 @@ public class ACBFileIO {
 			Files.deleteIfExists(output);
 			DataOutputStream os = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(output)));
 			
-			os.write(bytes.size());
+			os.writeInt(bytes.size());
 			for (byte[] bArr : bytes) {
 				os.writeInt(bArr.length);
 			}
@@ -150,7 +150,7 @@ public class ACBFileIO {
 	public void openArray(Path path, Consumer<List<byte[]>> listConsumer) {
 		try {
 			DataInputStream is = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)));
-			int listSize = is.read();
+			int listSize = is.readInt();
 			int[] arrSizes = new int[listSize];
 			for (int i = 0; i < listSize; i++) {
 				arrSizes[i] = is.readInt();
