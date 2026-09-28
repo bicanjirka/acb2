@@ -5,9 +5,6 @@ import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import java.util.Comparator;
 import java.util.function.Function;
 
-/**
- * @author jiri.bican
- */
 public final class DictionaryLCP extends DictionaryBase {
 
     public DictionaryLCP(Function<Comparator<Integer>, OrderStatisticTree<Integer>> trees, ByteSequence sequence,
@@ -22,7 +19,7 @@ public final class DictionaryLCP extends DictionaryBase {
         int lcp = 0; // longest common prefix with second best content
         int lcpIdx = 0; // index of the second best content
         for (int i = lo + 1; i <= hi; i++) {
-            int cnt = ost().select(i); // TODO do not select for every node, utilize neighbour links
+            int cnt = ost().select(i);
             int comLen = 0; // common length
             while ((cnt + comLen) < ost().size() && match(idx + comLen, cnt + comLen) && comLen < maxLength()) {
                 comLen++;
@@ -40,16 +37,11 @@ public final class DictionaryLCP extends DictionaryBase {
                         bestIdx = cnt;
                     }
                     // else do nothing, first uncommon symbol of actual best content is lower
-//					if (compare(bestIdx, i, comLen) < 0) bestIdx = bestIdx;
-//					else bestIdx = i;
                 } else {
-//					lcp = compare(bestIdx, i, comLen) < 0 ? lcp : comLen;
                     lcp = comLen;
                     lcpIdx = cnt;
                 }
-            }/* else if (comLen == lcp) {
-
-            }*/
+            }
         }
         return new DictionaryInfo(ctx, bestIdx, Math.min(maxLength(), bestLen - lcp), lcp);
     }
@@ -73,17 +65,5 @@ public final class DictionaryLCP extends DictionaryBase {
         byte b2 = seq().byteAt(j);
         return Byte.compare(b1, b2);
     }
-
-    /*private int compare(int i, int j, int offset) {
-        int cmp = 0;
-        int pos1 = ost().select(i); // TODO do not query, cash from key (select above)
-        int pos2 = ost().select(j);
-        while (cmp == 0) {
-            offset++;
-            cmp = compare(pos1 + offset, pos2 + offset);
-        }
-//		System.out.println("comparing "+new String(seq().array(pos1, pos1+offset))+" ["+cmp+"] "+new String(seq().array(pos2, pos2+offset)));
-        return cmp;
-    }*/
 
 }

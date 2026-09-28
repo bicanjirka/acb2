@@ -7,9 +7,6 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Function;
 
-/**
- * @author jiri.bican
- */
 public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
 
     private final OrderStatisticTree<Integer> ost;
@@ -81,7 +78,7 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     }
 
     protected boolean match(int i, int j) {
-        if (i >= seq.length()/* || i >= ost.size()*/) // is this if needed?
+        if (i >= seq.length())
             return false;
         byte b1 = seq.byteAt(i);
         byte b2 = seq.byteAt(j);
@@ -115,7 +112,7 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
         int bestIdx = -1;
         int bestLen = 0;
         for (int i = lo + 1; i <= hi; i++) {
-            int cnt = ost.select(i); // TODO do not select for every node, utilize neighbour links
+            int cnt = ost.select(i);
             int comLen = 0;
             while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
                 comLen++;
@@ -134,35 +131,14 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     @Override
     public int searchContext(int idx) {
         int rank = ost.rank(idx);
-//		return Math.min(rank, ost.size() - 1);
         return rank - 1;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        int index = ost.size();
-        if (index == 0)
-            return "[]";
-        for (Integer key : ost.keys()) {
-            int val = key;
-            int rank = ost.rank(key);
-            sb.append(rank);
-            int indent = ost.size() - val + (String.valueOf(ost.size()).length() - String.valueOf(rank).length());
-            char[] ch = new char[indent];
-            Arrays.fill(ch, ' ');
-            byte[] ctx = seq.array(0, val);
-            byte[] cnt = seq.array(val, index);
-            sb.append(ch).append(new String(ctx)).append('|').append(new String(cnt)).append('\n');
-        }
-        return sb.toString();
     }
 
     @Override
     public void update(int idx, int count) {
         for (int i = 0; i < count; i++) {
             int key = idx + i;
-            ost.put(key); // TODO put all values at once, do less shifts in BST
+            ost.put(key);
         }
     }
 

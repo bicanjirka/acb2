@@ -28,16 +28,13 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/**
- * @author jiri.bican
- */
 public class ACBClient {
 
     private static final int EXIT_CODE_OK = 0;
     private static final int EXIT_CODE_FATAL = 1;
     private static final int EXIT_CODE_HELP = 2;
     private static final Options options = new Options();
-    private static final Logger logger = LogManager.getLogger();
+    private static final Logger LOG = LogManager.getLogger();
 
     static {
         options.addOption("de", "decompress", false, "decompress input (default is to compress); coding settings are read from the file, so only -ds applies");
@@ -118,7 +115,7 @@ public class ACBClient {
             }
 
         } catch (Exception e) {
-            logger.error("Unexpected failure", e);
+            LOG.error("Unexpected failure", e);
             System.exit(EXIT_CODE_FATAL);
         }
     }
@@ -145,13 +142,13 @@ public class ACBClient {
             settings = parseCommandLine(cmd);
         } catch (ParseException exp) {
             System.err.println("Parsing failed.  Reason: " + exp.getMessage());
-            logger.error("Parsing failed.  Reason: {}", exp.getMessage());
+            LOG.error("Parsing failed.  Reason: {}", exp.getMessage());
             return EXIT_CODE_FATAL;
         }
 
-        logger.info("{} {}", this.compress ? "compressing" : "decompressing", this.input);
-        logger.debug("settings = {}", settings);
-        logger.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
+        LOG.info("{} {}", this.compress ? "compressing" : "decompressing", this.input);
+        LOG.debug("settings = {}", settings);
+        LOG.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
 
         ACBFileIO io = new ACBFileIO();
         FileAction action = this.compress ? compression(io, settings) : decompression(io, settings);
@@ -177,11 +174,11 @@ public class ACBClient {
             }
         } catch (MalformedStreamException exp) {
             System.err.println("Cannot decompress.  Reason: " + exp.getMessage());
-            logger.error("Cannot decompress.  Reason: {}", exp.getMessage());
+            LOG.error("Cannot decompress.  Reason: {}", exp.getMessage());
             return EXIT_CODE_FATAL;
         } catch (IOException | UncheckedIOException exp) {
             System.err.println("I/O Exception.  Reason: " + exp.getMessage());
-            logger.error("I/O Exception.  Reason: {}", exp.getMessage());
+            LOG.error("I/O Exception.  Reason: {}", exp.getMessage());
             return EXIT_CODE_FATAL;
         }
         return EXIT_CODE_OK;
@@ -267,7 +264,7 @@ public class ACBClient {
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
             loggerConfig.setLevel(level);
             ctx.updateLoggers();
-            logger.info("Log level changed to {}", level.name());
+            LOG.info("Log level changed to {}", level.name());
         }
 
         if (cmd.hasOption("m")) {

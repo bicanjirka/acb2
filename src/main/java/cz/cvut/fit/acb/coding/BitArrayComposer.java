@@ -8,9 +8,6 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-/**
- * @author jiri.bican
- */
 public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.BitArrayComposerInner> {
 
     private final ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();

@@ -1,8 +1,5 @@
 package cz.cvut.fit.acb.triplets;
 
-/**
- * @author jiri.bican
- */
 public interface TripletProcessor {
     int read(TripletFieldId fieldId);
 

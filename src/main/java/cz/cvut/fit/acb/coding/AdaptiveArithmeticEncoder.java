@@ -6,9 +6,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * @author jiri.bican
- */
 public class AdaptiveArithmeticEncoder extends TripletToByteConverter<AdaptiveArithmeticCompress> {
 
     private final Collection<Runnable> onTerminate = new ArrayList<>();

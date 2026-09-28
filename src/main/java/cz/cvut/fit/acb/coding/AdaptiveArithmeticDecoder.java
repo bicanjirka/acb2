@@ -4,9 +4,6 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 import java.util.List;
 
-/**
- * @author jiri.bican
- */
 public class AdaptiveArithmeticDecoder extends ByteToTripletConverter<AdaptiveArithmeticDecompress> {
 
     private final int[] lengthFreq;

@@ -13,9 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
-/**
- * @author jiri.bican
- */
 public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         permits SalomonTripletCoder.SalomonByteless, SalomonTripletCoder.SalomonByteful {
 

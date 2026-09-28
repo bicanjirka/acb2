@@ -2,9 +2,6 @@ package cz.cvut.fit.acb.dictionary;
 
 import java.util.Comparator;
 
-/**
- * @author jiri.bican
- */
 public interface Dictionary {
 
     Dictionary clone();

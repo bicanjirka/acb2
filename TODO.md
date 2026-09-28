@@ -254,16 +254,6 @@ imports differently from what is committed.
   is not committed. The tabs-to-spaces reformat is its own commit, listed in
   `.git-blame-ignore-revs`.
 
-### Dead code and leftovers
-
-- **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding` (no callers, foreign licences);
-  inline `// TODO` in `DictionaryBase.searchContent`/`update` and `DictionaryLCP.searchContent`;
-  commented-out code in `DictionaryBase` and `DictionaryLCP`; `Serializable` on `ByteSequence`;
-  `ByteBuilder.crop`; `DictionaryBase.toString` (a debug dump); the mixed `logger`/`LOG` names.
-- **Approach:** delete them, and every `@author` Javadoc tag (the user's decision; git records
-  authorship). The inline TODOs are covered by phase 3. The algs4 trees stay until phase 3
-  replaces them.
-
 ### A specification of every coder
 
 "Same as the original" needs a written original to test against. Today the rules live partly

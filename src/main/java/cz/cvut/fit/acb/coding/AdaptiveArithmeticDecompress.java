@@ -12,12 +12,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-/**
- * @author jiri.bican
- */
 class AdaptiveArithmeticDecompress {
 
-    private static final Logger logger = LogManager.getLogger();
+    private static final Logger LOG = LogManager.getLogger();
     private final FrequencyTable freq;
     private final int eof;
     private ArithmeticDecoder dec;

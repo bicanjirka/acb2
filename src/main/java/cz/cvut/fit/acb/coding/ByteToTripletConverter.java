@@ -8,9 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @author jiri.bican
- */
 public abstract class ByteToTripletConverter<T> implements TripletProcessor {
 
     private final Map<Integer, T> map = new HashMap<>();

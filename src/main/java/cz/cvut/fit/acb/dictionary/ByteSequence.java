@@ -1,11 +1,6 @@
 package cz.cvut.fit.acb.dictionary;
 
-import java.io.Serializable;
-
-/**
- * @author jiri.bican
- */
-public interface ByteSequence extends Serializable {
+public interface ByteSequence {
 
     byte[] array();
     byte[] array(int start, int end);

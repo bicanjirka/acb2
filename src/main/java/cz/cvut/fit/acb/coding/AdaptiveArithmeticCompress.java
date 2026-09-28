@@ -10,9 +10,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-/**
- * @author jiri.bican
- */
 class AdaptiveArithmeticCompress {
 
     private final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();

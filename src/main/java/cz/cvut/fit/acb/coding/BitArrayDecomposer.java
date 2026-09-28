@@ -8,9 +8,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-/**
- * @author jiri.bican
- */
 public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecomposer.ByteArrayDecomposerInner> {
 
     private ByteArrayInputStream bais;

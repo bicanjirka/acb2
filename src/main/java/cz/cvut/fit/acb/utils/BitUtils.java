@@ -1,8 +1,5 @@
 package cz.cvut.fit.acb.utils;
 
-/**
- * @author jiri.bican
- */
 public class BitUtils {
 
     public static boolean isNegative(int val, int offset) {

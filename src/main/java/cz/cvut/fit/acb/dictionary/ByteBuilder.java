@@ -3,9 +3,6 @@ package cz.cvut.fit.acb.dictionary;
 import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * @author jiri.bican
- */
 public class ByteBuilder implements ByteSequence {
 
     private byte[] value;
@@ -60,10 +57,6 @@ public class ByteBuilder implements ByteSequence {
 
     public int capacity() {
         return value.length;
-    }
-
-    public void crop(int amount) {
-        count -= amount;
     }
 
     private void ensureCapacityInternal(int minimumCapacity) {

@@ -22,11 +22,10 @@ import java.util.function.Consumer;
  * The file side of the CLI: reads inputs as segments, writes decoded segments, and stores
  * compressed streams in the {@link ContainerFormat}.
  *
- * @author jiri.bican
  */
 public final class ACBFileIO {
 
-    private static final Logger logger = LogManager.getLogger();
+    private static final Logger LOG = LogManager.getLogger();
 
     /** Reads {@code path} lazily, {@code segmentSize} bytes at a time; close it when done. */
     public SegmentReader readSegments(Path path, int segmentSize) throws IOException {
@@ -45,7 +44,7 @@ public final class ACBFileIO {
         byte[] bytes = ContainerFormat.encode(stream);
         Files.write(output, bytes);
         int payloadSize = stream.payload().stream().mapToInt(array -> array.length).sum();
-        logger.debug("Compressed into '{}' [size = {}, overhead = {}]", output, bytes.length, bytes.length - payloadSize);
+        LOG.debug("Compressed into '{}' [size = {}, overhead = {}]", output, bytes.length, bytes.length - payloadSize);
     }
 
     /** @throws cz.cvut.fit.acb.format.MalformedStreamException if the file is not an intact ACB stream */

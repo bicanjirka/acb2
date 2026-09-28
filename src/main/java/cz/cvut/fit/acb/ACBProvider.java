@@ -12,7 +12,6 @@ import java.util.List;
  * Builds the components one stream is coded with. {@link Compressor} asks for fresh ones per
  * stream and segment, so implementations hold no stream state.
  *
- * @author jiri.bican
  */
 public interface ACBProvider {
     Dictionary getDictionary(ByteSequence sequence);

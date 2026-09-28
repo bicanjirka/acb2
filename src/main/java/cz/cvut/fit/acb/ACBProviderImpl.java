@@ -24,9 +24,6 @@ import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * @author jiri.bican
- */
 public final class ACBProviderImpl implements ACBProvider {
 
     private final CompressionSettings settings;

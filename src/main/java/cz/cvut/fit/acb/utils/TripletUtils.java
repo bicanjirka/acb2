@@ -3,9 +3,6 @@ package cz.cvut.fit.acb.utils;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-/**
- * @author jiri.bican
- */
 public final class TripletUtils {
 
     private TripletUtils() {

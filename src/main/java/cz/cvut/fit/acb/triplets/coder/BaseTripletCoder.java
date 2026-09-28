@@ -15,7 +15,6 @@ import java.util.function.Consumer;
  * The encode and decode loops over one segment; each coder supplies one step, which lays out a
  * triplet's fields.
  *
- * @author jiri.bican
  */
 public abstract sealed class BaseTripletCoder implements TripletCoder
         permits SimpleTripletCoder, SalomonTripletCoder, ValachTripletCoder, LCPTripletCoder {

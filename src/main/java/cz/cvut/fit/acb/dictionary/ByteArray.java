@@ -2,9 +2,6 @@ package cz.cvut.fit.acb.dictionary;
 
 import java.util.Arrays;
 
-/**
- * @author jiri.bican
- */
 public class ByteArray implements ByteSequence {
 
     private final byte value[];

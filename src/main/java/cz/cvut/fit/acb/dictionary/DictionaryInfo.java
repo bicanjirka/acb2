@@ -1,8 +1,5 @@
 package cz.cvut.fit.acb.dictionary;
 
-/**
- * @author jiri.bican
- */
 public class DictionaryInfo {
 
     private int context;

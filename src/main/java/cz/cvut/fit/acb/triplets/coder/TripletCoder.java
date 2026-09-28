@@ -5,9 +5,6 @@ import cz.cvut.fit.acb.triplets.TripletSupplier;
 
 import java.util.function.Consumer;
 
-/**
- * @author jiri.bican
- */
 public sealed interface TripletCoder permits BaseTripletCoder {
     void encode(Consumer<TripletSupplier> output);
 

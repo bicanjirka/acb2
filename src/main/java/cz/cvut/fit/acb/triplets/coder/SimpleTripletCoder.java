@@ -13,9 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
-/**
- * @author jiri.bican
- */
 public final class SimpleTripletCoder extends BaseTripletCoder {
 
     private static final Logger LOG = LogManager.getLogger();
