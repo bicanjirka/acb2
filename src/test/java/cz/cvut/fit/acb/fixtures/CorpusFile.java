@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 /** A small test input from {@code src/test/resources/in}, loaded from the classpath. */
 public record CorpusFile(String name, byte[] bytes) {
 
-	private static final String[] NAMES = {"aaaa", "loremipsum", "mississippi", "swissmiss"};
+	private static final String[] NAMES = {"aaaa", "binary", "loremipsum", "mississippi", "swissmiss"};
 
 	public static Stream<CorpusFile> all() {
 		return Stream.of(NAMES).map(CorpusFile::load);

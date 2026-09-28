@@ -37,16 +37,6 @@ decoding calls `select` with a negative rank.
   the LCP explicitly or restrict the search to state both sides share, then finish or remove the
   coder.
 
-### Bytes 0x80 and above cannot be compressed
-
-Literal bytes are written as signed values, so the arithmetic coder receives a negative symbol
-and throws; any binary or non-ASCII input fails. The decoders also use `-1` as the
-end-of-stream marker, which collides with byte 0xFF once literals are unsigned.
-
-- **Where:** every `encodeStep`/`decodeStep` in `triplets.coder`, `coding.AdaptiveArithmeticCompress`.
-- **Approach:** write literals as `b & 0xFF`, and signal end-of-stream out of band instead of
-  with a value a field can legitimately hold.
-
 ### Empty input cannot be compressed
 
 `ACB.compress` writes the size header only when it sees the first segment, so an empty input

@@ -40,7 +40,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
 				visitor.write(lengField, 0);
-				visitor.write(byteField, b);
+				visitor.write(byteField, b & 0xFF);
 			});
 		} else {
 			int leng2 = leng + idx == sequence.length() ? leng - 1 : leng;
@@ -51,7 +51,7 @@ public class ValachTripletCoder extends BaseTripletCoder {
 			output.accept(visitor -> {
 				visitor.write(lengField, leng2);
 				visitor.write(distField, dist & distanceMask);
-				visitor.write(byteField, b);
+				visitor.write(byteField, b & 0xFF);
 			});
 		}
 		return idx + 1;

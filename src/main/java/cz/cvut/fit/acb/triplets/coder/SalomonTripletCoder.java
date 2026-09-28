@@ -45,7 +45,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
 				visitor.write(flagField, 0);
-				visitor.write(byteField, b);
+				visitor.write(byteField, b & 0xFF);
 			});
 			return idx + 1;
 		} else {
@@ -65,10 +65,11 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 		}
 		
 		if (flag == 0) {
-			byte b = (byte) input.read(byteField);
-			if (b == -1) {
+			int literal = input.read(byteField);
+			if (literal == -1) {
 				return Integer.MAX_VALUE;
 			}
+			byte b = (byte) literal;
 			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
 			builder.append(b);
 			dictionary.update(idx, 1);
@@ -137,7 +138,7 @@ public abstract class SalomonTripletCoder extends BaseTripletCoder {
 				visitor.write(flagField, 1);
 				visitor.write(distField, dist & distanceMask);
 				visitor.write(lengField, leng2);
-				visitor.write(byteField, b);
+				visitor.write(byteField, b & 0xFF);
 			});
 			return idx + leng2 + 1;
 		}

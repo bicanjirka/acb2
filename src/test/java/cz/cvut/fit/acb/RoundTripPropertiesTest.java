@@ -32,12 +32,11 @@ class RoundTripPropertiesTest {
 
 	/**
 	 * Uniform bytes rarely repeat, so half the inputs use a three-letter alphabet to force matches.
-	 * Inputs are non-empty and bytes stay below 0x80 until both are supported (TODO.md).
+	 * Inputs are non-empty until empty input is supported (TODO.md).
 	 */
 	@Provide
 	Arbitrary<byte[]> inputs() {
-		Arbitrary<byte[]> anyBytes = Arbitraries.bytes().between((byte) 0, Byte.MAX_VALUE)
-				.array(byte[].class).ofMinSize(1).ofMaxSize(300);
+		Arbitrary<byte[]> anyBytes = Arbitraries.bytes().array(byte[].class).ofMinSize(1).ofMaxSize(300);
 		Arbitrary<byte[]> fewSymbols = Arbitraries.bytes().between((byte) 'a', (byte) 'c')
 				.array(byte[].class).ofMinSize(1).ofMaxSize(300);
 		return Arbitraries.oneOf(anyBytes, fewSymbols);

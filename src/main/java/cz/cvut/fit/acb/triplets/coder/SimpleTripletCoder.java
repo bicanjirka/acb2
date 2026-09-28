@@ -45,7 +45,7 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		output.accept(visitor -> {
 			visitor.write(distField, dist & distanceMask);
 			visitor.write(lengField, leng);
-			visitor.write(byteField, b);
+			visitor.write(byteField, b & 0xFF);
 		});
 		
 		idx++;
@@ -57,10 +57,11 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		int tempDist = input.read(distField);
 		int dist = distFunc.applyAsInt(tempDist);
 		int leng = input.read(lengField);
-		byte b = (byte) input.read(byteField);
+		int literal = input.read(byteField);
+		byte b = (byte) literal;
 		ByteBuilder builder = ((ByteBuilder) sequence);
 		
-		if (tempDist == leng && leng == b && b == -1) {
+		if (tempDist == -1 && leng == -1 && literal == -1) {
 			return Integer.MAX_VALUE;
 		}
 		logger.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
