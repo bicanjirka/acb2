@@ -1,40 +1,325 @@
 # Known gaps and future work
 
 The single place for outstanding design gaps and planned work; the source carries no inline
-`TODO` notes. Closing an item deletes its entry in the same commit.
+`TODO` notes. Closing an item deletes its entry in the same commit, and a finished phase deletes
+its heading.
 
-Suggested order: harden the decode boundary, replace the frequency table, build the ratio
-harness, then the encoder/decoder symmetry refactor together with container format v2. The LCP
-fix and parallel segments should mostly fall out of the last step.
+The goal: a clean, fast, well-tested ACB compressor whose every coder is exactly the algorithm
+it is named after, plus a faithful implementation of Buyanovsky's own associative coder, which
+is where the compression ratio is. Phases run in order; each is committed on its own, stays
+green, and is measured with the harness from phase 0 before and after. The cheap phases come
+first so the big refactors (phases 5 and 7) land on a tested, measured, fast base.
 
-## Known defects
+| Phase | Theme | Size | Format change |
+|---|---|---|---|
+| 0 | Safety net: tooling, tests, harnesses, the coder specification | medium | no |
+| 1 | Correctness and hardening, CLI and logging hygiene | small | no |
+| 2 | Encoder-only ratio wins | small | no |
+| 3 | Dictionary engine: primitive, cache-friendly, licence-clean | medium | no |
+| 4 | Own range coder and adaptive models; drop the vendored Nayuki code | medium | `VERSION` 2 |
+| 5 | Encoder/decoder symmetry refactor and container v2 | large | `VERSION` 3 |
+| 6 | Thesis coders made faithful: context reference, LCP, literal model | medium | `VERSION` 4 |
+| 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
+| 8 | Parallel segments and streaming I/O | medium | no |
+| 9 | Documentation pass and final measurements | small | no |
 
-Found by `RoundTripTest` and `RoundTripPropertiesTest`. The affected combinations are skipped
-with a reason (`SettingsCombination.knownRoundTripDefect`/`knownDictionaryDefect`) or kept out of
-the generated inputs, never silently passed; closing an item removes its exclusion.
+## Handoff for the next session
 
-### LCP dictionary diverges between encoder and decoder
+State on 2026-09-28: research and planning are finished; no source code has changed. Start with
+phase 0, first entry (Spotless and Checkstyle). Do not redo the research below; its numbers are
+final unless the code changes.
 
-The decoder's dictionary differs from the encoder's after a few updates, and segmented
-decoding calls `select` with a negative rank. `ACBClient` refuses `-tc lcp` until this is
-closed, because the files it wrote did not decompress. What is known:
+- **Working tree:** 44 source files hold uncommitted IDE import rewrites (see "Working tree"
+  below), and an older `TODO.md` is staged under this one. Commit this `TODO.md` alone first, then
+  discard the IDE edits (`git restore --staged --worktree src`) before the formatter commit
+  rather than folding them in.
+- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); remove every
+  `@author` tag (phase 0, dead code entry); in phase 3 keep the `ContextIndex` seam but remove
+  the `-ds` option. Coders follow their source on what defines the algorithm (fields,
+  layout, context and content rules); implementation is free; where a source is silent or buggy
+  the chosen rule goes into `docs/ALGORITHM.md`; improvements are named variants, never silent
+  changes to a faithful coder.
+- **Research artifacts** (optional, outside the repo; the recipes below rebuild everything):
+  `C:\Users\juras\dev\acb-research` holds `cal/cal14` (the corpus), `bin/excom.exe` (ExCom),
+  `bin/ac.exe` and `bin/acs.exe` (`AC.C` ported, and a build that prints bits per component to
+  stderr), `acport/` (`port.py` and `instr.py` turn the original `AC.C` into those builds),
+  `proto/DictBench.java` (the dictionary prototypes: `javac -cp acb.jar`, run as
+  `DictBench <file> rb|chunk|chunkpacked|offline <dBits> <lBits> [chunkSize]`),
+  `bench_java.sh <jar> [options]`, `bench_excom.sh <exe> "<d=N,l=N>"` and
+  `bench_ac.sh <exe> [Kc] [bNN]` (each compresses cal14, decompresses, verifies, and prints the
+  total and times), `ref/` (Buyanovsky's archive, his paper as text, the thesis as text). The
+  `.exe` files need the MinGW `bin` directory on `PATH`.
 
-- `DictionaryLCP.searchContent` mixes ranks and text positions: `bestIdx` holds a rank, but the
-  equal-length branch assigns it `cnt` (a position) and compares `bestIdx + bestLen` as a
-  position.
-- The scheme sends `length - lcp` and lets the decoder recover `lcp` as the longest common
-  prefix of the chosen content with its best neighbour. That only agrees with the encoder's
-  second-best match against the text when there is no tie: a content matching the text as far as
-  the best one shares at least `bestLen` with it, so the decoder adds back too much.
+## Research findings
 
-- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`, the `-tc` check in
-  `ACBClient.parseCommandLine`.
-- **Approach:** fix the rank/position confusion, then define the second-best content so both
-  sides compute it from shared state (for example, the best-matching neighbour of the chosen
-  content, ties broken by rank). Remove the CLI refusal and the test exclusion together. Easier
-  after the symmetry refactor below, where the update rule exists once.
+### Reference setup
 
-## Decode boundary
+Everything below was measured on this machine on 2026-09-28. Scratch files live in a
+session-only directory; to rebuild them:
+
+- **Calgary corpus:** `https://corpus.canterbury.ac.nz/resources/calgary.tar.gz`; the 14
+  classic files (drop paper3-6, 3,141,622 bytes), copied read-only.
+- **C++ compiler:** WinLibs MinGW-w64 GCC 16.1 at
+  `%LOCALAPPDATA%\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin`
+  (installed, not on `PATH`; prepend it in the shell).
+- **ExCom:** `C:\Users\juras\Downloads\excom.tar`, ACB module in `excom.git/lib/method/acb`.
+  Build it by deleting `#include <libio.h>` from `TripletCoder.hpp`, then
+  `g++ -O2 -w -std=gnu++98 -fpermissive -DMETHOD_ACB -DMETHOD_ARITH -Iinclude -Ilib lib/*.cpp
+  <every lib/method/**/*.cpp except dca/ and ppm/> src/app/main.cpp -lpthread`; run with
+  `excom -m acb [-p d=N,l=N] -i in -o out` and `-d` to decompress.
+- **Buyanovsky's source:** `http://ctxmodel.net/files/ACB.rar` (extract with
+  `C:\Program Files\7-Zip\7z.exe x`), then `ACB/AC_SRC.RAR` holds `AC.C` and `AC_ASM.ASM`.
+  `ACB/AC_ST_EN.DOC` (RTF) is his English paper "Research method of pseudostochastic systems"
+  with the algorithm; `TECHNIQ.TXT` is the comparison article. To build `AC.C` with GCC:
+  replace the `AC_ASM.ASM` externs with C (`Dvc(A,B,C) = ((B+1)*A)/C - 1` and
+  `Dvd(A,B,C) = ((A+1)*B - 1)/(C+1)` in 64-bit, `Log2int`/`Log2ie` via `__builtin_clz`,
+  `GetBit`/`SetBit` (a bit toggle), `memmove4` as `memmove` of pointers); rewrite the lvalue casts in
+  `BitCmpLn` with `word *` locals and the pointer XOR-swap in `StrFrc2` with a temporary; drop
+  `_stack`, `_pascal` and the progress `printf`; allocate the output buffer at `2n + 4096`, zeroed.
+  On Windows x64 `long` stays 32-bit, so the types match the original. `main` returns 1 on success.
+  Usage: `ac c|d in out [Kc] [bNN]`. The code carries no licence: read it, never copy it.
+- **Thesis:** `https://dspace.cvut.cz/server/api/core/bitstreams/233480f8-4ebc-4960-8764-a9e1ae51650a/content`,
+  text via `pypdf`. Key parts: §1.2 the worked `mississippi` example, §1.3 Salomon's
+  modifications, §2 prior implementations, §3.3.1 the LCP method, §5 Tables 5.4-5.8.
+- **Thesis-era code:** `git worktree add --detach <dir> 6b30a11^`, pom source/target 17,
+  `mvn -o compile`, run with `java -cp "<dir>/target/classes;target/acb.jar"
+  cz.cvut.fit.acb.ACBClient`. It overwrites its input file: throwaway copies only.
+- **Benchmark method:** rebuild the jar from HEAD first (`mvn -q clean package -DskipTests`), run
+  directory mode (`java -jar target/acb.jar cal14 out [options]`) in one JVM, decompress to a
+  second directory, compare every file, sum sizes.
+
+### Where ACB stands
+
+Calgary, 14 files, 3,141,622 bytes; every row round-tripped unless noted. ExCom and `AC.C`
+start one process per file, and this coder runs one JVM for the directory.
+
+| Compressor | Bytes | bpc | Compress / decompress |
+|---|---|---|---|
+| ACB 2.00a (Mahoney's table, calgary.tar, older 2 GHz machine) | 778,760 | 1.98 | 18.7 s / 18.7 s |
+| bzip2 -9 | 828,347 | 2.11 | 2.0 s |
+| Buyanovsky `AC.C` 1994, `Kc 0`, 1 MB frame | 837,107 | 2.13 | 29.9 s / 32.7 s |
+| `AC.C`, funnel capped at 128 per side | 839,769 | 2.14 | 26.6 s / 32.8 s |
+| xz -9 | 845,952 | 2.15 | 2.7 s |
+| `AC.C`, funnel capped at 55 per side (ACB 1.17 "NORMAL" width) | 846,912 | 2.16 | 26.4 s / 27.0 s |
+| `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 13.8 s / 15.9 s |
+| `AC.C`, funnel capped at 16 per side (ACB 1.17 "FAST" width) | 875,872 | 2.23 | 29.1 s / 28.2 s |
+| ExCom ACB `d=10` | 967,714 | 2.46 | 6.0 s / 2.6 s |
+| ExCom ACB `d=8` | 972,911 | 2.48 | 3.3 s / 3.0 s |
+| ExCom ACB defaults (distance ±31, length 7 bits) | 988,420 | 2.52 | 2.3 s / 2.5 s |
+| this, `-tc valach -d 6 -l 7` | 1,012,317 | 2.58 | 7.1 s / 3.9 s |
+| gzip -9 | 1,017,624 | 2.59 | 1.5 s |
+| this, `-tc valach` | 1,049,160 | 2.67 | 7.1 s / 3.8 s |
+| this, defaults (`simple`) | 1,076,271 | 2.74 | 7.2 s / 3.9 s |
+
+Measured earlier on patched builds (phase 2 below): nearest tie with the rank-0 fix gives
+`valach -d 10 -l 6` 962,297 and `valach -d 8 -l 5` 985,371.
+
+`AC.C` at its default level (`Kc 2`) fails to decode book1 (a crash in the decoder, same with
+exact and carry-emulating division), so the 1994 demo has an encoder/decoder asymmetry
+somewhere; `Kc 0` round-trips all 14 files. A reimplementation must derive every model decision
+from state both sides share, which the symmetry refactor in phase 5 makes structural.
+
+Where the bits go on book1 (768,771 bytes):
+
+| | This coder, `valach` | `AC.C`, 1 MB frame |
+|---|---|---|
+| Steps | 171,328 triplets | 128,844 |
+| Average match | 3.7 bytes | 5.1 bytes |
+| Position / distance | 117 KB (5.73 of 6 bits) | 136 KB (8.4 bits, over a funnel of ~1,000 candidates) |
+| Length | 68 KB (3.2 bits) | 36 KB (2.3 bits, coded relative to better-ranked candidates) |
+| Literal | 108 KB (5.05 bits, order-0) | 63 KB (3.9 bits, with exclusion and funnel forecast) |
+| Total | 293 KB | 235 KB |
+
+The gap is structural, not tuning: real ACB spends more on the position but reaches further,
+gets length almost free from the neighbours, and rarely spends a full literal.
+
+### What real ACB does (from `AC.C` and Buyanovsky's paper)
+
+The thesis (§2.1) says the algorithm in Buyanovsky's code is unknown and that distances are not
+arithmetic-coded. Both are wrong; `AC.C` and the paper describe it completely:
+
+- **Dictionary.** A sorted array of pointers to every position of the frame (1,024 to 262,144,
+  or more), ordered by the unbounded right-to-left context, compared as machine words. Insertion
+  is a `memmove` into the array (the "simple list" variant of the paper, O(n) per insert, which is
+  why the demo takes 30 s). Once full, a new pointer replaces whichever of its two neighbours
+  shares less with it. After a long match (at least 3·log2 of the frame fill) only the first
+  position is inserted.
+- **Funnel of analogies.** From the current context's slot, walk outward on both sides, in
+  order of weight, over neighbours whose context agrees with the current one for more than
+  `SB = log2(Kc·N/500)` bits, the "stochastic component" of the paper, which grows with the frame
+  (N = contexts stored). The bit-level agreement comes from XOR and bit scan over 4-byte words,
+  capped at 256 bytes; the width is capped at 2,047 candidates. Each candidate's weight
+  (`EVR`) grows with context agreement and falls with rank distance.
+- **Position.** The candidate is arithmetic-coded with probability proportional to its weight,
+  plus an escape symbol whose weight adapts from recent success (`Sucsess`, `Swch`). The encoder
+  picks, in weight order, the first candidate with the strictly longest match, so ties go to the
+  most similar context.
+- **Length.** Coded as `Max - Pr_L - 1`, where `Pr_L` is the longest match among candidates
+  coded before the chosen one. The decoder recovers `Pr_L` as the longest common prefix of the
+  chosen content with those candidates, which equals it exactly (a candidate that matched less
+  than the best one diverges from the best one where it diverged from the text). Lengths already
+  shared by later candidates get a boosted probability. Matches never overlap the current
+  position, and comparisons read only decoded bytes.
+- **Literal.** Coded only when the match ended on a mismatch (not at a boundary or at 256).
+  Every byte a candidate with an equal-length match would predict is excluded, because it would
+  have made the match longer. After a match, the literal model mixes the order-0 table with the
+  next bytes of the funnel candidates for the new context.
+- **Statistics.** Frequency tables sorted by count, updated in sliding windows (2,048 literals,
+  1,024 lengths) through a ring buffer, and one custom 32-bit arithmetic coder. The length table
+  starts at `{45, 13, 10, 7, 5, 4}` for excess lengths 0 to 5. That is where this project's
+  default length frequencies come from, although here they model the raw length instead.
+- **The paper's version.** The code of a string is the candidate number, a "difference bit"
+  (which side of it the current content sorts in content order), and an "extract" length. This
+  is the LCP idea done right; `AC.C` implements the simpler `Pr_L` variant above. ACB 1.17 caps
+  the funnel at S = 16, 55 or 100 (FAST, NORMAL, MAX) and ACB 2.00 improves the modelling further;
+  both are closed.
+
+### How the thesis coders relate to their sources
+
+| Coder | Source | Layout | Deviations in the current code |
+|---|---|---|---|
+| `simple` | Salomon, thesis §1.2 | `(d, l, c)` | context is always the predecessor; `d` has the opposite sign to the thesis (`ctx - cnt`); ties take the farthest candidate |
+| `salomon` | Salomon, thesis §1.3.1 | `(0, c)` or `(1, d, l)` | as `simple` |
+| `salomon2` | Valach (ExCom) | `(0, c)` or `(1, l, d, c)` | as `simple`; the fields are written `d` before `l` |
+| `valach` | Valach (ExCom), his best | `(l, c)` or `(l, d, c)` | as `simple`; ExCom takes the better-matching of both context neighbours and the nearest content |
+| `lcp` | thesis §3.3.1 | `(d, l - lcp, c)` | not the specification at all (see the LCP defect below) |
+
+The thesis's own worked example (§1.2) picks the greater index on context ties, the code picks
+the predecessor, and both ExCom and Buyanovsky's Lemma 3 say the best context is whichever
+neighbour agrees longer. Phase 6 settles this on the original rule.
+
+### Profile of the current code
+
+JFR on book1, `valach -l 7`. Compression: `RedBlackBST.select` 50%, `RedBlackBST.put` (with
+the inlined 10-byte comparator) 33%, rebuilding Nayuki's cumulative table 6%. Decompression:
+`put` 60%, `rank` 16%, the arithmetic decoder about 13%. The order-statistic tree is about 85%
+of the time either way; the entropy coder is next.
+
+### Dictionary structure prototypes
+
+A scratch benchmark ran the `valach` encoder's search/insert loop on book1 over four
+structures; all produced the identical triplet sequence.
+
+| Structure | `-d 6 -l 7` | `-d 10 -l 7` |
+|---|---|---|
+| Current: algs4 red-black tree of boxed `Integer`s, `select` per candidate | 1,885 ms | 16,122 ms |
+| Chunked sorted `int[]` (two-level B+ tree, 512 per chunk, Fenwick over chunk sizes), neighbour walk | 533 ms | - |
+| The same with keys packed into two `long`s per position | 542 ms | 1,522 ms |
+| Encoder-only: final ranks presorted, Fenwick tree and bitset over rank space | 209 ms + 470 ms presort | 1,310 ms + 470 ms |
+
+The chunked array is 3.5x faster at the default window and 10x faster at `-d 10`, works for the
+decoder too, and uses 4 bytes per position instead of about 60. Packing keys gains nothing
+against a plain comparator over a byte array. The encoder-only structure is faster still but
+doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,048 are within
+15% of each other.
+
+### Other findings
+
+- **Licences.** `dictionary.core` (`BST`, `RedBlackBST`, `BinarySearchST`, about 1,800 lines) is
+  algs4 code under GPL-3, which cannot ship under `acb-licence` (non-profit only; GPL forbids
+  added restrictions) and is not declared anywhere. `coding.RangeCoding` is LGPL-3 (dead code).
+  `coding.ArithmeticCoding` was copied from a Google Code project with no stated licence (dead
+  code). The Nayuki files carry no header; their MIT notice lives only in
+  `Readme-arith-coding.markdown`, so that file is required for exactly as long as `nayuki.arithcode`
+  ships, and goes with it in phase 4.
+- **`-ds bst` crashes.** 200 KB of one repeated byte: `StackOverflowError`. Equal contexts are
+  ordered by position, so the unbalanced tree becomes a chain and the recursive `put` overflows.
+  It escapes `main`'s `catch (Exception)`.
+- **Incompressible input expands.** 2 MB of random bytes grow by 10.8% and take 13.9 s.
+- **Throughput.** About 0.45 MB/s compressing and 0.8 MB/s decompressing at the defaults; ExCom is
+  3x faster in C++ with the same model, and a Java coder with the structures above should match it.
+- **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
+  a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
+  statistic trees, the comparator, or a stream written by an older build.
+- **Working tree.** 44 source files hold uncommitted, IDE-made import rewrites (wildcards, and
+  `java.*` moved after the others, including in vendored Nayuki code). Phase 0's formatter commit
+  settles import style for good; drop or fold those edits into it.
+
+## Phase 0: safety net
+
+### Spotless and Checkstyle in `mvn verify`
+
+Nothing checks formatting or the `CLAUDE.md` rules mechanically, and the IDE already rewrites
+imports differently from what is committed.
+
+- **Where:** `pom.xml`, new `checkstyle.xml`, `checkstyle-imports.xml`, `.editorconfig`,
+  `.git-blame-ignore-revs`.
+- **Approach:** take jTD's setup as the template: Spotless 2.43 with import order
+  `,javax,java,\#`, unused imports removed, spaces, trailing whitespace; Checkstyle with
+  `AvoidStarImport`, `IllegalCatch`, `TodoComment`, `ImportControl` (the core may not import
+  `commons-cli`, a logging backend or `java.nio.file`), and `RegexpSinglelineJava` bans on
+  `printStackTrace` and `System.out`/`System.err` outside the CLI. Exclude `nayuki.arithcode`
+  and `dictionary.core` until they are replaced. An `.editorconfig` with IntelliJ keys (no
+  wildcard imports, the same import layout, spaces) keeps the IDE from undoing it, since `.idea/`
+  is not committed. The tabs-to-spaces reformat is its own commit, listed in
+  `.git-blame-ignore-revs`.
+
+### Dead code and leftovers
+
+- **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding` (no callers, foreign licences);
+  inline `// TODO` in `DictionaryBase.searchContent`/`update` and `DictionaryLCP.searchContent`;
+  commented-out code in `DictionaryBase` and `DictionaryLCP`; `Serializable` on `ByteSequence`;
+  `ByteBuilder.crop`; `DictionaryBase.toString` (a debug dump); the mixed `logger`/`LOG` names.
+- **Approach:** delete them, and every `@author` Javadoc tag (the user's decision; git records
+  authorship). The inline TODOs are covered by phase 3. The algs4 trees stay until phase 3
+  replaces them.
+
+### A specification of every coder
+
+"Same as the original" needs a written original to test against. Today the rules live partly
+in the thesis, partly in ExCom, partly nowhere (tie rules, the end-of-segment shortening, the
+distance sign).
+
+- **Where:** new `docs/ALGORITHM.md`.
+- **Approach:** one section per coder: its source and the exact rule it follows (context choice,
+  candidate window, tie rule, overlap, end-of-segment handling, field order and ranges), with any
+  intentional deviation named as such. Add the real ACB description from the research above as
+  the reference for phase 7. Tests and reviews cite the section a behaviour comes from. Keep
+  it a specification, not a history.
+
+### Test gaps
+
+- **Where:** `src/test/java`, `fixtures`.
+- **Approach:**
+  - A jqwik property over bit widths (distance 1-12, length 1-12) and segment sizes, not only the
+    defaults; narrow widths are where range and sign bugs hide.
+  - Degenerate inputs for every combination: long runs of one byte (the `bst` overflow), all 256
+    byte values, alternating pairs, an input ending in a long match. A combination that fails
+    gets a `knownRoundTripDefect` with its entry below until fixed.
+  - One seeded multi-segment input of a few MB, generated in memory, to exercise segment
+    boundaries at realistic sizes within the 5 s budget.
+  - Golden streams: one small compressed file per coder, checked in under `src/test/resources`,
+    that must decode forever. A format change that forgets to bump `VERSION` then fails a test.
+  - The thesis's worked `mississippi` example (§1.2) as a triplet-level test for the rule the
+    specification adopts.
+
+### Compression-ratio harness on a standard corpus
+
+The thesis-relevant number (ratio per coder, dictionary and entropy coder) has no reproducible
+harness, and no test guards it: a refactor that halves compression passes every test. Every
+phase below is measured with it.
+
+- **Where:** a `harness` source set (or test scope) with `RatioHarness`; a `CompressionStats`
+  record returned by `Compressor` beside the stream; a ratio-regression test.
+- **Approach:** run every settings combination over a corpus directory given on the command
+  line (Calgary, Canterbury), verify each round trip while measuring, and print ratio, bpc,
+  throughput, and bits per field (distance, length, literal, flag) as a table beside gzip, bzip2,
+  xz, ExCom and `AC.C` from the table above. The per-field accounting comes from
+  `CompressionStats` (the summed code lengths the entropy coder reports), which replaces the
+  core's debug logging of triplet counts. Pin the ratio of each combination on the test corpus
+  with a small tolerance, so a regression fails the build.
+
+### Performance harness and budget
+
+Nothing measures speed, and no test covers a large input.
+
+- **Where:** `PerformanceHarness` beside `RatioHarness`.
+- **Approach:** compress and decompress a fixed seeded corpus (text-like, binary, runs, random)
+  several times after warm-up, report MB/s per direction and coder, and exit non-zero when over
+  an explicit budget. Start the budget at today's numbers and tighten it as phases 3-5 land.
+  JMH only if the plain harness proves too noisy.
+
+## Phase 1: correctness and hardening
 
 ### Header bit widths allow allocating gigabytes
 
@@ -43,51 +328,159 @@ arithmetic model allocates `2^bits + 1` ints, plus as many again for the cumulat
 Compressing with `-d 30` fails with `OutOfMemoryError` at a 512 MB heap. The decoder builds the
 same model from the header, so a crafted file of about 30 bytes with a recomputed CRC should do
 the same. This breaks the rule that decoding bounds every count before allocating. Wide fields
-are not useful anyway: `-d 24` compressed a 3.5 KB text to 98% of its size.
+are not useful anyway: `-d 24` compressed a 3.5 KB text to 98% of its size. The same holds for
+the length frequencies: any count and any positive value is accepted, and a sum beyond the
+model's limit fails with `IllegalArgumentException` instead of `MalformedStreamException`.
 
-- **Where:** `CompressionSettings.MAX_FIELD_BITS`, `format.ContainerFormat.bits`,
-  `coding.AdaptiveArithmeticCompress`/`AdaptiveArithmeticDecompress`.
-- **Approach:** cap the widths to what the model supports (around 16), in the settings and
-  therefore in decoding. Add a test that a header with a wider field is rejected as malformed.
+- **Where:** `CompressionSettings.MAX_FIELD_BITS`, `format.ContainerFormat.bits` and the
+  frequency loop, `coding.AdaptiveArithmeticCompress`/`AdaptiveArithmeticDecompress`.
+- **Approach:** cap the widths at 16 (ExCom caps at 12) in the settings and therefore in
+  decoding; bound the frequency count by the length alphabet and each value by what the model
+  can total. Tests: a header with a wider field or oversized frequencies is rejected as
+  malformed.
 
 ### Bad payloads fail with arbitrary exceptions or garbage
 
 A well-formed container with a corrupt payload is not caught: an out-of-range rank gives an NPE
-or `IndexOutOfBoundsException`, not `MalformedStreamException`. `AdaptiveArithmeticDecompress`
-swallows an `IOException` and returns symbol 0, so decoding continues on invented data.
-`ValachTripletCoder.decodeStep` casts a `-1` end-of-stream read straight to a byte. Tests corrupt
-only the container, never the payload.
+or `IndexOutOfBoundsException`, not `MalformedStreamException`. A payload with fewer arrays than
+fields fails the same way. `AdaptiveArithmeticDecompress` swallows an `IOException` and returns
+symbol 0, so decoding continues on invented data, and reads past an end-of-stream symbol keep
+decoding. `ValachTripletCoder.decodeStep` casts a `-1` end-of-stream read straight to a byte.
+Tests corrupt only the container, never the payload.
 
 - **Where:** `Compressor.decompress`, every `decodeStep` in `triplets.coder`,
-  `dictionary.DictionaryBase.copy`/`select`, `coding.AdaptiveArithmeticDecompress`.
+  `dictionary.DictionaryBase.copy`/`select`, `coding.ByteToTripletConverter.read`,
+  `coding.AdaptiveArithmeticDecompress`.
 - **Approach:** validate distances and ranks against the dictionary size in the decoder and
-  throw `MalformedStreamException`; stop reading past a `-1`. Add a jqwik property that feeds
+  throw `MalformedStreamException`; stop at the first `-1`. Add a jqwik property that feeds
   random payloads inside a valid container through `Compressor.decompress` and accepts only
   success or `MalformedStreamException`.
 
 ### Swallowed I/O errors in the coding layer
 
-`printStackTrace` followed by carrying on, against the error rule in `CLAUDE.md`. In the encoder
-a swallowed failure produces a corrupt `.acb` without any error.
+`printStackTrace` followed by carrying on, against the error rule in `CLAUDE.md`, in seven
+places. In the encoder a swallowed failure produces a corrupt `.acb` without any error.
 
 - **Where:** `coding.AdaptiveArithmeticCompress` (`compress`, `terminate`),
-  `coding.AdaptiveArithmeticDecompress` (constructors, `decompress`), `coding.BitArrayComposer.compress`,
-  `coding.BitArrayDecomposer.decompress`.
+  `coding.AdaptiveArithmeticDecompress` (constructors, `decompress`),
+  `coding.BitArrayComposer.compress`, `coding.BitArrayDecomposer.decompress`.
 - **Approach:** these are in-memory streams, so rethrow as `UncheckedIOException` on the
   encoder side and as `MalformedStreamException` on the decoder side.
 
-### Constants the decoder depends on are not part of the format
+### CLI and logging hygiene
 
-`Dictionary.ReverseIndexComparator.MAGIC_CONST = 10` sorts contexts by their last 10 bytes
-only. That decides the ranks, so changing it silently breaks every existing file, yet it is
-neither in the header nor tied to `ContainerFormat.VERSION`. The same holds for the policy that
-the dictionary resets per segment while the entropy model lives for the whole stream.
+The CLI logs to standard output, where `-m` writes its measurements. Every error is printed
+twice (once by `System.err`, once by the logger). A decompression that fails half-way leaves a
+partial output file. The help path exits 0 even for a usage error. `ACBClient` fills mutable
+instance fields while parsing, keeps `Options` static, and reconfigures Log4j as a side effect of
+parsing. The core logs per triplet through lambdas that allocate on every call even when tracing
+is off, and `CLAUDE.md` names Log4j 2 while the user's other projects use SLF4J with Logback.
 
-- **Where:** `dictionary.Dictionary.ReverseIndexComparator`, `Compressor`, `format.ContainerFormat`.
-- **Approach:** name them as format constants beside `VERSION` (or make the context depth a
-  setting stored in the header), and measure what a longer context depth does to the ratio.
+- **Where:** `ACBClient`, `ACBFileIO`, `src/main/resources/log4j2.xml`, `pom.xml`, the coders'
+  `LOG.trace` calls, `CLAUDE.md`.
+- **Approach:**
+  - Parse into an immutable `CliRequest` record (paths, mode, measure target, settings, log
+    level) and apply the log level in `run`.
+  - Log to standard error only; print a failure once, as one line, and the stack trace only at
+    `DEBUG`; exit 0 for success and `-h`, 1 for a failure, 2 for bad usage.
+  - Write each output to a temporary sibling and move it into place when complete, so a failure
+    leaves nothing behind; refuse to overwrite an existing output unless `-f` is given.
+  - Drop the per-triplet trace logging from the core; `CompressionStats` (phase 0) and the test
+    fixture `TripletLog` cover inspection. Keep one `DEBUG` line per stream.
+  - Logging stack: stay on Log4j 2 (the user's decision). The core uses `log4j-api` only;
+    `log4j-core` is touched only by the CLI, for setting the level.
 
-## Entropy coding
+### Documentation errors
+
+`README.md` names the vendored package `cz.cvut.fit.acb.nayuki.arithcode`; it is
+`nayuki.arithcode`. It says nothing about the algs4 code.
+
+- **Where:** `README.md`.
+- **Approach:** fix the package name now; the licence section is rewritten when phases 3 and 4
+  remove the third-party code.
+
+## Phase 2: encoder-only ratio wins
+
+Each changes only the encoder's choices; files carry their widths, so old files still decode
+and `VERSION` stays. Measure each on Calgary with round trips verified, and commit separately.
+
+### The default length field is too narrow
+
+The default 4-bit length caps a match at 15 bytes; ExCom defaults to 7 bits (127). With
+`-tc valach -l 7` Calgary shrinks from 1,049,160 to 1,012,317 bytes (-3.5%) at the same speed:
+pic 75,937 to 60,259 (-21%), trans 23,257 to 20,100 (-14%), progl 19,608 to 17,996 (-8%),
+book1 unchanged. The distance default (`-d 6`) already matches ExCom's ±31.
+
+- **Where:** `CompressionSettings.DEFAULTS` and its default length frequencies, the `-l` help
+  text in `ACBClient`, `README.md`.
+- **Approach:** make 7 the default length width, re-tune the initial length frequencies for the
+  wider alphabet (the current ones model `AC.C`'s excess length, not a raw length), and pick the
+  defaults with the ratio harness rather than by hand; also make `valach` the default layout,
+  which the thesis and ExCom both found best. Longer term, code lengths beyond a cutoff with an
+  escape (for example Elias-gamma) so the cap disappears.
+
+### Ties pick the farthest match, and rank 0 is never a candidate
+
+The most frequent distances on book1 are 31, 30, 29, 28: the far edge of the window.
+`searchContent` keeps the first candidate of a given length (strict `>`) and scans from the
+farthest rank, while Broukhis's description picks the nearest, and ExCom walks outward from the
+context so the nearest wins by construction. Separately, `searchContent` scans from `lo + 1`, so
+when `lo` is clamped to 0, rank 0 is never a candidate although its distance fits. Both fixes
+together, measured on Calgary: `simple` 1,040,155 (-3.4%), `valach` 1,021,875 (-2.6%),
+`valach -d 8 -l 5` 985,371 (-3.7%), `valach -d 10 -l 6` 962,297 (-4.6%), all round-tripping.
+
+- **Where:** `dictionary.DictionaryBase.searchContent`, `dictionary.DictionaryLCP.searchContent`.
+- **Approach:** walk outward from the context as ExCom does (distance 0, -1, +1, -2, ...), so
+  the first longest match is the nearest and the walk can stop at `maxLength`; scan from `lo` and
+  skip only candidates with `ctx - i > maxDistance - 1`. Tests: among equal matches the nearest is
+  chosen; rank 0 is found. The LCP coder needs the opposite tie rule (phase 6), so the rule
+  belongs to the coder, not the dictionary.
+
+## Phase 3: dictionary engine
+
+### Replace the algs4 trees with one primitive order-statistic structure
+
+The three trees are the hot spot (85% of the time), the source of the `bst` crash, GPL-3 code in
+a non-profit-licensed project, and boxed: every position is an `Integer`, every comparison goes
+through `Comparator<Integer>`, every candidate costs an O(log n) `select`. `OrderStatisticTree`
+inherits a 16-method `Serializable` interface and uses five methods.
+
+- **Where:** `dictionary.core` (replaced), `dictionary.DictionaryBase`, `dictionary.DictionaryLCP`,
+  `DictionaryStructure`, `CompressionSettings`, `ACBProviderImpl`, `ACBClient` (`-ds`), `README.md`.
+- **Approach:** one `ContextIndex` over `int` positions: a chunked sorted array (a two-level
+  B+ tree: chunks of about 512 positions, split when full, a Fenwick tree over chunk sizes for
+  `rank` and `select`), with a cursor that walks neighbours in both directions without
+  `select`. `insert` reuses the slot the preceding search found for the same position, so the
+  first context of every step costs one descent, not two. Compare contexts over a padded
+  `byte[]` (sentinel bytes before the segment remove the bounds checks). Delete `BST`,
+  `RedBlackBST`, `BinarySearchST`, `OrderStatisticTree` and `BinarySearchTree`. Test the index
+  against a brute-force sorted-list oracle with jqwik (rank, select, neighbours after random
+  inserts, including equal contexts). Target from the prototype: book1's search loop under 0.6 s
+  at `-d 6`, under 1.6 s at `-d 10`.
+- **`-ds` (decided by the user: keep the seam, drop the menu):** it existed for the thesis's
+  experiment (§4.4, §5.2, Tables 5.4 and 5.5: time and memory of three backing structures), never
+  changed the output, and the tests ran every structure only to prove that. `ContextIndex` stays
+  an interface with one production implementation. The brute-force oracle lives in tests, and
+  a second fast structure (the encoder-only presorted Fenwick, or a plain `int[]` with
+  `arraycopy` as the thesis's `BinarySearchST` baseline) goes in the performance harness if a
+  comparison is wanted. Remove `DictionaryStructure`, `-ds`, and that dimension of
+  `SettingsCombination`, and record the thesis comparison in `docs/ARCHITECTURE.md`.
+
+### Byte comparisons through `ByteSequence`
+
+Every byte of every match goes through `byteAt` with bounds checks, `copy` allocates a
+`ByteBuilder` and arrays per triplet, and the encoder and decoder see different
+`ByteSequence` types, which the coders tell apart by downcasting.
+
+- **Where:** `dictionary.ByteSequence`, `ByteArray`, `ByteBuilder`, `DictionaryBase.match`/`copy`,
+  every coder.
+- **Approach:** one `SegmentBuffer` (a padded `byte[]` with a fill mark) for both sides. Forward
+  matching uses `Arrays.mismatch` (vectorised in the JDK); a decoder copy is one `arraycopy`, or a
+  byte loop when the match overlaps its own output. Related faults go with it: `ByteBuilder.clone`
+  copies the whole capacity, `ByteBuilder.equals` compares contents while `hashCode` hashes
+  array identity, and `ByteArray.array()` returns its internal array.
+
+## Phase 4: entropy coding
 
 ### Frequency table costs O(alphabet) per symbol and never rescales
 
@@ -96,12 +489,19 @@ the dictionary resets per segment while the entropy model lives for the whole st
 On a 3.5 KB text, `-d 16` took 169 ms against 31 ms at the defaults, and the ratio went from
 0.58 to 0.74. Frequencies are never halved and one model per field lives for the whole stream,
 so after about 2^30 symbols in a field Nayuki's `MAX_TOTAL` check throws and large inputs fail
-to compress.
+to compress. Nayuki's coder also emits one bit at a time and checks invariants on every symbol
+(it is a teaching implementation, by its own readme). The field streams are looked up in a
+`HashMap<Integer, ...>` per symbol.
 
-- **Where:** `coding.AdaptiveArithmeticCompress`, `coding.AdaptiveArithmeticDecompress`.
-- **Approach:** our own `FrequencyTable` in `coding`: a Fenwick tree for cumulative counts with
-  periodic halving, which also lets the model follow changes in the data. The vendored Nayuki
-  code stays untouched. Changes coded output, so it bumps `VERSION`.
+- **Where:** `coding` (new), `nayuki.arithcode` and `Readme-arith-coding.markdown` (deleted),
+  `README.md` licence section, `src/test/java/nayuki`.
+- **Approach:** our own byte-oriented range coder (32-bit range, carry propagation as in LZMA,
+  totals up to 2^16) taking `(cumulative, frequency, total)`, so it also serves the per-step
+  distributions of phase 7; an `AdaptiveFrequencyModel` with periodic halving (ExCom halves at
+  2^14; measure the limit), a linear cumulative scan for small alphabets and a Fenwick tree for
+  large ones; adaptive binary models for flags. Fields index an array, not a map. Verify the
+  coder against a reference model on random distributions, then delete the vendored package, its
+  tests and its readme together. Bumps `VERSION`.
 
 ### The bit-array writer does not fit the per-field template
 
@@ -109,72 +509,54 @@ to compress.
 and `TripletToByteConverter.finish` has to skip the nulls. The bit-array writer is not per-field
 at all.
 
-- **Where:** `coding.BitArrayComposer`, `coding.TripletToByteConverter`.
-- **Approach:** a separate implementation of the field sink (see the split below) that writes
-  one interleaved bit stream, not a subclass of the per-field template.
+- **Where:** `coding.BitArrayComposer`, `coding.BitArrayDecomposer`, `coding.TripletToByteConverter`.
+- **Approach:** a separate implementation of the field sink (phase 5) that writes one bit stream.
+  Its only use is measuring the entropy coder's gain; keep it for that, as a small class.
 
-## Encoder/decoder symmetry
+## Phase 5: encoder/decoder symmetry and container v2
+
+The big refactor, on a tested and measured base. Container changes are batched into one
+`VERSION` bump.
 
 ### One update rule, shared by both sides
 
 Each coder class is both encoder and decoder, and its mode depends on the runtime type of its
 `ByteSequence`: every `decodeStep` downcasts to `ByteBuilder`. `encodeStep` and `decodeStep`
 each restate the dictionary update and the end-of-segment shortening of a match (for example
-`ValachTripletCoder` lines 41-53 against 85-90). That duplication is where the LCP defect lives.
-
-This replaces the earlier "Triplets as records" option, which held that records help only the
-encoder: their value is on the decoder side, because the update rule would then exist once.
+`ValachTripletCoder` lines 41-53 against 85-90). That duplication is where the LCP defect lives,
+and where `AC.C`'s own decoder went wrong.
 
 - **Where:** `triplets.coder` (all coders), `triplets.TripletSupplier`, `utils.TripletUtils`,
   `dictionary.DictionaryInfo`.
 - **Approach:** a sealed `Triplet` (`Literal`, `Match`, `MatchWithLiteral`); per coder a pure
-  layout (triplet to fields and back) and an encoder-only parser (`DictionaryInfo` to
+  layout (triplet to field symbols and back) and an encoder-only parser (search result to
   `Triplet`); one `apply(Triplet, SegmentState)` that updates dictionary and position, used by
-  both sides. Measure the allocation cost with the benchmarks rather than assume it.
-  `DictionaryInfo` becomes a sealed `NoMatch | Match` record instead of a `-1` content.
+  both sides. `DictionaryInfo` becomes a sealed `NoMatch | Match` record instead of a `-1`
+  content. Measure the allocation cost with the harness rather than assume it.
 
 ### Split the two-way triplet processor
 
 `TripletProcessor` has `read`, `write`, `getSize` and `setSize`; the writer throws on the read
 half and the reader on the write half. The segment size travels through this field channel and
-lands in `payload[0]`, which `Compressor.decompress` then has to validate.
+lands in `payload[0]`, which `Compressor.decompress` then has to validate. `Compressor.compress`
+documents that every segment but the last has the first one's size, and never checks it.
 
 - **Where:** `triplets.TripletProcessor`, `coding.TripletWriter`,
   `coding.TripletToByteConverter`, `coding.ByteToTripletConverter`, `Compressor`,
   `format.StreamHeader`.
 - **Approach:** a field sink and a field source as separate interfaces; the segment size moves
-  into `StreamHeader`.
+  into `StreamHeader`; a segment of the wrong size is rejected.
 
 ### Split the dictionary by audience
 
 `Dictionary` mixes encoder methods (`search`, `searchContent`), decoder methods (`copy`,
 `select`) and test-only members (`clone`, and `equals`/`hashCode`, used only by
-`fixtures.DictionarySnapshots`), and exposes rank arithmetic. Related faults:
+`fixtures.DictionarySnapshots`), and exposes rank arithmetic.
 
-- `ByteBuilder.clone` copies the whole capacity, so the clone's length is its capacity;
-  `DictionaryBase.equals` compares a prefix to work around it.
-- `ByteBuilder.equals` compares contents but `hashCode` hashes array identity.
-- `ByteArray.array()` returns its internal array.
-- `OrderStatisticTree` inherits a 16-method `Serializable` interface and uses five methods;
-  keys are boxed `Integer`s on the hot path.
-
-- **Where:** `dictionary.Dictionary`, `dictionary.DictionaryBase`, `dictionary.ByteBuilder`,
-  `dictionary.ByteArray`, `dictionary.core`, `fixtures.DictionarySnapshots`.
-- **Approach:** narrow encoder and decoder views of the dictionary; snapshots built by the test
-  harness from public queries instead of `clone`/`equals` on production classes; fix
-  `ByteBuilder` clone and equality; an order-statistic interface of the five methods used,
-  ideally over `int` keys.
-
-### Probable off-by-one in the candidate window
-
-`DictionaryBase.searchContent` scans from `lo + 1`. When `lo` is clamped to 0, rank 0 is never
-a candidate, although its distance fits the field. Costs ratio, not correctness.
-
-- **Where:** `dictionary.DictionaryBase.searchContent`, `dictionary.DictionaryLCP.searchContent`.
-- **Approach:** confirm with a test on a context whose rank is below `maxDistance`, then start
-  at `lo` when clamped. Changes coded output, so it bumps `VERSION`.
-
-## Container format v2
+- **Where:** `dictionary.Dictionary`, `dictionary.DictionaryBase`, `fixtures.DictionarySnapshots`.
+- **Approach:** narrow encoder and decoder views over the `ContextIndex` from phase 3; snapshots
+  built by the test harness from public queries instead of `clone`/`equals` on production
+  classes.
 
 ### Record the length; drop the end-of-stream sentinels
 
@@ -184,41 +566,36 @@ symbol, which is why its alphabet is `2^n + 1`.
 
 - **Where:** `format.ContainerFormat`, `format.StreamHeader`, `triplets.coder.BaseTripletCoder`,
   `Compressor.decompress`, `coding`.
-- **Approach:** store the original length (or segment count and last segment size) in the
-  header and let the decoder loop by count. The sentinels, `DecodeFlag` and the EOF symbols go
-  away. Bumps `VERSION`.
+- **Approach:** store the original length in the header and let the decoder loop by count. The
+  sentinels, `DecodeFlag` and the EOF symbols go away. All fields of a segment go interleaved into
+  one range-coded stream, in the order the decoder reads them (as ExCom does), which drops the
+  per-field length prefixes and makes the payload streamable.
 
-### Per-segment blocks
+### Per-segment blocks and a stored fallback
 
 Payload arrays are per field and span the whole file, the payload is held as one
 `List<byte[]>`, and `ContainerFormat` reads the whole file. Segmenting bounds the dictionary but
-not memory, and the entropy model shared across segments blocks parallel compression.
+not memory, and the entropy model shared across segments blocks parallel compression. Random
+input grows by 10.8%.
 
 - **Where:** `format.ContainerFormat`, `Compressor`, `ACBFileIO`.
-- **Approach:** one block per segment (raw length, then the byte length of each field), streamed
-  in and out. Decide deliberately whether the entropy model resets per segment and measure what
-  the reset costs in ratio. Bumps `VERSION`.
+- **Approach:** one block per segment (raw length, coded length, then the coded bytes, or the raw
+  bytes when coding did not help), streamed in and out. Decide deliberately whether the entropy
+  model resets per segment and measure what the reset costs in ratio.
 
-## Enforced style and cleanup
+### Constants the decoder depends on are not part of the format
 
-### Spotless and Checkstyle in `mvn verify`
+`Dictionary.ReverseIndexComparator.MAGIC_CONST = 10` sorts contexts by their last 10 bytes
+only, compared as signed bytes. That decides the ranks, so changing it silently breaks every
+existing file, yet it is neither in the header nor tied to `ContainerFormat.VERSION`. The same
+holds for the policy that the dictionary resets per segment while the entropy model lives for the
+whole stream.
 
-Nothing checks formatting or the `CLAUDE.md` rules mechanically.
-
-- **Where:** `pom.xml`, new `checkstyle.xml` and `checkstyle-imports.xml`.
-- **Approach:** Spotless (import order matching IntelliJ, spaces, no unused imports) and
-  Checkstyle with `ImportControl` (the core may not import `commons-cli` or `java.io` file
-  access), `IllegalCatch`, and `RegexpSinglelineJava` bans on `printStackTrace`, inline `TODO`
-  and `System.out` outside the CLI. `nayuki.arithcode` is excluded. The tabs-to-spaces reformat
-  is its own commit, listed in `.git-blame-ignore-revs`.
-
-### Dead code and leftovers
-
-- **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding` (no callers); inline `// TODO` in
-  `DictionaryBase.searchContent`/`update` and `DictionaryLCP.searchContent`; commented-out code
-  in `DictionaryBase` and `DictionaryLCP`; `Serializable` on `ByteSequence` and
-  `BinarySearchTree`; `ByteBuilder.crop`.
-- **Approach:** delete them; the inline TODOs are covered by the performance entry below.
+- **Where:** `dictionary.Dictionary.ReverseIndexComparator`, `Compressor`, `format.ContainerFormat`.
+- **Approach:** make the context depth a setting stored in the header, compare unsigned (the
+  byte order every source assumes, and the one "lexicographically smaller" in the LCP
+  specification means), and name the remaining policies as format constants beside `VERSION`.
+  Measure what a longer depth does to ratio and speed; ACB treats it as the main control.
 
 ### Coder choice lives in several switches
 
@@ -227,52 +604,119 @@ Choosing a triplet coding picks both the dictionary and the coder in two `switch
 switches do force every case to be handled, so this is low priority.
 
 - **Where:** `ACBProviderImpl`, `TripletCoding`, `format.ContainerFormat`.
-- **Approach:** a `CoderScheme` value carrying its dictionary choice and format code, so a new
-  coder is added in one place.
+- **Approach:** a `CoderScheme` value carrying its parser, layout and format code, so a new coder
+  (phase 7) is added in one place. `CompressionSettings` gets a narrow factory and stops
+  restating seven components in every `withX`; `lengthFrequencies` becomes an immutable value
+  instead of a defensively copied `int[]` with a hand-written `equals`.
 
-### CLI parses into mutable fields
+## Phase 6: thesis coders made faithful
 
-`ACBClient` fills mutable instance fields during parsing, keeps `Options` static, and
-reconfigures Log4j as a side effect of parsing.
+### The context reference is always the predecessor
 
-- **Where:** `ACBClient`.
-- **Approach:** parse into an immutable `CliRequest` record (paths, mode, measure target,
-  settings, log level) and apply the log level in `run`.
+`searchContext` returns `rank - 1`, the context sorted just below the current one. The thesis
+example takes the greater index; ExCom and Buyanovsky's Lemma 3 take whichever neighbour agrees
+with the current context longer, which puts the best contents nearer the reference and shrinks
+distances. Decoding repeats the choice, so it changes the format.
 
-### Project documentation
+- **Where:** the context lookup in `dictionary`, `docs/ALGORITHM.md`.
+- **Approach:** take the neighbour with the longer backward match (ties to the predecessor),
+  measure on Calgary together with the nearest-tie walk. Bumps `VERSION`.
 
-The project has no rationale document, and the vendored Nayuki readme
-(`Readme-arith-coding.markdown`) sits at the repository root instead of beside its package.
+### LCP dictionary diverges between encoder and decoder
 
-- **Where:** `docs/`, repository root.
-- **Approach:** `docs/ARCHITECTURE.md` for the why behind the design. Move the Nayuki readme
-  beside its package and update the link in `README.md`.
+The decoder's dictionary differs from the encoder's after a few updates, and segmented
+decoding calls `select` with a negative rank. `ACBClient` refuses `-tc lcp` until this is
+closed, because the files it wrote did not decompress. The thesis-era build, rebuilt and run on
+Calgary: LCP output decompresses for 0 of the 10 text files, and every coder crashes on the 4
+binary files (the signed-byte bug fixed in `32d5071`), so Table 5.8's LCP and binary-file numbers
+came from output that was never decoded. What is known:
 
-## Measurement and performance
+- `DictionaryLCP.searchContent` mixes ranks and text positions: `bestIdx` holds a rank, but the
+  equal-length branch assigns it `cnt` (a position) and compares `bestIdx + bestLen` as a
+  position.
+- It picks the second best by match length against the text, which the decoder cannot see, and
+  the decoder searches from the best content's position with the best itself still a candidate.
+- The thesis specification (§3.3.1) is sound: best = the lexicographically smallest content of
+  maximal match length L; second = a lexicographically smaller one; send `L - lcp(best, second)`,
+  which is never negative or zero. It misses one rule: comparisons may only read bytes the decoder
+  already has, so order and LCP are computed on bytes before the current index, and a content
+  truncated there counts as smaller.
 
-### Compression-ratio benchmark on a standard corpus
+- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`, the `-tc` check in
+  `ACBClient`, `SettingsCombination.knownDictionaryDefect`.
+- **Approach:** implement §3.3.1 exactly, with the visibility rule, efficiently. The encoder
+  already knows every candidate's match length m(c) from the window scan. A candidate that
+  matched less than L sorts below the best exactly when its byte at m(c) is below the text's byte
+  there (or it is truncated), and then its LCP with the best is m(c). So
+  `lcp = max m(c)` over those candidates, one byte comparison each, with no extra scan. Only
+  the tied candidates at L need a comparison beyond L to find the smallest. The decoder, knowing only
+  the best, takes the largest LCP with the best among the candidates that sort below it: one
+  `Arrays.mismatch` per candidate, and only when the sent length is non-zero. The length cap then
+  applies to `L - lcp`, which lets matches exceed `2^bits - 1`, the point of the method. Remove
+  the CLI refusal and the test exclusion together, and re-measure Table 5.8 with round trips
+  verified.
 
-The thesis-relevant number - ratio per triplet coder, dictionary structure and entropy coder -
-has no reproducible harness, and no test guards it: a refactor that halves compression passes
-every test. Build it before the structural changes above, so each one is measured.
+### Literals are coded order-0
 
-- **Where:** new `cz.cvut.fit.acb.RatioHarness` (test scope or a separate source set), a
-  ratio-regression test.
-- **Approach:** run every settings combination over a standard corpus (Canterbury), report
-  ratio and throughput as a table, and verify each round trip while measuring. Pin the current
-  ratios per combination on the test corpus with a small tolerance, so a regression fails.
+Every triplet ends in a literal coded by one order-0 model. On book1 an order-1 model would take
+the literals from 108 KB to about 94 KB, and order-2 to about 84 KB (a static, optimistic
+estimate). A literal after a match that stopped on a mismatch can never equal the byte the
+chosen content continues with, yet the model still reserves probability for it. `AC.C` codes
+book1's literals in 3.9 bits against 5.05 here, by exclusion and funnel forecast.
 
-### Microbenchmarks and a performance budget
+- **Where:** the literal field of each coder, `coding`.
+- **Approach:** exclude the byte the chosen content predicts (and, as in `AC.C`, the bytes of
+  every candidate that matched as long), and context the literal model on the previous byte
+  with a fallback while contexts are young. Named as a deviation for the thesis coders in
+  `docs/ALGORITHM.md` if kept on by default. Bumps `VERSION`.
 
-`DictionaryBase.searchContent` calls `ost.select(i)` for every candidate instead of walking
-neighbours, and `update` inserts keys one at a time; nothing measures either. No test covers
-large inputs.
+### Fixed segments instead of an adaptive dictionary lifetime
 
-- **Where:** `dictionary.DictionaryBase`, `dictionary.DictionaryLCP`, `dictionary.core`.
-- **Approach:** JMH benchmarks for dictionary search/update and each coder; a
-  `PerformanceHarness` with an explicit budget that exits non-zero when over, run after
-  changing per-byte code and including one large input. Then optimise the neighbour walk and
-  batched insert.
+Each 1 MB segment starts from an empty dictionary, however well the old one was doing. ExCom
+keeps one dictionary up to 2^20 contexts, stops inserting when full, and clears it when the
+compression ratio degrades by 0.1% (checked every 512 bytes once 2^18 contexts are in).
+ExCom bases that decision on `bitsWritten()` in the encoder and `bitsRead()` in the decoder,
+which differ for an arithmetic coder (the decoder reads ahead), so its encoder and decoder can
+clear at different points. Do not copy that. `AC.C` instead replaces the weaker neighbour once
+its frame is full.
+
+- **Where:** `Compressor`, `CompressionSettings.segmentSize`, `dictionary`.
+- **Approach:** measure against a policy both sides compute from shared model state only (for
+  example the summed code length of coded symbols, not I/O bit counts), or keep fixed segments
+  if the gain is small: fixed segments are what make parallel compression possible.
+
+## Phase 7: Buyanovsky's associative coder
+
+### Real ACB as a coder of its own
+
+The triplet coders are Salomon's simplification. Buyanovsky's own coder, as described above, is
+14% smaller than ExCom and 17% smaller than this coder's best on Calgary, and even at the
+narrowest funnel (16 per side) it beats ExCom's best by 9%. A fixed window of ±2^(d-1) ranks
+cannot get there: ACB admits only contexts that agree with the current one beyond the noise
+level, weights them by that agreement, and codes the position by those weights. This
+supersedes the earlier "candidate set is a fixed window" entry.
+
+- **Where:** new `-tc acb` coder scheme (`CoderScheme` from phase 5), its parser and model in the
+  core, `docs/ALGORITHM.md` (the specification), the harness.
+- **Approach:** implement the model from the specification, not from `AC.C` (which has no
+  licence), on the phase 3-5 base:
+  - The funnel: walk outward from the context slot with the `ContextIndex` cursor while the
+    bit-level context agreement exceeds `log2(Kc·N/500)`, compared eight bytes at a time as
+    big-endian `long`s with `numberOfLeadingZeros` of the XOR. Cap the width with a setting in the
+    header, with presets at ACB 1.17's S = 16, 55 and 100.
+  - Position coding with weights from agreement and rank distance plus an adaptive escape, by
+    the phase 4 range coder from a per-step cumulative table.
+  - Length as the excess over the best better-weighted candidate's LCP, with the boost from
+    later candidates; the literal only after a mismatch, with exclusions and the funnel forecast.
+  - The frame: one dictionary per segment, the neighbour-replacement policy when full, and the
+    long-match insertion skip; measure each against simply keeping everything.
+  - Round trips on Calgary for every width and level, since the 1994 code itself loses symmetry
+    at `Kc 2`. Targets: at most 850 KB on Calgary, at least 2 MB/s each way.
+  - Afterwards, as research: Buyanovsky's own difference-bit-and-extract coding of the paper, and
+    modern modelling (mixing the funnel's literal predictions, secondary estimation) toward ACB
+    2.00's 779 KB.
+
+## Phase 8: throughput and scale
 
 ### Parallel segment compression
 
@@ -281,4 +725,29 @@ entropy model shared across the stream ties them together.
 
 - **Where:** `Compressor.compress`, `ACBFileIO.SegmentReader`.
 - **Approach:** after per-segment blocks, compress segments on a bounded executor and write
-  them in order; decode segments in parallel the same way.
+  them in order; decode segments in parallel the same way. The core stays free of threads it
+  does not own: the executor is passed in.
+
+### Streaming instead of whole files in memory
+
+`ContainerFormat.decode` reads the whole compressed file and `Compressor.decompress(byte[])`
+builds the whole output, so file size is bounded by the heap and by 2 GB arrays.
+
+- **Where:** `ACBFileIO`, `format.ContainerFormat`, `Compressor`.
+- **Approach:** read and write block by block through channels; keep the in-memory
+  `byte[]` API as a convenience over the streaming one. Test with a generated input above 2 GB
+  in the performance harness, not in the unit suite.
+
+## Phase 9: documentation and final measurements
+
+### Project documentation
+
+There is no rationale document, and the README has to follow every phase above.
+
+- **Where:** `docs/ARCHITECTURE.md`, `docs/ALGORITHM.md`, `README.md`, `CLAUDE.md`.
+- **Approach:** `docs/ARCHITECTURE.md` for the why: the headless core and its one-way package
+  dependencies, the shared update rule, why one dictionary structure, the format's versioning,
+  the history of the thesis measurements and why Table 5.8 was redone. The README gets the final
+  harness table (every coder beside gzip, bzip2, xz, ExCom and `AC.C`), the options that exist,
+  and a licence section without third-party code. `CLAUDE.md` changes only where a constraint
+  changed (package list, logging stack, the removed `-ds`).
