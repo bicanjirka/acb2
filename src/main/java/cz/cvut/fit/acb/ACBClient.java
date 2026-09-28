@@ -38,7 +38,6 @@ public class ACBClient {
 	private static final int EXIT_CODE_OK = 0;
 	private static final int EXIT_CODE_FATAL = 1;
 	private static final int EXIT_CODE_HELP = 2;
-	private static final int MAX_FIELD_BITS = 30;
 	private static final Options options = new Options();
 	private static final Logger logger = LogManager.getLogger();
 
@@ -80,7 +79,7 @@ public class ACBClient {
 				.longOpt("arith-freq")
 				.hasArg()
 				.argName("freq")
-				.desc("<freq> is comma separated array of positive integers defining init values of the arithmetic coding frequency table for lengths (default is 45,13,10,7,5,4, then 1 for the rest); decompress with the same values")
+				.desc("<freq> is comma separated array of positive integers defining init values of the arithmetic coding frequency table for lengths (default is 45,13,10,7,5,4, then 1 for the rest)")
 				.build();
 		options.addOption(freq);
 		Option tripCoder = Option.builder("tc")
@@ -88,7 +87,7 @@ public class ACBClient {
 				.hasArg()
 				.argName("coder")
 				.desc("<coder> represents triplet coding strategy (default is simple)\n" +
-						"values = " + Arrays.toString(ACBProviderParameters.TripletCoderE.values()))
+						"values = " + Arrays.toString(TripletCoding.values()))
 				.build();
 		options.addOption(tripCoder);
 		Option struct = Option.builder("ds")
@@ -96,7 +95,7 @@ public class ACBClient {
 				.hasArg()
 				.argName("struct")
 				.desc("<struct> represents data structure used in dictionary (default is red_black)\n" +
-						"values = " + Arrays.toString(ACBProviderParameters.OrderStatisticTreeE.values()))
+						"values = " + Arrays.toString(DictionaryStructure.values()))
 				.build();
 		options.addOption(struct);
 	}
@@ -139,13 +138,13 @@ public class ACBClient {
 		}
 		
 		CommandLineParser parser = new DefaultParser();
-		ACBProviderParameters params;
+		CompressionSettings settings;
 		try {
 			CommandLine cmd = parser.parse(options, args);
 			if (cmd.hasOption('h')) {
 				return EXIT_CODE_HELP;
 			}
-			params = parseCommandLine(cmd);
+			settings = parseCommandLine(cmd);
 		} catch (ParseException exp) {
 			System.err.println("Parsing failed.  Reason: " + exp.getMessage());
 			logger.error("Parsing failed.  Reason: {}", exp.getMessage());
@@ -153,15 +152,11 @@ public class ACBClient {
 		}
 		
 		logger.info("{} {}", this.compress ? "compressing" : "decompressing", this.input);
-		logger.debug("distance bits = {}", params.distanceBits);
-		logger.debug("length bits = {}", params.lengthBits);
-		logger.debug("triplet coding = {}", params.tc.name());
-		logger.debug("dictionary structure = {}", params.tr.name());
-		logger.debug("triplet coder = {}", params.cd.name());
+		logger.debug("settings = {}", settings);
 		logger.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
 		
 		ACBFileIO io = new ACBFileIO();
-		FileAction action = this.compress ? compression(io, params) : decompression(io, params.tr);
+		FileAction action = this.compress ? compression(io, settings) : decompression(io, settings.dictionaryStructure());
 		
 		try {
 			List<String> measurements = new ArrayList<>();
@@ -223,10 +218,10 @@ public class ACBClient {
 		return jobs;
 	}
 	
-	private static FileAction compression(ACBFileIO io, ACBProviderParameters params) {
-		ACBProvider provider = new ACBProviderImpl(params);
+	private static FileAction compression(ACBFileIO io, CompressionSettings settings) {
+		ACBProvider provider = new ACBProviderImpl(settings);
 		ACB acb = new ACB(provider);
-		StreamHeader header = StreamHeader.of(params);
+		StreamHeader header = StreamHeader.of(settings);
 		return (source, target) -> ChainBuilder.create(io::openParse)
 				.chain(acb::compress)
 				.chain(provider.getT2BConverter())
@@ -235,10 +230,10 @@ public class ACBClient {
 	}
 	
 	/** Coding settings come from each file's header; only the dictionary structure is chosen here. */
-	private static FileAction decompression(ACBFileIO io, ACBProviderParameters.OrderStatisticTreeE structure) {
+	private static FileAction decompression(ACBFileIO io, DictionaryStructure structure) {
 		return (source, target) -> {
 			CompressedStream stream = io.openCompressed(source);
-			ACBProvider provider = new ACBProviderImpl(stream.header().toParameters(structure));
+			ACBProvider provider = new ACBProviderImpl(stream.header().toSettings(structure));
 			ACB acb = new ACB(provider);
 			ChainBuilder.create(provider.getB2TConverter())
 					.chain(acb::decompress)
@@ -254,109 +249,87 @@ public class ACBClient {
 	private record FileJob(Path source, Path target) {
 	}
 	
-	private ACBProviderParameters parseCommandLine(CommandLine cmd) throws ParseException {
-		ACBProviderParameters params = new ACBProviderParameters();
+	private CompressionSettings parseCommandLine(CommandLine cmd) throws ParseException {
 		String[] args = cmd.getArgs();
 		if (args == null || args.length != 2) {
 			throw new ParseException("Bad usage: arguments [input, output] required, found: " + Arrays.toString(args));
 		}
-		input = args[0];
-		output = args[1];
-		
-		if (cmd.hasOption("de")) {
-			compress = false;
-		}
+		this.input = args[0];
+		this.output = args[1];
+		this.compress = !cmd.hasOption("de");
 		
 		if (cmd.hasOption("log")) {
 			String val = cmd.getOptionValue("log");
+			Level level;
+			try {
+				level = Level.valueOf(val);
+			} catch (IllegalArgumentException e) {
+				throw new ParseException("Invalid log level: " + val + ", allowed values: " + Arrays.toString(Level.values()));
+			}
 			LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
 			Configuration config = ctx.getConfiguration();
 			LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-			Level level = null;
-			try {
-				level = Level.valueOf(val);
-			} catch (Exception e) {
-				throw new ParseException("Invalid log level: " + e.getMessage() + "\nallowed constants = " + Arrays.toString(Level.values()));
-			}
 			loggerConfig.setLevel(level);
-			ctx.updateLoggers();  // This causes all Loggers to refetch information from their LoggerConfig.
-			logger.info("Log level changed to " + level.name());
-		}
-		
-		if (cmd.hasOption("d")) {
-			String val = cmd.getOptionValue("d");
-			int d;
-			try {
-				d = Integer.parseInt(val);
-				if (d < 1 || d > MAX_FIELD_BITS) {
-					throw new ParseException("distance must be between 1 and " + MAX_FIELD_BITS + ": " + val);
-				}
-			} catch (NumberFormatException e) {
-				throw new ParseException("distance is not a number: " + val);
-			}
-			params.distanceBits = d;
-		}
-		
-		if (cmd.hasOption("l")) {
-			String val = cmd.getOptionValue("l");
-			int l;
-			try {
-				l = Integer.parseInt(val);
-				if (l < 1 || l > MAX_FIELD_BITS) {
-					throw new ParseException("length must be between 1 and " + MAX_FIELD_BITS + ": " + val);
-				}
-			} catch (NumberFormatException e) {
-				throw new ParseException("length is not a number: " + val);
-			}
-			params.lengthBits = l;
-		}
-		
-		if (cmd.hasOption("bs")) {
-			params.cd = ACBProviderParameters.CoderE.BIT_ARRAY;
-		} else {
-			params.cd = ACBProviderParameters.CoderE.ADAPTIVE_ARITHMETIC;
-		}
-		
-		if (cmd.hasOption("af")) {
-			String val = cmd.getOptionValue("af");
-			try {
-				params.lengthFrequencies = Arrays.stream(val.split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
-			} catch (NumberFormatException e) {
-				throw new ParseException("arith-freq is not a comma separated list of integers: " + val);
-			}
-			if (Arrays.stream(params.lengthFrequencies).anyMatch(f -> f <= 0)) {
-				throw new ParseException("arith-freq values must be greater than zero: " + val);
-			}
+			ctx.updateLoggers();
+			logger.info("Log level changed to {}", level.name());
 		}
 		
 		if (cmd.hasOption("m")) {
-			measure = true;
-			measureOutput = Optional.ofNullable(cmd.getOptionValue("m"));
+			this.measure = true;
+			this.measureOutput = Optional.ofNullable(cmd.getOptionValue("m"));
 		}
 		
-		if (cmd.hasOption("tc")) {
-			String val = cmd.getOptionValue("tc");
-			ACBProviderParameters.TripletCoderE e = Arrays.stream(ACBProviderParameters.TripletCoderE.values())
-					.filter(e1 -> e1.name().equalsIgnoreCase(val)).findAny().orElse(null);
-			if (e == null) {
-				throw new ParseException("triplet-coder invalid: " + val + ", allowed values: " + Arrays.toString(ACBProviderParameters.TripletCoderE.values()));
+		CompressionSettings settings = CompressionSettings.defaults();
+		try {
+			if (cmd.hasOption("d")) {
+				settings = settings.withDistanceBits(parseInt(cmd.getOptionValue("d"), "distance"));
 			}
-			if (e == ACBProviderParameters.TripletCoderE.LCP) {
-				throw new ParseException("triplet-coder LCP is experimental and its output does not decompress yet");
+			if (cmd.hasOption("l")) {
+				settings = settings.withLengthBits(parseInt(cmd.getOptionValue("l"), "length"));
 			}
-			params.tc = e;
+			if (cmd.hasOption("bs")) {
+				settings = settings.withEntropyCoding(EntropyCoding.BIT_ARRAY);
+			}
+			if (cmd.hasOption("af")) {
+				String val = cmd.getOptionValue("af");
+				try {
+					settings = settings.withLengthFrequencies(
+							Arrays.stream(val.split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray());
+				} catch (NumberFormatException e) {
+					throw new ParseException("arith-freq is not a comma separated list of integers: " + val);
+				}
+			}
+			if (cmd.hasOption("tc")) {
+				TripletCoding coding = parseEnum(TripletCoding.class, cmd.getOptionValue("tc"), "triplet-coder");
+				if (coding == TripletCoding.LCP) {
+					throw new ParseException("triplet-coder LCP is experimental and its output does not decompress yet");
+				}
+				settings = settings.withTripletCoding(coding);
+			}
+			if (cmd.hasOption("ds")) {
+				settings = settings.withDictionaryStructure(
+						parseEnum(DictionaryStructure.class, cmd.getOptionValue("ds"), "dictionary-structure"));
+			}
+		} catch (IllegalArgumentException e) {
+			throw new ParseException(e.getMessage());
 		}
-		
-		if (cmd.hasOption("ds")) {
-			String val = cmd.getOptionValue("ds");
-			ACBProviderParameters.OrderStatisticTreeE e = Arrays.stream(ACBProviderParameters.OrderStatisticTreeE.values())
-					.filter(e1 -> e1.name().equalsIgnoreCase(val)).findAny().orElse(null);
-			if (e == null) {
-				throw new ParseException("dictionary-structure invalid: " + val + ", allowed values: " + Arrays.toString(ACBProviderParameters.OrderStatisticTreeE.values()));
-			}
-			params.tr = e;
+		return settings;
+	}
+	
+	private static int parseInt(String val, String what) throws ParseException {
+		try {
+			return Integer.parseInt(val);
+		} catch (NumberFormatException e) {
+			throw new ParseException(what + " is not a number: " + val);
 		}
-		
-		return params;
+	}
+	
+	private static <E extends Enum<E>> E parseEnum(Class<E> type, String val, String what) throws ParseException {
+		for (E constant : type.getEnumConstants()) {
+			if (constant.name().equalsIgnoreCase(val)) {
+				return constant;
+			}
+		}
+		throw new ParseException(what + " invalid: " + val + ", allowed values: " + Arrays.toString(type.getEnumConstants()));
 	}
 }

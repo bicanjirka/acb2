@@ -6,19 +6,19 @@ import java.util.stream.Stream;
 
 import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.ACBProviderImpl;
-import cz.cvut.fit.acb.ACBProviderParameters;
-import cz.cvut.fit.acb.ACBProviderParameters.CoderE;
-import cz.cvut.fit.acb.ACBProviderParameters.OrderStatisticTreeE;
-import cz.cvut.fit.acb.ACBProviderParameters.TripletCoderE;
+import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.DictionaryStructure;
+import cz.cvut.fit.acb.EntropyCoding;
+import cz.cvut.fit.acb.TripletCoding;
 
 /** One choice of triplet coding, dictionary structure and entropy coding, at default bit widths. */
-public record SettingsCombination(TripletCoderE tripletCoding, OrderStatisticTreeE dictionaryStructure,
-                                  CoderE entropyCoding) {
+public record SettingsCombination(TripletCoding tripletCoding, DictionaryStructure dictionaryStructure,
+                                  EntropyCoding entropyCoding) {
 
 	public static Stream<SettingsCombination> all() {
-		return Arrays.stream(TripletCoderE.values())
-				.flatMap(tc -> Arrays.stream(OrderStatisticTreeE.values())
-						.flatMap(tr -> Arrays.stream(CoderE.values())
+		return Arrays.stream(TripletCoding.values())
+				.flatMap(tc -> Arrays.stream(DictionaryStructure.values())
+						.flatMap(tr -> Arrays.stream(EntropyCoding.values())
 								.map(cd -> new SettingsCombination(tc, tr, cd))));
 	}
 
@@ -29,18 +29,21 @@ public record SettingsCombination(TripletCoderE tripletCoding, OrderStatisticTre
 
 	/** Combinations whose decoder dictionary diverges from the encoder's; see {@code TODO.md}. */
 	public Optional<String> knownDictionaryDefect() {
-		if (this.tripletCoding == TripletCoderE.LCP) {
+		if (this.tripletCoding == TripletCoding.LCP) {
 			return Optional.of("LCP dictionary diverges between encoder and decoder (TODO.md)");
 		}
 		return Optional.empty();
 	}
 
+	public CompressionSettings settings() {
+		return CompressionSettings.defaults()
+				.withTripletCoding(this.tripletCoding)
+				.withDictionaryStructure(this.dictionaryStructure)
+				.withEntropyCoding(this.entropyCoding);
+	}
+	
 	public ACBProvider provider() {
-		ACBProviderParameters params = new ACBProviderParameters();
-		params.tc = this.tripletCoding;
-		params.tr = this.dictionaryStructure;
-		params.cd = this.entropyCoding;
-		return new ACBProviderImpl(params);
+		return new ACBProviderImpl(this.settings());
 	}
 
 	@Override

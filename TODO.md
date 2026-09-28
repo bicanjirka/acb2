@@ -45,16 +45,6 @@ compress a `byte[]` without a pipeline, and the CLI is the only complete caller.
   streaming variant over segments) that owns no file or console access. `ACBClient` and
   `ACBFileIO` become adapters calling it. Round-trip tests drive the core directly.
 
-### Settings as an immutable record
-
-`ACBProviderParameters` is a bag of public mutable fields read once by `ACBProviderImpl`.
-
-- **Where:** `ACBProviderParameters`, `ACBProviderImpl`, `ACBClient.parseCommandLine`, the
-  test provider generator.
-- **Approach:** a `CompressionSettings` record with `defaults()` and fluent `withDistanceBits`,
-  `withLengthBits`, `withTripletCoding`, `withDictionaryStructure`, `withEntropyCoding` copies;
-  validation in the compact constructor.
-
 ### Triplets as records, coders as a sealed family
 
 Triplets travel as `TripletSupplier` lambdas writing fields through a visitor, and the coder

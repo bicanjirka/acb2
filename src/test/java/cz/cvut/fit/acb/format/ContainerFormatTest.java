@@ -5,8 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.zip.CRC32;
 
-import cz.cvut.fit.acb.ACBProviderParameters.CoderE;
-import cz.cvut.fit.acb.ACBProviderParameters.TripletCoderE;
+import cz.cvut.fit.acb.EntropyCoding;
+import cz.cvut.fit.acb.TripletCoding;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -17,13 +17,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ContainerFormatTest {
 	
 	private static final StreamHeader HEADER =
-			new StreamHeader(6, 4, TripletCoderE.VALACH, CoderE.BIT_ARRAY, new int[]{45, 13, 10});
+			new StreamHeader(6, 4, TripletCoding.VALACH, EntropyCoding.BIT_ARRAY, new int[]{45, 13, 10});
 	private static final List<byte[]> PAYLOAD = List.of(new byte[]{0, 0, 0, 7}, new byte[0], new byte[]{-1, 1, -128});
 	
 	@ParameterizedTest
-	@EnumSource(TripletCoderE.class)
-	void aStreamDecodesToTheHeaderAndPayloadItWasEncodedFrom(TripletCoderE tripletCoding) throws MalformedStreamException {
-		StreamHeader header = new StreamHeader(9, 3, tripletCoding, CoderE.ADAPTIVE_ARITHMETIC, new int[]{2, 1});
+	@EnumSource(TripletCoding.class)
+	void aStreamDecodesToTheHeaderAndPayloadItWasEncodedFrom(TripletCoding tripletCoding) throws MalformedStreamException {
+		StreamHeader header = new StreamHeader(9, 3, tripletCoding, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[]{2, 1});
 		
 		CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(header, PAYLOAD)));
 		

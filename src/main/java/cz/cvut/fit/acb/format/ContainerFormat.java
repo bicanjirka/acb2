@@ -10,8 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-import cz.cvut.fit.acb.ACBProviderParameters.CoderE;
-import cz.cvut.fit.acb.ACBProviderParameters.TripletCoderE;
+import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.EntropyCoding;
+import cz.cvut.fit.acb.TripletCoding;
 
 /**
  * The on-disk layout of one compressed stream, big-endian:
@@ -30,10 +31,9 @@ public final class ContainerFormat {
 	static final int VERSION = 1;
 
 	private static final byte[] MAGIC = {'A', 'C', 'B'};
-	private static final TripletCoderE[] TRIPLET_CODES = {
-			TripletCoderE.SIMPLE, TripletCoderE.SALOMON, TripletCoderE.SALOMON2, TripletCoderE.VALACH, TripletCoderE.LCP};
-	private static final CoderE[] ENTROPY_CODES = {CoderE.ADAPTIVE_ARITHMETIC, CoderE.BIT_ARRAY};
-	private static final int MAX_BITS = 30;
+	private static final TripletCoding[] TRIPLET_CODES = {
+			TripletCoding.SIMPLE, TripletCoding.SALOMON, TripletCoding.SALOMON2, TripletCoding.VALACH, TripletCoding.LCP};
+	private static final EntropyCoding[] ENTROPY_CODES = {EntropyCoding.ADAPTIVE_ARITHMETIC, EntropyCoding.BIT_ARRAY};
 
 	private ContainerFormat() {
 	}
@@ -84,11 +84,14 @@ public final class ContainerFormat {
 			ByteBuffer in = ByteBuffer.wrap(bytes, MAGIC.length + 1, bodyLength - MAGIC.length - 1);
 			int distanceBits = bits(in.get(), "distance");
 			int lengthBits = bits(in.get(), "length");
-			TripletCoderE tripletCoding = byCode(TRIPLET_CODES, in.get(), "triplet coding");
-			CoderE entropyCoding = byCode(ENTROPY_CODES, in.get(), "entropy coding");
+			TripletCoding tripletCoding = byCode(TRIPLET_CODES, in.get(), "triplet coding");
+			EntropyCoding entropyCoding = byCode(ENTROPY_CODES, in.get(), "entropy coding");
 			int[] frequencies = new int[count(in, Integer.BYTES, "frequency")];
 			for (int i = 0; i < frequencies.length; i++) {
 				frequencies[i] = in.getInt();
+				if (frequencies[i] <= 0) {
+					throw new MalformedStreamException("Invalid length frequency " + frequencies[i]);
+				}
 			}
 			int arrayCount = count(in, Integer.BYTES, "array");
 			List<byte[]> payload = new ArrayList<>(arrayCount);
@@ -132,7 +135,7 @@ public final class ContainerFormat {
 
 	private static int bits(byte stored, String what) throws MalformedStreamException {
 		int bits = Byte.toUnsignedInt(stored);
-		if (bits < 1 || bits > MAX_BITS) {
+		if (bits < 1 || bits > CompressionSettings.MAX_FIELD_BITS) {
 			throw new MalformedStreamException("Invalid " + what + " bit width " + bits);
 		}
 		return bits;

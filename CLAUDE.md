@@ -31,7 +31,7 @@ java -jar target/acb.jar input.acb output -de   # settings come from the file
 ## Packages (`cz.cvut.fit.acb.*`)
 
 `ACB` (compress/decompress driver) · `ACBClient` (CLI) · `ACBFileIO` · `ACBProvider*` (wires
-the strategies below from `ACBProviderParameters`) · `dictionary` (+ `core` order-statistic
+the strategies below from a `CompressionSettings` record) · `dictionary` (+ `core` order-statistic
 trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) · `coding` (triplet↔byte:
 adaptive arithmetic, bit array) · `format` (the on-disk container: header, payload, CRC32) ·
 `utils` (`ChainBuilder` pipeline). `nayuki.arithcode` is

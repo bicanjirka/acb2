@@ -25,122 +25,59 @@ import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 /**
  * @author jiri.bican
  */
-public class ACBProviderImpl implements ACBProvider {
-	public final int distanceBits;
-	public final int lengthBits;
-	
-	private DictionaryProvider dictionary;
-	private TripletCoderProvider coder;
-	private TripletToByteConverterProvider t2bConverter;
-	private ByteToTripletConverterProvider b2tConverter;
-	private OrderStatisticTreeProvider orderStatisticTree;
-	
-	public ACBProviderImpl(ACBProviderParameters params) {
-		
-		distanceBits = params.distanceBits;
-		lengthBits = params.lengthBits;
-		
-		switch (params.tc) {
-			case LCP:
-				dictionary = DictionaryLCP::new;
-				break;
-			case SALOMON:
-			case SALOMON2:
-			case SIMPLE:
-			case VALACH:
-			default:
-				dictionary = DictionaryBase::new;
-		}
-		
-		switch (params.tc) {
-			case SALOMON:
-				coder = SalomonTripletCoder.SalomonByteless::new;
-				break;
-			case SALOMON2:
-				coder = SalomonTripletCoder.SalomonByteful::new;
-				break;
-			case VALACH:
-				coder = ValachTripletCoder::new;
-				break;
-			case LCP:
-				coder = LCPTripletCoder::new;
-				break;
-			case SIMPLE:
-			default:
-				coder = SimpleTripletCoder::new;
-				break;
-		}
-		
-		switch (params.cd) {
-			case ADAPTIVE_ARITHMETIC:
-				int[] lengthFrequencies = params.lengthFrequencies.clone();
-				t2bConverter = () -> new AdaptiveArithmeticEncoder(lengthFrequencies);
-				b2tConverter = () -> new AdaptiveArithmeticDecoder(lengthFrequencies);
-				break;
-			case BIT_ARRAY:
-				t2bConverter = BitArrayComposer::new;
-				b2tConverter = BitArrayDecomposer::new;
-				break;
-		}
-		
-		switch (params.tr) {
-			case RED_BLACK:
-				orderStatisticTree = RedBlackBST::new;
-				break;
-			case BST:
-				orderStatisticTree = BST::new;
-				break;
-			case ST:
-				orderStatisticTree = BinarySearchST::new;
-				break;
-		}
-		
+public final class ACBProviderImpl implements ACBProvider {
+
+	private final CompressionSettings settings;
+
+	public ACBProviderImpl(CompressionSettings settings) {
+		this.settings = settings;
 	}
-	
-	
+
 	@Override
 	public Dictionary getDictionary(ByteSequence sequence) {
-		return dictionary.provide(this, sequence, 1 << (distanceBits - 1), (1 << lengthBits) - 1);
+		int maxDistance = this.settings.maxDistance();
+		int maxLength = this.settings.maxLength();
+		return switch (this.settings.tripletCoding()) {
+			case LCP -> new DictionaryLCP(this, sequence, maxDistance, maxLength);
+			case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this, sequence, maxDistance, maxLength);
+		};
 	}
-	
+
 	@Override
 	public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
-		return coder.provide(sequence, dictionary, distanceBits, lengthBits);
+		int distanceBits = this.settings.distanceBits();
+		int lengthBits = this.settings.lengthBits();
+		return switch (this.settings.tripletCoding()) {
+			case SALOMON -> new SalomonTripletCoder.SalomonByteless(sequence, dictionary, distanceBits, lengthBits);
+			case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(sequence, dictionary, distanceBits, lengthBits);
+			case SIMPLE -> new SimpleTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+			case VALACH -> new ValachTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+			case LCP -> new LCPTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+		};
 	}
-	
+
 	@Override
 	public TripletToByteConverter<?> getT2BConverter() {
-		return t2bConverter.provide();
+		return switch (this.settings.entropyCoding()) {
+			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticEncoder(this.settings.lengthFrequencies());
+			case BIT_ARRAY -> new BitArrayComposer();
+		};
 	}
-	
+
 	@Override
 	public ByteToTripletConverter<?> getB2TConverter() {
-		return b2tConverter.provide();
+		return switch (this.settings.entropyCoding()) {
+			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticDecoder(this.settings.lengthFrequencies());
+			case BIT_ARRAY -> new BitArrayDecomposer();
+		};
 	}
-	
+
 	@Override
 	public <T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator) {
-		return orderStatisticTree.provide(comparator);
-	}
-	
-	
-	private interface DictionaryProvider {
-		Dictionary provide(ACBProvider p, ByteSequence sequence, int maxDistance, int maxLength);
-	}
-	
-	private interface TripletCoderProvider {
-		TripletCoder provide(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits);
-	}
-	
-	private interface TripletToByteConverterProvider {
-		TripletToByteConverter provide();
-	}
-	
-	private interface ByteToTripletConverterProvider {
-		ByteToTripletConverter provide();
-	}
-	
-	private interface OrderStatisticTreeProvider {
-		<K> OrderStatisticTree<K> provide(Comparator<K> comparator);
+		return switch (this.settings.dictionaryStructure()) {
+			case RED_BLACK -> new RedBlackBST<>(comparator);
+			case BST -> new BST<>(comparator);
+			case ST -> new BinarySearchST<>(comparator);
+		};
 	}
 }

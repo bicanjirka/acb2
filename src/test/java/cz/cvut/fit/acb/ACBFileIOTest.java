@@ -74,7 +74,7 @@ class ACBFileIOTest {
 		Path path = this.dir.resolve("stream.acb");
 		int[] sizes = IntStream.concat(IntStream.of(0, Short.MAX_VALUE), new Random(300).ints(300, 0, 64)).toArray();
 		CompressedStream saved = new CompressedStream(
-				StreamHeader.of(new ACBProviderParameters()), randomArrays(sizes));
+				StreamHeader.of(CompressionSettings.defaults()), randomArrays(sizes));
 		ACBFileIO io = new ACBFileIO();
 		
 		io.saveCompressed(saved, path);
