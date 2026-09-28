@@ -31,7 +31,7 @@ public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecompose
 			bais = new ByteArrayInputStream(bb.array(), Long.BYTES, stream.remaining());
 			bsis = new BitStreamInputStream(bais);
 		}
-		return new ByteArrayDecomposerInner(bsis, index.getBitSize());
+		return new ByteArrayDecomposerInner(bsis, index.bitSize());
 	}
 	
 	@Override

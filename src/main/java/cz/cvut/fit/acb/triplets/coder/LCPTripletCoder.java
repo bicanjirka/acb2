@@ -9,17 +9,19 @@ import cz.cvut.fit.acb.dictionary.DictionaryInfo;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-public class LCPTripletCoder extends BaseTripletCoder {
+public final class LCPTripletCoder extends BaseTripletCoder {
+	
+	private static final Logger LOG = LogManager.getLogger();
 	
 	private final TripletFieldId distField;
 	private final TripletFieldId lengField;
 	private final TripletFieldId byteField;
-	private final int distanceMask;
 	
 	public LCPTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
 		super(sequence, dictionary, distanceBits);
-		this.distanceMask = (1 << distanceBits) - 1;
 		this.distField = new TripletFieldId(0, distanceBits);
 		this.lengField = new TripletFieldId(1, lengthBits, true);
 		this.byteField = new TripletFieldId(2, Byte.SIZE);
@@ -31,16 +33,16 @@ public class LCPTripletCoder extends BaseTripletCoder {
 		int cnt = info.getContent();
 		int leng2 = info.getLength();
 		int lcp = info.getLcp();
-		int leng = leng2 + idx + lcp == sequence.length() ? leng2 - 1 : leng2;
+		int leng = leng2 + idx + lcp == sequence().length() ? leng2 - 1 : leng2;
 		
-		dictionary.update(idx, leng + lcp + 1);
+		dictionary().update(idx, leng + lcp + 1);
 		idx += leng + lcp;
 		int dist = cnt == -1 ? 0 : ctx - cnt;
-		byte b = sequence.byteAt(idx);
+		byte b = sequence().byteAt(idx);
 		
-		logger.trace("Triplet ({}, {}, {}), LCP {}", dist, leng, b, lcp);
+		LOG.trace("Triplet ({}, {}, {}), LCP {}", dist, leng, b, lcp);
 		output.accept(visitor -> {
-			visitor.write(distField, dist & distanceMask);
+			visitor.write(distField, dist & distanceMask());
 			visitor.write(lengField, leng);
 			visitor.write(byteField, b & 0xFF);
 		});
@@ -52,35 +54,35 @@ public class LCPTripletCoder extends BaseTripletCoder {
 	@Override
 	protected int decodeStep(int idx, TripletProcessor input) {
 		int tempDist = input.read(distField);
-		int dist = distFunc.applyAsInt(tempDist);
+		int dist = signedDistance(tempDist);
 		int leng = input.read(lengField);
 		int literal = input.read(byteField);
 		byte b = (byte) literal;
-		ByteBuilder builder = ((ByteBuilder) sequence);
+		ByteBuilder builder = ((ByteBuilder) sequence());
 		
 		if (tempDist == -1 && leng == -1 && literal == -1) {
 			return Integer.MAX_VALUE;
 		}
 		
-		int ctx = dictionary.searchContext(idx);
+		int ctx = dictionary().searchContext(idx);
 		int cnt = ctx - dist;
 		int lcp = 0;
 		
 		if (leng > 0) {
-			int key = dictionary.select(cnt); // find position of the best matching content in text and assume it is position of sliding window
-			lcp = dictionary.searchContent(ctx, key).getLcp();
+			int key = dictionary().select(cnt); // find position of the best matching content in text and assume it is position of sliding window
+			lcp = dictionary().searchContent(ctx, key).getLcp();
 			leng += lcp;
 		}
-		logger.trace("Triplet ({}, {}, {}), LCP {}", dist, leng - lcp, b, lcp);
+		LOG.trace("Triplet ({}, {}, {}), LCP {}", dist, leng - lcp, b, lcp);
 		
 		if (leng > 0) {
-			byte[] seq = dictionary.copy(cnt, leng);
+			byte[] seq = dictionary().copy(cnt, leng);
 			builder.append(seq);
 		}
 		
 		builder.append(b);
 		leng++;
-		dictionary.update(idx, leng);
+		dictionary().update(idx, leng);
 		return idx + leng;
 	}
 }

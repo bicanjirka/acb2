@@ -105,7 +105,7 @@ public final class TripletLog {
 	private record RecordedField(int index, int bitSize, boolean length, int value) {
 		
 		static RecordedField of(TripletFieldId fieldId, int value) {
-			return new RecordedField(fieldId.getIndex(), fieldId.getBitSize(), fieldId.isLength(), value);
+			return new RecordedField(fieldId.index(), fieldId.bitSize(), fieldId.isLength(), value);
 		}
 	}
 }

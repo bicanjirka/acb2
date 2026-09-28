@@ -35,15 +35,19 @@ The codebase predates the style in `CLAUDE.md`. These items move the compressor 
 testable core with the CLI and file I/O as thin adapters around it. Split into sub-commits, each
 green on its own.
 
-### Triplets as records, coders as a sealed family
+### Triplets as records
 
-Triplets travel as `TripletSupplier` lambdas writing fields through a visitor, and the coder
-variants are chosen by enum `switch` statements in `ACBProviderImpl`.
+A coder emits each triplet as a `TripletSupplier` lambda that writes its fields straight into
+the per-field entropy coders, and decodes one field at a time as the flags dictate. Not a
+defect - an option, recorded with its cost.
 
-- **Where:** `triplets`, `triplets.coder`, `ACBProviderImpl`.
-- **Approach:** a `Triplet` record per coding shape; `TripletCoder` becomes a `sealed`
-  interface with `final` implementations, selected by a `switch` over the settings. The shared
-  `BaseTripletCoder` state becomes `private`.
+- **Where:** `triplets.TripletSupplier`, every `encodeStep` in `triplets.coder`, `utils.TripletUtils`.
+- **Approach:** a record per triplet shape (`Literal`, `Match`, `MatchWithLiteral`) with a
+  `writeTo(TripletProcessor)` method would give triplets names, `toString` for tracing and
+  equality for tests, replacing `TripletUtils`.
+- **Why not yet:** it helps only the encoder (decoding still reads field by field), adds an object
+  per triplet in the hot loop, and duplicates the layout each coder already states once. Worth it
+  if tests or tooling start needing whole triplets, for example a triplet-level diff of two coders.
 
 ### Injection, fakes and fixtures
 

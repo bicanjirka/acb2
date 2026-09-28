@@ -31,7 +31,7 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 	
 	@Override
 	protected BitArrayComposerInner createNew(TripletFieldId index) {
-		return new BitArrayComposerInner(bitOutputStream, index.getBitSize());
+		return new BitArrayComposerInner(bitOutputStream, index.bitSize());
 	}
 	
 	@Override

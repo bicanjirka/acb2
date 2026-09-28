@@ -28,7 +28,7 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 	
 	@Override
 	public void write(TripletFieldId fieldId, int value) {
-		T object = map.computeIfAbsent(fieldId.getIndex(), k -> createNew(fieldId));
+		T object = map.computeIfAbsent(fieldId.index(), k -> createNew(fieldId));
 		compress(object, value);
 	}
 	

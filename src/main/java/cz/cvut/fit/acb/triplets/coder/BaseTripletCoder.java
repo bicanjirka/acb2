@@ -1,7 +1,6 @@
 package cz.cvut.fit.acb.triplets.coder;
 
 import java.util.function.Consumer;
-import java.util.function.IntUnaryOperator;
 
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
@@ -13,64 +12,79 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
+ * The encode and decode loops over one segment; each coder supplies one step, which lays out a
+ * triplet's fields.
+ *
  * @author jiri.bican
  */
-public abstract class BaseTripletCoder implements TripletCoder {
-	
-	private static int tCount = 0;
-	protected final Logger logger = LogManager.getLogger(getClass());
-	protected final Dictionary dictionary;
-	protected final ByteSequence sequence;
-	protected final int distanceMask;
-	protected final IntUnaryOperator distFunc;
-	
-	public BaseTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits) {
+public abstract sealed class BaseTripletCoder implements TripletCoder
+		permits SimpleTripletCoder, SalomonTripletCoder, ValachTripletCoder, LCPTripletCoder {
+
+	private static final Logger LOG = LogManager.getLogger();
+
+	private final Dictionary dictionary;
+	private final ByteSequence sequence;
+	private final int distanceBits;
+
+	protected BaseTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits) {
 		this.sequence = sequence;
 		this.dictionary = dictionary;
-		this.distanceMask = (1 << distanceBits) - 1;
-		this.distFunc = value -> BitUtils.isNegative(value, distanceBits) ? BitUtils.fillHighBits(value) : value;
+		this.distanceBits = distanceBits;
 	}
-	
+
 	@Override
 	public void encode(Consumer<TripletSupplier> output) {
-		int idx = 0, tCount1 = 0;
-		int ceiling = sequence.length();
-		
+		int idx = 0;
+		int triplets = 0;
+		int ceiling = this.sequence.length();
 		while (idx < ceiling) {
-			DictionaryInfo info = dictionary.search(idx);
-			idx = encodeStep(idx, info, output);
-			tCount1++;
-			tCount++;
+			DictionaryInfo info = this.dictionary.search(idx);
+			idx = this.encodeStep(idx, info, output);
+			triplets++;
 		}
-		logger.debug("Count of triplets in partition: " + tCount1);
-		// TODO log total count of triplets tCount
+		LOG.debug("Triplets in segment: {}", triplets);
 	}
-	
-	protected abstract int encodeStep(int idx, DictionaryInfo info, Consumer<TripletSupplier> output);
-	
+
 	@Override
 	public DecodeFlag decode(TripletProcessor input) {
-		int idx = 0, tCount1 = 0;
 		int ceiling = input.getSize();
 		if (ceiling == 0) {
 			return DecodeFlag.EOF;
 		}
-
+		int idx = 0;
+		int triplets = 0;
 		while (idx < ceiling) {
-			idx = decodeStep(idx, input);
-			tCount1++;
-			tCount++;
+			idx = this.decodeStep(idx, input);
+			triplets++;
 		}
 		if (idx == ceiling) {
-			logger.debug("Count of triplets in partition: " + tCount1);
+			LOG.debug("Triplets in segment: {}", triplets);
 			return DecodeFlag.END_OF_PARTITION;
-		} else {
-			assert idx == Integer.MAX_VALUE;
-			logger.debug("Count of triplets in partition: " + --tCount1);
-			logger.debug("Total count of triplets: " + --tCount);
-			return DecodeFlag.EOF;
 		}
+		LOG.debug("Triplets in last segment: {}", triplets - 1);
+		return DecodeFlag.EOF;
 	}
-	
+
+	protected abstract int encodeStep(int idx, DictionaryInfo info, Consumer<TripletSupplier> output);
+
+	/** @return the index after the decoded triplet, or {@link Integer#MAX_VALUE} at end of stream */
 	protected abstract int decodeStep(int idx, TripletProcessor input);
+
+	protected final Dictionary dictionary() {
+		return this.dictionary;
+	}
+
+	protected final ByteSequence sequence() {
+		return this.sequence;
+	}
+
+	/** Keeps a signed distance's low bits, as the distance field stores it. */
+	protected final int distanceMask() {
+		return (1 << this.distanceBits) - 1;
+	}
+
+	/** Undoes {@link #distanceMask()}: sign-extends a stored distance field. */
+	protected final int signedDistance(int stored) {
+		return BitUtils.isNegative(stored, this.distanceBits) ? BitUtils.fillHighBits(stored) : stored;
+	}
 }

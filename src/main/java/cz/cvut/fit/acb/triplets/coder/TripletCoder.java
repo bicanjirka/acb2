@@ -8,7 +8,7 @@ import cz.cvut.fit.acb.triplets.TripletSupplier;
 /**
  * @author jiri.bican
  */
-public interface TripletCoder {
+public sealed interface TripletCoder permits BaseTripletCoder {
 	void encode(Consumer<TripletSupplier> output);
 	
 	DecodeFlag decode(TripletProcessor input);

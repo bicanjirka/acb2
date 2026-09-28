@@ -10,11 +10,15 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * @author jiri.bican
  */
-public class ValachTripletCoder extends BaseTripletCoder {
+public final class ValachTripletCoder extends BaseTripletCoder {
+	
+	private static final Logger LOG = LogManager.getLogger();
 	
 	private final TripletFieldId distField;
 	private final TripletFieldId lengField;
@@ -34,25 +38,25 @@ public class ValachTripletCoder extends BaseTripletCoder {
 		int leng = info.getLength();
 		// A match reaching the end of the segment leaves no literal, so it gives up its last byte;
 		// shortened to zero it must be written as a literal, which is all the decoder expects.
-		int leng2 = leng + idx == sequence.length() ? leng - 1 : leng;
+		int leng2 = leng + idx == sequence().length() ? leng - 1 : leng;
 
 		int dist = cnt == -1 ? 0 : ctx - cnt;
 		if (leng2 == 0) {
-			dictionary.update(idx, 1);
-			byte b = sequence.byteAt(idx);
-			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
+			dictionary().update(idx, 1);
+			byte b = sequence().byteAt(idx);
+			LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
 			output.accept(visitor -> {
 				visitor.write(lengField, 0);
 				visitor.write(byteField, b & 0xFF);
 			});
 		} else {
-			dictionary.update(idx, leng2 + 1);
+			dictionary().update(idx, leng2 + 1);
 			idx += leng2;
-			byte b = sequence.byteAt(idx);
-			logger.trace("Triplet {}", () -> TripletUtils.tripletString(leng2, dist, b));
+			byte b = sequence().byteAt(idx);
+			LOG.trace("Triplet {}", () -> TripletUtils.tripletString(leng2, dist, b));
 			output.accept(visitor -> {
 				visitor.write(lengField, leng2);
-				visitor.write(distField, dist & distanceMask);
+				visitor.write(distField, dist & distanceMask());
 				visitor.write(byteField, b & 0xFF);
 			});
 		}
@@ -61,29 +65,29 @@ public class ValachTripletCoder extends BaseTripletCoder {
 	
 	@Override
 	protected int decodeStep(int idx, TripletProcessor input) {
-		ByteBuilder builder = ((ByteBuilder) sequence);
+		ByteBuilder builder = ((ByteBuilder) sequence());
 		int leng = input.read(lengField);
 		if (leng == -1) {
 			return Integer.MAX_VALUE;
 		}
 		if (leng == 0) {
 			byte b = (byte) input.read(byteField);
-			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
+			LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
 			builder.append(b);
-			dictionary.update(idx, 1);
+			dictionary().update(idx, 1);
 			return idx + 1;
 		} else {
 			int tempDist = input.read(distField);
-			int dist = distFunc.applyAsInt(tempDist);
+			int dist = signedDistance(tempDist);
 			byte b = (byte) input.read(byteField);
-			logger.trace("Triplet {}", () -> TripletUtils.tripletString(leng, dist, b));
+			LOG.trace("Triplet {}", () -> TripletUtils.tripletString(leng, dist, b));
 			
-			int ctx = dictionary.searchContext(idx);
+			int ctx = dictionary().searchContext(idx);
 			int cnt = ctx - dist;
-			byte[] seq = dictionary.copy(cnt, leng);
+			byte[] seq = dictionary().copy(cnt, leng);
 			builder.append(seq).append(b);
 			int consumed = leng + 1;
-			dictionary.update(idx, consumed);
+			dictionary().update(idx, consumed);
 			return idx + consumed;
 		}
 	}

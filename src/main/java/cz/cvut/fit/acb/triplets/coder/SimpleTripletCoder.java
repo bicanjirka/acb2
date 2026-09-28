@@ -10,20 +10,22 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * @author jiri.bican
  */
-public class SimpleTripletCoder extends BaseTripletCoder {
+public final class SimpleTripletCoder extends BaseTripletCoder {
+	
+	private static final Logger LOG = LogManager.getLogger();
 	
 	private final TripletFieldId distField;
 	private final TripletFieldId lengField;
 	private final TripletFieldId byteField;
-	private final int distanceMask;
 	
 	public SimpleTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
 		super(sequence, dictionary, distanceBits);
-		this.distanceMask = (1 << distanceBits) - 1;
 		this.distField = new TripletFieldId(0, distanceBits);
 		this.lengField = new TripletFieldId(1, lengthBits, true);
 		this.byteField = new TripletFieldId(2, Byte.SIZE);
@@ -34,16 +36,16 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
 		int leng2 = info.getLength();
-		int leng = leng2 + idx == sequence.length() ? leng2 - 1 : leng2;
+		int leng = leng2 + idx == sequence().length() ? leng2 - 1 : leng2;
 		
-		dictionary.update(idx, leng + 1);
+		dictionary().update(idx, leng + 1);
 		idx += leng;
 		int dist = cnt == -1 ? 0 : ctx - cnt;
-		byte b = sequence.byteAt(idx);
+		byte b = sequence().byteAt(idx);
 		
-		logger.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
+		LOG.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
 		output.accept(visitor -> {
-			visitor.write(distField, dist & distanceMask);
+			visitor.write(distField, dist & distanceMask());
 			visitor.write(lengField, leng);
 			visitor.write(byteField, b & 0xFF);
 		});
@@ -55,28 +57,28 @@ public class SimpleTripletCoder extends BaseTripletCoder {
 	@Override
 	protected int decodeStep(int idx, TripletProcessor input) {
 		int tempDist = input.read(distField);
-		int dist = distFunc.applyAsInt(tempDist);
+		int dist = signedDistance(tempDist);
 		int leng = input.read(lengField);
 		int literal = input.read(byteField);
 		byte b = (byte) literal;
-		ByteBuilder builder = ((ByteBuilder) sequence);
+		ByteBuilder builder = ((ByteBuilder) sequence());
 		
 		if (tempDist == -1 && leng == -1 && literal == -1) {
 			return Integer.MAX_VALUE;
 		}
-		logger.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
+		LOG.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
 		
-		int ctx = dictionary.searchContext(idx);
+		int ctx = dictionary().searchContext(idx);
 		int cnt = ctx - dist;
 		
 		if (leng > 0) {
-			byte[] seq = dictionary.copy(cnt, leng);
+			byte[] seq = dictionary().copy(cnt, leng);
 			builder.append(seq);
 		}
 		
 		builder.append(b);
 		int consumed = leng + 1;
-		dictionary.update(idx, consumed);
+		dictionary().update(idx, consumed);
 		return idx + consumed;
 	}
 }

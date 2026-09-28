@@ -18,8 +18,8 @@ public class AdaptiveArithmeticDecoder extends ByteToTripletConverter<AdaptiveAr
 	@Override
 	protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes) {
 		return index.isLength() ?
-				new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()), lengthFreq) :
-				new AdaptiveArithmeticDecompress(index.getBitSize(), bytes.get(index.getIndex()));
+				new AdaptiveArithmeticDecompress(index.bitSize(), bytes.get(index.index()), lengthFreq) :
+				new AdaptiveArithmeticDecompress(index.bitSize(), bytes.get(index.index()));
 	}
 	
 	@Override

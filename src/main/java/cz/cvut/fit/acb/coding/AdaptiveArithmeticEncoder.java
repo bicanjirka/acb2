@@ -26,8 +26,8 @@ public class AdaptiveArithmeticEncoder extends TripletToByteConverter<AdaptiveAr
 	@Override
 	protected AdaptiveArithmeticCompress createNew(TripletFieldId fieldId) {
 		AdaptiveArithmeticCompress inst = fieldId.isLength() ?
-				new AdaptiveArithmeticCompress(fieldId.getBitSize(), lengthFreq) :
-				new AdaptiveArithmeticCompress(fieldId.getBitSize());
+				new AdaptiveArithmeticCompress(fieldId.bitSize(), lengthFreq) :
+				new AdaptiveArithmeticCompress(fieldId.bitSize());
 		onTerminate.add(inst::terminate);
 		return inst;
 	}

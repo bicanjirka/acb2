@@ -31,7 +31,7 @@ public abstract class ByteToTripletConverter<T> implements TripletProcessor {
 	
 	@Override
 	public int read(TripletFieldId fieldId) {
-		T object = map.computeIfAbsent(fieldId.getIndex(), k -> createNew(fieldId, bytes));
+		T object = map.computeIfAbsent(fieldId.index(), k -> createNew(fieldId, bytes));
 		return decompress(object);
 	}
 	
