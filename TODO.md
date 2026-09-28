@@ -26,7 +26,7 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 ## Handoff for the next session
 
 State on 2026-09-28: research and planning are finished; phase 0 is under way (tooling and dead
-code and the coder specification done; next the test gaps and the two harnesses). Do not redo the
+code, the coder specification and the test gaps done; next the two harnesses). Do not redo the
 research below; its numbers are final unless the code changes.
 
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); remove every
@@ -180,22 +180,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ## Phase 0: safety net
 
-### Test gaps
-
-- **Where:** `src/test/java`, `fixtures`.
-- **Approach:**
-  - A jqwik property over bit widths (distance 1-12, length 1-12) and segment sizes, not only the
-    defaults; narrow widths are where range and sign bugs hide.
-  - Degenerate inputs for every combination: long runs of one byte (the `bst` overflow), all 256
-    byte values, alternating pairs, an input ending in a long match. A combination that fails
-    gets a `knownRoundTripDefect` with its entry below until fixed.
-  - One seeded multi-segment input of a few MB, generated in memory, to exercise segment
-    boundaries at realistic sizes within the 5 s budget.
-  - Golden streams: one small compressed file per coder, checked in under `src/test/resources`,
-    that must decode forever. A format change that forgets to bump `VERSION` then fails a test.
-  - The thesis's worked `mississippi` example (§1.2) as a triplet-level test for the rule the
-    specification adopts.
-
 ### Compression-ratio harness on a standard corpus
 
 The thesis-relevant number (ratio per coder, dictionary and entropy coder) has no reproducible
@@ -345,8 +329,10 @@ together, measured on Calgary: `simple` 1,040,155 (-3.4%), `valach` 1,021,875 (-
 
 ### Replace the algs4 trees with one primitive order-statistic structure
 
-The three trees are the hot spot (85% of the time), the source of the `bst` crash, GPL-3 code in
-a non-profit-licensed project, and boxed: every position is an `Integer`, every comparison goes
+The three trees are the hot spot (85% of the time), the source of the `bst` crash (a 50 KB run of
+one byte overflows the stack; the tests skip that case in
+`SettingsCombination.knownRoundTripDefect(DegenerateInput)`, and the exclusion goes with the
+trees), GPL-3 code in a non-profit-licensed project, and boxed: every position is an `Integer`, every comparison goes
 through `Comparator<Integer>`, every candidate costs an O(log n) `select`. `OrderStatisticTree`
 inherits a 16-method `Serializable` interface and uses five methods.
 
@@ -358,7 +344,8 @@ inherits a 16-method `Serializable` interface and uses five methods.
   `select`. `insert` reuses the slot the preceding search found for the same position, so the
   first context of every step costs one descent, not two. Compare contexts over a padded
   `byte[]` (sentinel bytes before the segment remove the bounds checks). Delete `BST`,
-  `RedBlackBST`, `BinarySearchST`, `OrderStatisticTree` and `BinarySearchTree`. Test the index
+  `RedBlackBST`, `BinarySearchST`, `OrderStatisticTree` and `BinarySearchTree`, and the `-da`
+  flag for them in the surefire `argLine`. Test the index
   against a brute-force sorted-list oracle with jqwik (rank, select, neighbours after random
   inserts, including equal contexts). Target from the prototype: book1's search loop under 0.6 s
   at `-d 6`, under 1.6 s at `-d 10`.

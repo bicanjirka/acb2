@@ -22,6 +22,21 @@ class RoundTripPropertiesTest {
         assertThat(decompressed).isEqualTo(input);
     }
 
+    /** Narrow fields are where range and sign mistakes hide, so every width from 1 to 12 is tried. */
+    @Property(tries = 300)
+    void anyFieldWidthsDecompressToTheInput(@ForAll("settings") SettingsCombination settings,
+                                            @ForAll @IntRange(min = 1, max = 12) int distanceBits,
+                                            @ForAll @IntRange(min = 1, max = 12) int lengthBits,
+                                            @ForAll("inputs") byte[] input,
+                                            @ForAll @IntRange(min = 1, max = 64) int segmentSize) {
+        CompressionSettings widths = settings.settings()
+                .withDistanceBits(distanceBits).withLengthBits(lengthBits).withSegmentSize(segmentSize);
+
+        byte[] decompressed = PipelineFixtures.roundTrip(widths, input);
+
+        assertThat(decompressed).isEqualTo(input);
+    }
+
     /** Combinations with a known defect are left to {@code RoundTripTest}, which reports them skipped. */
     @Provide
     Arbitrary<SettingsCombination> settings() {

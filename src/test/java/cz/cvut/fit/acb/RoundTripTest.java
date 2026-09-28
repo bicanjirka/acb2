@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.fixtures.CorpusFile;
+import cz.cvut.fit.acb.fixtures.DegenerateInput;
 import cz.cvut.fit.acb.fixtures.DictionarySnapshots;
 import cz.cvut.fit.acb.fixtures.InterceptingProvider;
 import cz.cvut.fit.acb.fixtures.PipelineFixtures;
@@ -26,6 +27,11 @@ class RoundTripTest {
                 .flatMap(settings -> CorpusFile.all().map(file -> Arguments.of(settings, file)));
     }
 
+    static Stream<Arguments> settingsAndDegenerateInputs() {
+        return SettingsCombination.all()
+                .flatMap(settings -> DegenerateInput.all().map(input -> Arguments.of(settings, input)));
+    }
+
     static Stream<SettingsCombination> workingSettings() {
         return SettingsCombination.all().filter(settings -> settings.knownRoundTripDefect().isEmpty());
     }
@@ -39,6 +45,18 @@ class RoundTripTest {
             byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize), file.bytes());
 
             assertThat(decompressed).as("segment size %d", segmentSize).isEqualTo(file.bytes());
+        }
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("settingsAndDegenerateInputs")
+    void aDegenerateInputDecompressesToItself(SettingsCombination settings, DegenerateInput input) {
+        settings.knownRoundTripDefect(input).ifPresent(reason -> assumeTrue(false, reason));
+
+        for (int segmentSize : new int[]{CompressionSettings.defaults().segmentSize(), 500}) {
+            byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize), input.bytes());
+
+            assertThat(decompressed).as("segment size %d", segmentSize).isEqualTo(input.bytes());
         }
     }
 

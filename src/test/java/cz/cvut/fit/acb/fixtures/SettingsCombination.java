@@ -25,6 +25,14 @@ public record SettingsCombination(TripletCoding tripletCoding, DictionaryStructu
         return this.knownDictionaryDefect();
     }
 
+    /** The same for one degenerate input; the combination may still be sound on every other input. */
+    public Optional<String> knownRoundTripDefect(DegenerateInput input) {
+        if (this.dictionaryStructure == DictionaryStructure.BST && input.isLongRun()) {
+            return Optional.of("-ds bst overflows the stack on a long run of one byte (TODO.md)");
+        }
+        return this.knownRoundTripDefect();
+    }
+
     /** Combinations whose decoder dictionary diverges from the encoder's; see {@code TODO.md}. */
     public Optional<String> knownDictionaryDefect() {
         if (this.tripletCoding == TripletCoding.LCP) {

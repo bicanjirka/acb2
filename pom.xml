@@ -84,6 +84,9 @@
                 <version>3.6.0</version>
                 <configuration>
                     <forkedProcessTimeoutInSeconds>120</forkedProcessTimeoutInSeconds>
+                    <!-- The algs4 trees run an O(n) invariant check on every put under -ea, which
+                         makes any large input quadratic. They go with dictionary.core. -->
+                    <argLine>@{argLine} -da:cz.cvut.fit.acb.dictionary.core...</argLine>
                 </configuration>
             </plugin>
             <plugin>
