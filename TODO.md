@@ -7,12 +7,11 @@ its heading.
 The goal: a clean, fast, well-tested ACB compressor whose every coder is exactly the algorithm
 it is named after, plus a faithful implementation of Buyanovsky's own associative coder, which
 is where the compression ratio is. Phases run in order; each is committed on its own, stays
-green, and is measured with the harness from phase 0 before and after. The cheap phases come
+green, and is measured with the ratio and performance harnesses before and after. The cheap phases come
 first so the big refactors (phases 5 and 7) land on a tested, measured, fast base.
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 0 | Safety net: tooling, tests, harnesses, the coder specification | medium | no |
 | 1 | Correctness and hardening, CLI and logging hygiene | small | no |
 | 2 | Encoder-only ratio wins | small | no |
 | 3 | Dictionary engine: primitive, cache-friendly, licence-clean | medium | no |
@@ -25,12 +24,12 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research and planning are finished; phase 0 is under way (tooling and dead
-code, the coder specification and the test gaps done; next the two harnesses). Do not redo the
-research below; its numbers are final unless the code changes.
+State on 2026-09-28: research, planning and phase 0 are finished. Start with phase 1, first entry
+(header bit widths). Do not redo the research below; its numbers are final unless the code changes.
+Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
+says how to run them.
 
-- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); remove every
-  `@author` tag (phase 0, dead code entry); in phase 3 keep the `ContextIndex` seam but remove
+- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); in phase 3 keep the `ContextIndex` seam but remove
   the `-ds` option. Coders follow their source on what defines the algorithm (fields,
   layout, context and content rules); implementation is free; where a source is silent or buggy
   the chosen rule goes into `docs/ALGORITHM.md`; improvements are named variants, never silent
@@ -177,34 +176,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 - **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
   a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
   statistic trees, the comparator, or a stream written by an older build.
-
-## Phase 0: safety net
-
-### Compression-ratio harness on a standard corpus
-
-The thesis-relevant number (ratio per coder, dictionary and entropy coder) has no reproducible
-harness, and no test guards it: a refactor that halves compression passes every test. Every
-phase below is measured with it.
-
-- **Where:** a `harness` source set (or test scope) with `RatioHarness`; a `CompressionStats`
-  record returned by `Compressor` beside the stream; a ratio-regression test.
-- **Approach:** run every settings combination over a corpus directory given on the command
-  line (Calgary, Canterbury), verify each round trip while measuring, and print ratio, bpc,
-  throughput, and bits per field (distance, length, literal, flag) as a table beside gzip, bzip2,
-  xz, ExCom and `AC.C` from the table above. The per-field accounting comes from
-  `CompressionStats` (the summed code lengths the entropy coder reports), which replaces the
-  core's debug logging of triplet counts. Pin the ratio of each combination on the test corpus
-  with a small tolerance, so a regression fails the build.
-
-### Performance harness and budget
-
-Nothing measures speed, and no test covers a large input.
-
-- **Where:** `PerformanceHarness` beside `RatioHarness`.
-- **Approach:** compress and decompress a fixed seeded corpus (text-like, binary, runs, random)
-  several times after warm-up, report MB/s per direction and coder, and exit non-zero when over
-  an explicit budget. Start the budget at today's numbers and tighten it as phases 3-5 land.
-  JMH only if the plain harness proves too noisy.
 
 ## Phase 1: correctness and hardening
 

@@ -13,6 +13,7 @@ mvn spotless:apply                              # fix formatting and import orde
 mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
 java -jar target/acb.jar input.acb output -de   # settings come from the file
+java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarness DIR   # or PerformanceHarness
 ```
 
 `target/acb.jar` is shaded (dependencies bundled); the entry point is
@@ -57,6 +58,9 @@ code (Project Nayuki) - keep its licence notice, don't restyle it.
   components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.
 - A combination with an open `TODO.md` defect is skipped with its reason
   (`SettingsCombination.known*Defect`), never passed; fixing it deletes the exclusion.
+- `RatioRegressionTest` pins compressed sizes: a change that improves the ratio lowers the pins in
+  the same commit. `harness.PerformanceHarness` fails under `PerformanceBudget`: raise the floors
+  when a change makes the coders faster.
 - Seed every `Random`. jqwik prints its seed on failure; keep generated inputs small.
 
 ## Code style for new and rewritten code

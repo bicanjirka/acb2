@@ -8,16 +8,16 @@
 
     <module name="SuppressionSingleFilter">
         <property name="id" value="mainOnly"/>
-        <property name="files" value="[\/]src[\/]test[\/]"/>
+        <property name="files" value="[\\/]src[\\/]test[\\/]"/>
     </module>
     <module name="SuppressionSingleFilter">
         <property name="id" value="cliOnly"/>
-        <property name="files" value="[\/]ACBClient\.java$"/>
+        <property name="files" value="[\\/]ACBClient\.java$|[\\/]harness[\\/][^\\/]+\.java$"/>
     </module>
     <!-- Closed by the "Swallowed I/O errors in the coding layer" entry in TODO.md. -->
     <module name="SuppressionSingleFilter">
         <property name="id" value="noPrintStackTrace"/>
-        <property name="files" value="[\/]coding[\/](AdaptiveArithmetic(Compress|Decompress)|BitArray(Composer|Decomposer))\.java$"/>
+        <property name="files" value="[\\/]coding[\\/](AdaptiveArithmetic(Compress|Decompress)|BitArray(Composer|Decomposer))\.java$"/>
     </module>
 
     <module name="TreeWalker">
