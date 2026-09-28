@@ -80,5 +80,7 @@ Working constraints and code style are in `CLAUDE.md`. Known gaps and planned wo
 ## Licence
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
-`cz.cvut.fit.acb.nayuki.arithcode` is vendored from Project Nayuki under the MIT licence (see
-`Readme-arith-coding.markdown`).
+`nayuki.arithcode` is vendored from Project Nayuki under the MIT licence (see
+`Readme-arith-coding.markdown`). `cz.cvut.fit.acb.dictionary.core` is adapted from Sedgewick and
+Wayne's *Algorithms* (algs4), which is distributed under the GPL-3; it is due to be replaced (see
+`TODO.md`).

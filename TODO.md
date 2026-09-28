@@ -12,7 +12,6 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 1 | Correctness and hardening, CLI and logging hygiene | small | no |
 | 2 | Encoder-only ratio wins | small | no |
 | 3 | Dictionary engine: primitive, cache-friendly, licence-clean | medium | no |
 | 4 | Own range coder and adaptive models; drop the vendored Nayuki code | medium | `VERSION` 2 |
@@ -24,13 +23,13 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research, planning and phase 0 are finished. Start with phase 1, first entry
-(header bit widths). Do not redo the research below; its numbers are final unless the code changes.
+State on 2026-09-28: research, planning and phases 0 and 1 are finished. Start with phase 2, first
+entry (the default length field). Do not redo the research below; its numbers are final unless the code changes.
 Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
 says how to run them.
 
-- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); in phase 3 keep the `ContextIndex` seam but remove
-  the `-ds` option. Coders follow their source on what defines the algorithm (fields,
+- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); in phase 3 keep the
+  `ContextIndex` seam but remove the `-ds` option. Coders follow their source on what defines the algorithm (fields,
   layout, context and content rules); implementation is free; where a source is silent or buggy
   the chosen rule goes into `docs/ALGORITHM.md`; improvements are named variants, never silent
   changes to a faithful coder.
@@ -176,17 +175,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 - **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
   a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
   statistic trees, the comparator, or a stream written by an older build.
-
-## Phase 1: correctness and hardening
-
-### Documentation errors
-
-`README.md` names the vendored package `cz.cvut.fit.acb.nayuki.arithcode`; it is
-`nayuki.arithcode`. It says nothing about the algs4 code.
-
-- **Where:** `README.md`.
-- **Approach:** fix the package name now; the licence section is rewritten when phases 3 and 4
-  remove the third-party code.
 
 ## Phase 2: encoder-only ratio wins
 
