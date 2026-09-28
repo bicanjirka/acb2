@@ -26,7 +26,7 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 ## Handoff for the next session
 
 State on 2026-09-28: research and planning are finished; phase 0 is under way (tooling and dead
-code done; next the coder specification, the test gaps and the two harnesses). Do not redo the
+code and the coder specification done; next the test gaps and the two harnesses). Do not redo the
 research below; its numbers are final unless the code changes.
 
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); remove every
@@ -129,60 +129,10 @@ Where the bits go on book1 (768,771 bytes):
 The gap is structural, not tuning: real ACB spends more on the position but reaches further,
 gets length almost free from the neighbours, and rarely spends a full literal.
 
-### What real ACB does (from `AC.C` and Buyanovsky's paper)
+### What real ACB does, and how the thesis coders relate to their sources
 
-The thesis (§2.1) says the algorithm in Buyanovsky's code is unknown and that distances are not
-arithmetic-coded. Both are wrong; `AC.C` and the paper describe it completely:
-
-- **Dictionary.** A sorted array of pointers to every position of the frame (1,024 to 262,144,
-  or more), ordered by the unbounded right-to-left context, compared as machine words. Insertion
-  is a `memmove` into the array (the "simple list" variant of the paper, O(n) per insert, which is
-  why the demo takes 30 s). Once full, a new pointer replaces whichever of its two neighbours
-  shares less with it. After a long match (at least 3·log2 of the frame fill) only the first
-  position is inserted.
-- **Funnel of analogies.** From the current context's slot, walk outward on both sides, in
-  order of weight, over neighbours whose context agrees with the current one for more than
-  `SB = log2(Kc·N/500)` bits, the "stochastic component" of the paper, which grows with the frame
-  (N = contexts stored). The bit-level agreement comes from XOR and bit scan over 4-byte words,
-  capped at 256 bytes; the width is capped at 2,047 candidates. Each candidate's weight
-  (`EVR`) grows with context agreement and falls with rank distance.
-- **Position.** The candidate is arithmetic-coded with probability proportional to its weight,
-  plus an escape symbol whose weight adapts from recent success (`Sucsess`, `Swch`). The encoder
-  picks, in weight order, the first candidate with the strictly longest match, so ties go to the
-  most similar context.
-- **Length.** Coded as `Max - Pr_L - 1`, where `Pr_L` is the longest match among candidates
-  coded before the chosen one. The decoder recovers `Pr_L` as the longest common prefix of the
-  chosen content with those candidates, which equals it exactly (a candidate that matched less
-  than the best one diverges from the best one where it diverged from the text). Lengths already
-  shared by later candidates get a boosted probability. Matches never overlap the current
-  position, and comparisons read only decoded bytes.
-- **Literal.** Coded only when the match ended on a mismatch (not at a boundary or at 256).
-  Every byte a candidate with an equal-length match would predict is excluded, because it would
-  have made the match longer. After a match, the literal model mixes the order-0 table with the
-  next bytes of the funnel candidates for the new context.
-- **Statistics.** Frequency tables sorted by count, updated in sliding windows (2,048 literals,
-  1,024 lengths) through a ring buffer, and one custom 32-bit arithmetic coder. The length table
-  starts at `{45, 13, 10, 7, 5, 4}` for excess lengths 0 to 5. That is where this project's
-  default length frequencies come from, although here they model the raw length instead.
-- **The paper's version.** The code of a string is the candidate number, a "difference bit"
-  (which side of it the current content sorts in content order), and an "extract" length. This
-  is the LCP idea done right; `AC.C` implements the simpler `Pr_L` variant above. ACB 1.17 caps
-  the funnel at S = 16, 55 or 100 (FAST, NORMAL, MAX) and ACB 2.00 improves the modelling further;
-  both are closed.
-
-### How the thesis coders relate to their sources
-
-| Coder | Source | Layout | Deviations in the current code |
-|---|---|---|---|
-| `simple` | Salomon, thesis §1.2 | `(d, l, c)` | context is always the predecessor; `d` has the opposite sign to the thesis (`ctx - cnt`); ties take the farthest candidate |
-| `salomon` | Salomon, thesis §1.3.1 | `(0, c)` or `(1, d, l)` | as `simple` |
-| `salomon2` | Valach (ExCom) | `(0, c)` or `(1, l, d, c)` | as `simple`; the fields are written `d` before `l` |
-| `valach` | Valach (ExCom), his best | `(l, c)` or `(l, d, c)` | as `simple`; ExCom takes the better-matching of both context neighbours and the nearest content |
-| `lcp` | thesis §3.3.1 | `(d, l - lcp, c)` | not the specification at all (see the LCP defect below) |
-
-The thesis's own worked example (§1.2) picks the greater index on context ties, the code picks
-the predecessor, and both ExCom and Buyanovsky's Lemma 3 say the best context is whichever
-neighbour agrees longer. Phase 6 settles this on the original rule.
+Moved to `docs/ALGORITHM.md`: section 7 describes Buyanovsky's coder, and the deviations of each
+current coder from its source are listed with its rules in sections 2 to 5.
 
 ### Profile of the current code
 
@@ -229,19 +179,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
   statistic trees, the comparator, or a stream written by an older build.
 
 ## Phase 0: safety net
-
-### A specification of every coder
-
-"Same as the original" needs a written original to test against. Today the rules live partly
-in the thesis, partly in ExCom, partly nowhere (tie rules, the end-of-segment shortening, the
-distance sign).
-
-- **Where:** new `docs/ALGORITHM.md`.
-- **Approach:** one section per coder: its source and the exact rule it follows (context choice,
-  candidate window, tie rule, overlap, end-of-segment handling, field order and ranges), with any
-  intentional deviation named as such. Add the real ACB description from the research above as
-  the reference for phase 7. Tests and reviews cite the section a behaviour comes from. Keep
-  it a specification, not a history.
 
 ### Test gaps
 
@@ -401,7 +338,8 @@ together, measured on Calgary: `simple` 1,040,155 (-3.4%), `valach` 1,021,875 (-
   the first longest match is the nearest and the walk can stop at `maxLength`; scan from `lo` and
   skip only candidates with `ctx - i > maxDistance - 1`. Tests: among equal matches the nearest is
   chosen; rank 0 is found. The LCP coder needs the opposite tie rule (phase 6), so the rule
-  belongs to the coder, not the dictionary.
+  belongs to the coder, not the dictionary. Delete the matching deviations from
+  `docs/ALGORITHM.md` section 3.5 and update its worked examples.
 
 ## Phase 3: dictionary engine
 
@@ -656,8 +594,8 @@ its frame is full.
 
 ### Real ACB as a coder of its own
 
-The triplet coders are Salomon's simplification. Buyanovsky's own coder, as described above, is
-14% smaller than ExCom and 17% smaller than this coder's best on Calgary, and even at the
+The triplet coders are Salomon's simplification. Buyanovsky's own coder (`docs/ALGORITHM.md`,
+section 7) is 14% smaller than ExCom and 17% smaller than this coder's best on Calgary, and even at the
 narrowest funnel (16 per side) it beats ExCom's best by 9%. A fixed window of ±2^(d-1) ranks
 cannot get there: ACB admits only contexts that agree with the current one beyond the noise
 level, weights them by that agreement, and codes the position by those weights. This
