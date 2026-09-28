@@ -32,9 +32,12 @@ public class ValachTripletCoder extends BaseTripletCoder {
 		int ctx = info.getContext();
 		int cnt = info.getContent();
 		int leng = info.getLength();
-		
+		// A match reaching the end of the segment leaves no literal, so it gives up its last byte;
+		// shortened to zero it must be written as a literal, which is all the decoder expects.
+		int leng2 = leng + idx == sequence.length() ? leng - 1 : leng;
+
 		int dist = cnt == -1 ? 0 : ctx - cnt;
-		if (leng == 0) {
+		if (leng2 == 0) {
 			dictionary.update(idx, 1);
 			byte b = sequence.byteAt(idx);
 			logger.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
@@ -43,7 +46,6 @@ public class ValachTripletCoder extends BaseTripletCoder {
 				visitor.write(byteField, b & 0xFF);
 			});
 		} else {
-			int leng2 = leng + idx == sequence.length() ? leng - 1 : leng;
 			dictionary.update(idx, leng2 + 1);
 			idx += leng2;
 			byte b = sequence.byteAt(idx);

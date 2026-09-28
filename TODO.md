@@ -18,15 +18,6 @@ reads the zero padding of the final byte as more fields.
 - **Approach:** record the number of triplets (or of meaningful bits) so the decomposer stops
   at the real end rather than at the byte boundary.
 
-### Valach coding loses sync at some segment sizes
-
-Whole-file round trips pass; splitting the same input into segments makes the decoder read a
-different triplet shape than the encoder wrote (distance field where a length was expected).
-
-- **Where:** `triplets.coder.ValachTripletCoder`, the partition handling in `BaseTripletCoder`.
-- **Approach:** reproduce with the smallest failing corpus file and segment size, then compare
-  how `encodeStep` and `decodeStep` treat a match that ends exactly at a segment boundary.
-
 ### LCP dictionary diverges between encoder and decoder
 
 The decoder's dictionary differs from the encoder's after a few updates, and segmented

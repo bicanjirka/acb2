@@ -24,9 +24,7 @@ public record SettingsCombination(TripletCoderE tripletCoding, OrderStatisticTre
 
 	/** Combinations with an open {@code TODO.md} entry; tests skip them with this reason. */
 	public Optional<String> knownRoundTripDefect() {
-		return this.knownDictionaryDefect().or(() -> this.tripletCoding == TripletCoderE.VALACH
-				? Optional.of("Valach coding loses sync at some segment sizes (TODO.md)")
-				: Optional.empty());
+		return this.knownDictionaryDefect();
 	}
 
 	/** Combinations whose decoder dictionary diverges from the encoder's; see {@code TODO.md}. */
