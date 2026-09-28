@@ -4,10 +4,13 @@ import cz.cvut.fit.acb.fixtures.GeneratedInput;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.ContainerFormat;
 import cz.cvut.fit.acb.format.MalformedStreamException;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** Runs with {@code mvn verify -Pfull}: about a megabyte through three segments. */
+@Tag("slow")
 class LargeInputTest {
 
     private static final int SIZE = 1_000_000;

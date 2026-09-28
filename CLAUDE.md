@@ -8,7 +8,8 @@ quieter `log4j2-test.xml`). Tests: JUnit 5 (Jupiter 6) + AssertJ + jqwik.
 ```bash
 mvn -q compile
 mvn test
-mvn verify                                      # + Spotless, Checkstyle, coverage (target/site/jacoco)
+mvn verify                                      # quick check: + Spotless, Checkstyle, coverage (target/site/jacoco)
+mvn verify -Pfull                               # full check: also the tests tagged slow
 mvn spotless:apply                              # fix formatting and import order
 mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
@@ -25,7 +26,8 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
   gap deletes its entry in the same commit.
 - `CLAUDE.md` holds constraints only - no history, no feature narrative. A change that makes a
   line here false fixes it in the same commit.
-- Multi-phase plan: commit after each phase, each phase green on its own.
+- Multi-phase plan: commit after each phase, each phase green on its own. `mvn verify` before every
+  commit; `mvn verify -Pfull` and both harnesses before a phase is closed.
 - Commit subject lines are imperative mood, capitalized, no trailing period (`Add X`).
 - Comments only for a non-obvious *why*; don't restate the code.
 - IDE metadata (`.idea/`, `*.iml`, Eclipse files) is never committed; the pom is the project model.
@@ -53,8 +55,11 @@ code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 ## Tests
 
-- Round trips run in memory through `Compressor`, over every `fixtures.SettingsCombination` and
-  every `fixtures.CorpusFile` (classpath `in/`). `fixtures.InterceptingProvider` wraps its
+- Quick tests must stay cheap: round trips over `SettingsCombination.representative()` only. The
+  full grid (`all()`), large inputs and anything long-running or memory-hungry go in a class or
+  method tagged `@Tag("slow")`, which only `-Pfull` runs.
+- Round trips run in memory through `Compressor`, over every `fixtures.CorpusFile` (classpath
+  `in/`). `fixtures.InterceptingProvider` wraps its
   components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.
 - A combination with an open `TODO.md` defect is skipped with its reason
   (`SettingsCombination.known*Defect`), never passed; fixing it deletes the exclusion.

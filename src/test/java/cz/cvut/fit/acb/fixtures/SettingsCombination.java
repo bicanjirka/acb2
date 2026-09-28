@@ -20,6 +20,19 @@ public record SettingsCombination(TripletCoding tripletCoding, DictionaryStructu
                                 .map(cd -> new SettingsCombination(tc, tr, cd))));
     }
 
+    /**
+     * One combination per coder and entropy coding on the red-black tree, and the other trees under
+     * one coder. The quick tests use it; {@link #all()} is for the full run.
+     */
+    public static Stream<SettingsCombination> representative() {
+        Stream<SettingsCombination> coders = Arrays.stream(TripletCoding.values())
+                .flatMap(tc -> Arrays.stream(EntropyCoding.values())
+                        .map(cd -> new SettingsCombination(tc, DictionaryStructure.RED_BLACK, cd)));
+        Stream<SettingsCombination> trees = Stream.of(DictionaryStructure.BST, DictionaryStructure.ST)
+                .map(tr -> new SettingsCombination(TripletCoding.VALACH, tr, EntropyCoding.ADAPTIVE_ARITHMETIC));
+        return Stream.concat(coders, trees);
+    }
+
     /** Combinations with an open {@code TODO.md} entry; tests skip them with this reason. */
     public Optional<String> knownRoundTripDefect() {
         return this.knownDictionaryDefect();
