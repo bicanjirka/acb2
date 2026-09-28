@@ -5,13 +5,12 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public abstract class ByteToTripletConverter<T> implements TripletProcessor {
 
-    private final Map<Integer, T> map = new HashMap<>();
+    private final List<T> fields = new ArrayList<>();
     private List<byte[]> bytes;
     private int segmentSize;
 
@@ -29,10 +28,13 @@ public abstract class ByteToTripletConverter<T> implements TripletProcessor {
 
     @Override
     public int read(TripletFieldId fieldId) throws MalformedStreamException {
-        T object = map.get(fieldId.index());
+        while (fields.size() <= fieldId.index()) {
+            fields.add(null);
+        }
+        T object = fields.get(fieldId.index());
         if (object == null) {
             object = createNew(fieldId, bytes);
-            map.put(fieldId.index(), object);
+            fields.set(fieldId.index(), object);
         }
         return decompress(object);
     }

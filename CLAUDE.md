@@ -38,9 +38,8 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 `ACBFileIO` (its file side) · `ACBProvider*` (wires the strategies below from a
 `CompressionSettings` record) · `dictionary`
 (+ the `ContextIndex` behind it) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
-`coding` (triplet↔byte: adaptive arithmetic, bit array) · `format` (the on-disk container:
-header, payload, CRC32) · `utils` (bit helpers). `nayuki.arithcode` is vendored MIT
-code (Project Nayuki) - keep its licence notice, don't restyle it.
+`coding` (triplet↔byte: range coder with adaptive models, bit array) · `format` (the on-disk container:
+header, payload, CRC32) · `utils` (bit helpers).
 
 ## Boundaries
 

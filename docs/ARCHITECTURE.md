@@ -34,3 +34,17 @@ nothing against a plain comparator over a byte array, and chunk sizes from 128 t
 15% of each other. The encoder-only structure is faster still but doubles the code that has to
 agree, so it is kept in reserve. The unbalanced tree also overflowed the stack on a long run of
 one byte, since equal contexts are ordered by position and the tree became a chain.
+
+## Entropy coding
+
+Each triplet field is a stream of its own, coded by `RangeEncoder` (a 32-bit range renormalised a
+byte at a time, carry propagated as in LZMA, totals up to 2^20) against an
+`AdaptiveFrequencyModel` (a Fenwick tree of frequencies). The model adds 32 for every symbol seen
+and halves all frequencies when the total would pass its limit: 2^16, or 256 per symbol for
+alphabets wider than 256. Both numbers are part of the stream format (`ContainerFormat.VERSION` 2).
+They were chosen on Calgary with `valach`, 7-bit lengths: an increment of 1 with no halving (the
+behaviour of the Nayuki coder this replaced) gave 981,910 bytes, increments of 16 to 32 with the
+2^16 limit gave 977,4xx, limits of 2^13 and 2^14 were worse (983,000), and at `-d 10` the
+1,025-symbol distance alphabet needed the wider limit (965,900 with 2^16 against 957,300).
+Widening the length field to 8 bits gains 0.13% and no width gains more, so no escape code for
+long matches was added.

@@ -12,7 +12,6 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 4 | Own range coder and adaptive models; drop the vendored Nayuki code | medium | `VERSION` 2 |
 | 5 | Encoder/decoder symmetry refactor and container v2 | large | `VERSION` 3 |
 | 6 | Thesis coders made faithful: context reference, LCP, literal model | medium | `VERSION` 4 |
 | 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
@@ -21,8 +20,8 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research, planning and phases 0 to 3 are finished. Start with phase 4, first
-entry (the frequency table). Do not redo the research below; its numbers are final unless the code changes.
+State on 2026-09-28: research, planning and phases 0 to 4 are finished. Start with phase 5, first
+entry (the bit-array writer, then the shared update rule). Do not redo the research below; its numbers are final unless the code changes.
 Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
 says how to run them.
 
@@ -133,48 +132,19 @@ current coder from its source are listed with its rules in sections 2 to 5.
 
 JFR on book1, `valach -l 7` (80 samples compressing, 60 decompressing): the chunked index is
 about 43% of the time either way (`locate`, the Fenwick update), the context comparator 5-10%,
-and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its cumulative table.
+and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its cumulative table
+(replaced in phase 4).
 
 ### Other findings
 
-- **Licences.** The Nayuki files carry no header; their MIT notice lives only in
-  `Readme-arith-coding.markdown`, so that file is required for exactly as long as `nayuki.arithcode`
-  ships, and goes with it in phase 4.
 - **Incompressible input expands.** 2 MB of random bytes grow by 10.8% and take 13.9 s.
 - **Throughput.** Before phase 3: about 0.45 MB/s compressing and 0.8 MB/s decompressing at the
-  defaults, against ExCom's 1.4 MB/s in C++ with the same model. After it: 1.5 and 1.8 MB/s.
+  defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s.
 
-## Phase 4: entropy coding
+## Phase 5: encoder/decoder symmetry and container v2
 
-### Frequency table costs O(alphabet) per symbol and never rescales
-
-`nayuki.arithcode.SimpleFrequencyTable.increment` drops the cumulative table, and the next
-`getLow` rebuilds it, so every coded symbol costs O(alphabet) time and allocates a new array.
-On a 3.5 KB text, `-d 16` took 169 ms against 31 ms at the defaults, and the ratio went from
-0.58 to 0.74. Frequencies are never halved and one model per field lives for the whole stream,
-so after about 2^30 symbols in a field Nayuki's `MAX_TOTAL` check throws and large inputs fail
-to compress. Nayuki's coder also emits one bit at a time and checks invariants on every symbol
-(it is a teaching implementation, by its own readme). The field streams are looked up in a
-`HashMap<Integer, ...>` per symbol.
-
-- **Where:** `coding` (new), `nayuki.arithcode` and `Readme-arith-coding.markdown` (deleted),
-  `README.md` licence section, `src/test/java/nayuki`.
-- **Approach:** our own byte-oriented range coder (32-bit range, carry propagation as in LZMA,
-  totals up to 2^16) taking `(cumulative, frequency, total)`, so it also serves the per-step
-  distributions of phase 7; an `AdaptiveFrequencyModel` with periodic halving (ExCom halves at
-  2^14; measure the limit), a linear cumulative scan for small alphabets and a Fenwick tree for
-  large ones; adaptive binary models for flags. Fields index an array, not a map. Verify the
-  coder against a reference model on random distributions, then delete the vendored package, its
-  tests and its readme together. Bumps `VERSION`.
-
-### A match is capped by the length field
-
-A match longer than `2^lengthBits - 1` is cut into several triplets, however repetitive the input
-(`pic` gains 21% from 4 to 7 bits, so the cap still costs ratio at 7).
-
-- **Where:** `coding`, the length field of each coder, `CompressionSettings.maxLength`.
-- **Approach:** code lengths beyond a cutoff with an escape (for example Elias-gamma) so the cap
-  disappears; measure against a wider fixed field. Bumps `VERSION`.
+The big refactor, on a tested and measured base. Container changes are batched into one
+`VERSION` bump.
 
 ### The bit-array writer does not fit the per-field template
 
@@ -183,13 +153,8 @@ and `TripletToByteConverter.finish` has to skip the nulls. The bit-array writer 
 at all.
 
 - **Where:** `coding.BitArrayComposer`, `coding.BitArrayDecomposer`, `coding.TripletToByteConverter`.
-- **Approach:** a separate implementation of the field sink (phase 5) that writes one bit stream.
+- **Approach:** a separate implementation of the field sink that writes one bit stream.
   Its only use is measuring the entropy coder's gain; keep it for that, as a small class.
-
-## Phase 5: encoder/decoder symmetry and container v2
-
-The big refactor, on a tested and measured base. Container changes are batched into one
-`VERSION` bump.
 
 ### One update rule, shared by both sides
 
@@ -236,7 +201,8 @@ symbol, which is why its alphabet is `2^n + 1`.
 - **Where:** `format.ContainerFormat`, `format.StreamHeader`, `triplets.coder.BaseTripletCoder`,
   `Compressor.decompress`, `coding`.
 - **Approach:** store the original length in the header and let the decoder loop by count. The
-  sentinels, `DecodeFlag` and the EOF symbols go away. All fields of a segment go interleaved into
+  sentinels, `DecodeFlag` and the EOF symbols go away, and the 1-bit flag field of `salomon` becomes
+  a binary model. All fields of a segment go interleaved into
   one range-coded stream, in the order the decoder reads them (as ExCom does), which drops the
   per-field length prefixes and makes the payload streamable. The recorded length also bounds the
   work and memory a crafted payload can demand: today a huge segment size in the payload decodes

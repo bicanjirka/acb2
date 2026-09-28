@@ -112,8 +112,7 @@
             </plugin>
             <plugin>
                 <!-- Formatting and import order. The order matches .editorconfig, so an IntelliJ
-                     reformat and `mvn spotless:apply` agree. Vendored and soon-to-be-replaced
-                     third-party code is left as it was published. -->
+                     reformat and `mvn spotless:apply` agree. -->
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
                 <version>${spotless.version}</version>
@@ -129,8 +128,6 @@
                 <configuration>
                     <java>
                         <excludes>
-                            <exclude>src/main/java/nayuki/**</exclude>
-                            <exclude>src/test/java/nayuki/**</exclude>
                         </excludes>
                         <importOrder>
                             <order>,javax,java,\#</order>
@@ -146,8 +143,7 @@
                 </configuration>
             </plugin>
             <plugin>
-                <!-- Project rules from CLAUDE.md that a tool can check. Vendored and
-                     soon-to-be-replaced third-party code is left out. -->
+                <!-- Project rules from CLAUDE.md that a tool can check. -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${checkstyle-plugin.version}</version>
@@ -162,7 +158,6 @@
                     <configLocation>checkstyle.xml</configLocation>
                     <propertyExpansion>basedir=${project.basedir}</propertyExpansion>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <excludes>nayuki/**</excludes>
                     <consoleOutput>true</consoleOutput>
                 </configuration>
                 <executions>

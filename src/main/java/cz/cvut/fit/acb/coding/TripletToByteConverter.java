@@ -5,14 +5,12 @@ import cz.cvut.fit.acb.triplets.TripletFieldKind;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 public abstract class TripletToByteConverter<T> implements TripletWriter {
 
-    private final Map<Integer, T> map = new HashMap<>();
-    private final Map<Integer, FieldTally> tallies = new HashMap<>();
+    private final List<Field<T>> fields = new ArrayList<>();
     private int segmentSize;
 
     @Override
@@ -27,9 +25,16 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     @Override
     public void write(TripletFieldId fieldId, int value) {
-        tallies.computeIfAbsent(fieldId.index(), k -> new FieldTally(fieldId.kind())).symbols++;
-        T object = map.computeIfAbsent(fieldId.index(), k -> createNew(fieldId));
-        compress(object, value);
+        while (fields.size() <= fieldId.index()) {
+            fields.add(null);
+        }
+        Field<T> field = fields.get(fieldId.index());
+        if (field == null) {
+            field = new Field<>(fieldId.kind(), createNew(fieldId));
+            fields.set(fieldId.index(), field);
+        }
+        field.symbols++;
+        compress(field.object, value);
     }
 
     @Override
@@ -39,12 +44,10 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     @Override
     public List<byte[]> finish() {
-        int fieldCount = map.keySet().stream().max(Integer::compareTo).map(max -> max + 1).orElse(0);
-        List<byte[]> ret = new ArrayList<>(fieldCount + 1);
+        List<byte[]> ret = new ArrayList<>(fields.size() + 1);
         ret.add(ByteBuffer.allocate(Integer.BYTES).putInt(segmentSize).array());
-        for (int i = 0; i < fieldCount; i++) {
-            T object = map.get(i);
-            byte[] bytes = object != null ? getArray(object) : new byte[0];
+        for (Field<T> field : fields) {
+            byte[] bytes = field != null ? getArray(field.object) : new byte[0];
             if (bytes != null) {
                 ret.add(bytes);
             }
@@ -54,9 +57,9 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     @Override
     public List<FieldCost> costs() {
-        return tallies.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new FieldCost(entry.getValue().kind, entry.getValue().symbols, bitsOf(map.get(entry.getKey()))))
+        return fields.stream()
+                .filter(Objects::nonNull)
+                .map(field -> new FieldCost(field.kind, field.symbols, bitsOf(field.object)))
                 .toList();
     }
 
@@ -69,12 +72,14 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     protected abstract void compress(T object, int value);
 
-    private static final class FieldTally {
+    private static final class Field<T> {
         private final TripletFieldKind kind;
+        private final T object;
         private long symbols;
 
-        private FieldTally(TripletFieldKind kind) {
+        private Field(TripletFieldKind kind, T object) {
             this.kind = kind;
+            this.object = object;
         }
     }
 }

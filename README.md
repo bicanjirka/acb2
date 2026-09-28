@@ -42,8 +42,8 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
 | `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
 | `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `valach` |
-| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of arithmetic coding | arithmetic |
-| `-af F`, `--arith-freq F` | Initial arithmetic-coder frequencies for lengths, comma-separated | all 1 |
+| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
+| `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
 | `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `WARN` |
 | `-h`, `--help` | Print help | |
@@ -72,5 +72,4 @@ Working constraints and code style are in `CLAUDE.md`. Known gaps and planned wo
 ## Licence
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
-`nayuki.arithcode` is vendored from Project Nayuki under the MIT licence (see
-`Readme-arith-coding.markdown`); it is due to be replaced (see `TODO.md`).
+It contains no third-party code.

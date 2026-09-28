@@ -1,61 +1,47 @@
 package cz.cvut.fit.acb.coding;
 
-import nayuki.arithcode.ArithmeticEncoder;
-import nayuki.arithcode.BitOutputStream;
-import nayuki.arithcode.FlatFrequencyTable;
-import nayuki.arithcode.FrequencyTable;
-import nayuki.arithcode.SimpleFrequencyTable;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
 
+/** One field's symbols, range coded against an adaptive model, ended by an end-of-field symbol. */
 class AdaptiveArithmeticCompress {
 
-    private final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-    private final BitOutputStream bitOut = new BitOutputStream(byteOut);
-    private final ArithmeticEncoder enc = new ArithmeticEncoder(bitOut);
-    private final FrequencyTable freq;
-    private final int eof;
+    private final RangeEncoder encoder = new RangeEncoder();
+    private final AdaptiveFrequencyModel model;
+    private final int endSymbol;
 
-    public AdaptiveArithmeticCompress(int bitSize) {
-        eof = 1 << bitSize; // last symbol is EOF flag
-        int numSymbols = eof + 1;
-        // Initialize with all symbol frequencies at 1
-        freq = new SimpleFrequencyTable(new FlatFrequencyTable(numSymbols));
+    AdaptiveArithmeticCompress(int bitSize) {
+        this(bitSize, new int[0]);
     }
 
-    public AdaptiveArithmeticCompress(int bitSize, int[] freqVal) {
-        eof = 1 << bitSize; // last symbol is EOF flag
-        int numSymbols = eof + 1;
-        int[] freq1 = Arrays.copyOf(freqVal, numSymbols);
-        if (freqVal.length < numSymbols) {
-            Arrays.fill(freq1, freqVal.length, numSymbols, 1);
+    /** Symbols past {@code startingFrequencies} start at 1. */
+    AdaptiveArithmeticCompress(int bitSize, int[] startingFrequencies) {
+        this.endSymbol = 1 << bitSize;
+        this.model = new AdaptiveFrequencyModel(startingFrequencies(this.endSymbol + 1, startingFrequencies));
+    }
+
+    static int[] startingFrequencies(int symbols, int[] given) {
+        int[] frequencies = Arrays.copyOf(given, symbols);
+        if (given.length < symbols) {
+            Arrays.fill(frequencies, given.length, symbols, 1);
         }
-        freq = new SimpleFrequencyTable(freq1);
+        return frequencies;
     }
 
-    public void compress(int b) {
-        try {
-            enc.write(freq, b);
-        } catch (IOException e) {
-            throw new UncheckedIOException("In-memory arithmetic coding failed", e);
-        }
-        freq.increment(b);
+    void compress(int symbol) {
+        this.code(symbol);
+        this.model.increment(symbol);
     }
 
-    public void terminate() {
-        try {
-            enc.write(freq, eof);
-            enc.finish();
-            bitOut.close();
-        } catch (IOException e) {
-            throw new UncheckedIOException("In-memory arithmetic coding failed", e);
-        }
+    void terminate() {
+        this.code(this.endSymbol);
+        this.encoder.finish();
     }
 
-    public byte[] array() {
-        return byteOut.toByteArray();
+    byte[] array() {
+        return this.encoder.toArray();
+    }
+
+    private void code(int symbol) {
+        this.encoder.encode(this.model.cumulative(symbol), this.model.frequency(symbol), this.model.total());
     }
 }

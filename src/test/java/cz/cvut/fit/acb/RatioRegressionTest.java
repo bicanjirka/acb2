@@ -36,21 +36,21 @@ class RatioRegressionTest {
         EntropyCoding arith = EntropyCoding.ADAPTIVE_ARITHMETIC;
         EntropyCoding bits = EntropyCoding.BIT_ARRAY;
         return Stream.of(
-                new Pin("text", text, TripletCoding.SALOMON, arith, 17_417),
+                new Pin("text", text, TripletCoding.SALOMON, arith, 17_229),
                 new Pin("text", text, TripletCoding.SALOMON, bits, 26_197),
-                new Pin("text", text, TripletCoding.SALOMON2, arith, 15_804),
+                new Pin("text", text, TripletCoding.SALOMON2, arith, 15_493),
                 new Pin("text", text, TripletCoding.SALOMON2, bits, 25_161),
-                new Pin("text", text, TripletCoding.SIMPLE, arith, 15_917),
+                new Pin("text", text, TripletCoding.SIMPLE, arith, 15_590),
                 new Pin("text", text, TripletCoding.SIMPLE, bits, 24_645),
-                new Pin("text", text, TripletCoding.VALACH, arith, 15_796),
+                new Pin("text", text, TripletCoding.VALACH, arith, 15_472),
                 new Pin("text", text, TripletCoding.VALACH, bits, 24_342),
-                new Pin("binary", binary, TripletCoding.SALOMON, arith, 25_997),
+                new Pin("binary", binary, TripletCoding.SALOMON, arith, 26_105),
                 new Pin("binary", binary, TripletCoding.SALOMON, bits, 32_597),
-                new Pin("binary", binary, TripletCoding.SALOMON2, arith, 25_965),
+                new Pin("binary", binary, TripletCoding.SALOMON2, arith, 26_004),
                 new Pin("binary", binary, TripletCoding.SALOMON2, bits, 31_714),
-                new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_689),
+                new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_710),
                 new Pin("binary", binary, TripletCoding.SIMPLE, bits, 46_429),
-                new Pin("binary", binary, TripletCoding.VALACH, arith, 25_974),
+                new Pin("binary", binary, TripletCoding.VALACH, arith, 25_995),
                 new Pin("binary", binary, TripletCoding.VALACH, bits, 38_617));
     }
 

@@ -39,7 +39,7 @@ final class CliParser {
         this.options.addOption("h", "help", false, "print this help");
         this.options.addOption("f", "force", false, "overwrite output files that already exist");
         this.options.addOption("bs", "bit-stream-array", false,
-                "no coding is used for triplets (default is adaptive arithmetic coding)");
+                "no coding is used for triplets (default is adaptive range coding)");
         this.options.addOption(Option.builder("log")
                 .longOpt("log-level")
                 .hasArg()
@@ -73,8 +73,8 @@ final class CliParser {
                 .longOpt("arith-freq")
                 .hasArg()
                 .argName("freq")
-                .desc("<freq> is comma separated array of positive integers defining init values of the arithmetic "
-                        + "coding frequency table for lengths (default is all 1; symbols past the list start at 1)")
+                .desc("<freq> is comma separated array of positive integers defining init values of the range "
+                        + "coding frequency table for lengths (default is all 1; symbols past the list start at 1; each coded length adds 32)")
                 .build());
         this.options.addOption(Option.builder("tc")
                 .longOpt("triplet-coder")

@@ -28,7 +28,7 @@ import java.util.zip.CRC32;
  */
 public final class ContainerFormat {
 
-    static final int VERSION = 1;
+    static final int VERSION = 2;
 
     private static final byte[] MAGIC = {'A', 'C', 'B'};
     private static final TripletCoding[] TRIPLET_CODES = {

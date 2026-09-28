@@ -1,5 +1,7 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -12,12 +14,6 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
 
     /** Wider fields only inflate the arithmetic model: 2^bits symbols each; 24 bits took 98% of a text. */
     public static final int MAX_FIELD_BITS = 16;
-
-    /**
-     * Most the length model's starting frequencies may total. The arithmetic coder fails at a total
-     * of 2^30, and adaptation adds to it, so the start leaves the rest of that room to the stream.
-     */
-    public static final long MAX_LENGTH_MODEL_TOTAL = 1L << 24;
 
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
             EntropyCoding.ADAPTIVE_ARITHMETIC, new int[0], 1_000_000);
@@ -53,9 +49,10 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         int alphabet = lengthAlphabetSize(lengthBits);
         long total = Arrays.stream(frequencies).limit(alphabet).asLongStream().sum()
                 + Math.max(0, alphabet - frequencies.length);
-        if (total > MAX_LENGTH_MODEL_TOTAL) {
-            throw new IllegalArgumentException("length frequencies total " + total + ", more than "
-                    + MAX_LENGTH_MODEL_TOTAL);
+        long limit = AdaptiveFrequencyModel.limitFor(alphabet);
+        if (total > limit) {
+            throw new IllegalArgumentException("length frequencies total " + total + ", more than " + limit
+                    + ", the total their model is halved from");
         }
     }
 

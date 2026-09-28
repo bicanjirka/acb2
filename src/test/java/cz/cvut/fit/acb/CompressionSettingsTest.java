@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
 import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +30,14 @@ class CompressionSettingsTest {
         assertThatThrownBy(() -> defaults.withLengthBits(bits)).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 7, 12, CompressionSettings.MAX_FIELD_BITS})
+    void everyLengthWidthAcceptsTheFlatStartOfItsModel(int bits) {
+        CompressionSettings settings = CompressionSettings.defaults().withLengthBits(bits);
+
+        assertThat(settings.lengthBits()).isEqualTo(bits);
+    }
+
     @Test
     void lengthFrequenciesMustBePositive() {
         assertThatThrownBy(() -> CompressionSettings.defaults().withLengthFrequencies(3, 0))
@@ -37,7 +46,7 @@ class CompressionSettingsTest {
 
     @Test
     void lengthFrequenciesThatOverflowTheModelAreRejected() {
-        int tooMuch = (int) CompressionSettings.MAX_LENGTH_MODEL_TOTAL;
+        int tooMuch = AdaptiveFrequencyModel.limitFor(CompressionSettings.lengthAlphabetSize(7));
 
         assertThatThrownBy(() -> CompressionSettings.defaults().withLengthFrequencies(tooMuch, 1))
                 .isInstanceOf(IllegalArgumentException.class);
