@@ -4,8 +4,8 @@ import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 
@@ -33,13 +33,13 @@ public final class InterceptingProvider implements ACBProvider {
     }
 
     @Override
-    public Dictionary getDictionary(ByteSequence sequence) {
-        return this.dictionaries.apply(this.delegate.getDictionary(sequence));
+    public Dictionary getDictionary(SegmentBuffer segment) {
+        return this.dictionaries.apply(this.delegate.getDictionary(segment));
     }
 
     @Override
-    public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
-        return this.delegate.getCoder(sequence, dictionary);
+    public TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary) {
+        return this.delegate.getCoder(segment, dictionary);
     }
 
     @Override

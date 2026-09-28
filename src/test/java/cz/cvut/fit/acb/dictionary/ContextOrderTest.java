@@ -13,7 +13,7 @@ class ContextOrderTest {
         for (int i = 0; i < bytes.length; i++) {
             text[i] = (byte) bytes[i];
         }
-        return ContextOrder.byLastBytes(new ByteArray(text));
+        return ContextOrder.byLastBytes(SegmentBuffer.of(text));
     }
 
     @Test

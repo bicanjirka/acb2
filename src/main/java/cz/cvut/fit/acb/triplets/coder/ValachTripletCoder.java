@@ -1,9 +1,8 @@
 package cz.cvut.fit.acb.triplets.coder;
 
-import cz.cvut.fit.acb.dictionary.ByteBuilder;
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
@@ -18,8 +17,8 @@ public final class ValachTripletCoder extends BaseTripletCoder {
     private final TripletFieldId lengField;
     private final TripletFieldId byteField;
 
-    public ValachTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
-        super(sequence, dictionary, distanceBits);
+    public ValachTripletCoder(SegmentBuffer segment, Dictionary dictionary, int distanceBits, int lengthBits) {
+        super(segment, dictionary, distanceBits);
         this.lengField = new TripletFieldId(0, lengthBits, TripletFieldKind.LENGTH);
         this.distField = new TripletFieldId(1, distanceBits, TripletFieldKind.DISTANCE);
         this.byteField = new TripletFieldId(2, Byte.SIZE, TripletFieldKind.LITERAL);
@@ -32,12 +31,12 @@ public final class ValachTripletCoder extends BaseTripletCoder {
         int leng = info.getLength();
         // A match reaching the end of the segment leaves no literal, so it gives up its last byte;
         // shortened to zero it must be written as a literal, which is all the decoder expects.
-        int leng2 = leng + idx == sequence().length() ? leng - 1 : leng;
+        int leng2 = leng + idx == segment().length() ? leng - 1 : leng;
 
         int dist = cnt == -1 ? 0 : ctx - cnt;
         if (leng2 == 0) {
             dictionary().update(idx, 1);
-            byte b = sequence().byteAt(idx);
+            byte b = segment().byteAt(idx);
             output.accept(visitor -> {
                 visitor.write(lengField, 0);
                 visitor.write(byteField, b & 0xFF);
@@ -45,7 +44,7 @@ public final class ValachTripletCoder extends BaseTripletCoder {
         } else {
             dictionary().update(idx, leng2 + 1);
             idx += leng2;
-            byte b = sequence().byteAt(idx);
+            byte b = segment().byteAt(idx);
             output.accept(visitor -> {
                 visitor.write(lengField, leng2);
                 visitor.write(distField, dist & distanceMask());
@@ -57,14 +56,13 @@ public final class ValachTripletCoder extends BaseTripletCoder {
 
     @Override
     protected int decodeStep(int idx, TripletProcessor input) throws MalformedStreamException {
-        ByteBuilder builder = ((ByteBuilder) sequence());
         int leng = input.read(lengField);
         if (leng == -1) {
             return Integer.MAX_VALUE;
         }
         if (leng == 0) {
             byte b = (byte) requireField(input.read(byteField));
-            builder.append(b);
+            segment().append(b);
             dictionary().update(idx, 1);
             return idx + 1;
         } else {
@@ -74,8 +72,8 @@ public final class ValachTripletCoder extends BaseTripletCoder {
 
             int ctx = dictionary().searchContext(idx);
             int cnt = ctx - dist;
-            byte[] seq = dictionary().copy(cnt, leng);
-            builder.append(seq).append(b);
+            appendContent(cnt, leng);
+            segment().append(b);
             int consumed = leng + 1;
             dictionary().update(idx, consumed);
             return idx + consumed;

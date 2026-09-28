@@ -12,7 +12,6 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 3 | Dictionary engine: primitive, cache-friendly, licence-clean | medium | no |
 | 4 | Own range coder and adaptive models; drop the vendored Nayuki code | medium | `VERSION` 2 |
 | 5 | Encoder/decoder symmetry refactor and container v2 | large | `VERSION` 3 |
 | 6 | Thesis coders made faithful: context reference, LCP, literal model | medium | `VERSION` 4 |
@@ -22,16 +21,15 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research, planning and phases 0 to 2 are finished. Start with phase 3, first
-entry (the primitive order-statistic structure). Do not redo the research below; its numbers are final unless the code changes.
+State on 2026-09-28: research, planning and phases 0 to 3 are finished. Start with phase 4, first
+entry (the frequency table). Do not redo the research below; its numbers are final unless the code changes.
 Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
 says how to run them.
 
-- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD); in phase 3 keep the
-  `ContextIndex` seam but remove the `-ds` option. Coders follow their source on what defines the algorithm (fields,
-  layout, context and content rules); implementation is free; where a source is silent or buggy
-  the chosen rule goes into `docs/ALGORITHM.md`; improvements are named variants, never silent
-  changes to a faithful coder.
+- **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD). Coders follow their
+  source on what defines the algorithm (fields, layout, context and content rules);
+  implementation is free; where a source is silent or buggy the chosen rule goes into
+  `docs/ALGORITHM.md`; improvements are named variants, never silent changes to a faithful coder.
 - **Research artifacts** (optional, outside the repo; the recipes below rebuild everything):
   `C:\Users\juras\dev\acb-research` holds `cal/cal14` (the corpus), `bin/excom.exe` (ExCom),
   `bin/ac.exe` and `bin/acs.exe` (`AC.C` ported, and a build that prints bits per component to
@@ -131,30 +129,11 @@ gets length almost free from the neighbours, and rarely spends a full literal.
 Moved to `docs/ALGORITHM.md`: section 7 describes Buyanovsky's coder, and the deviations of each
 current coder from its source are listed with its rules in sections 2 to 5.
 
-### Profile of the current code
+### Profile after phase 3
 
-JFR on book1, `valach -l 7`. Compression: `RedBlackBST.select` 50%, `RedBlackBST.put` (with
-the inlined 10-byte comparator) 33%, rebuilding Nayuki's cumulative table 6%. Decompression:
-`put` 60%, `rank` 16%, the arithmetic decoder about 13%. The order-statistic tree is about 85%
-of the time either way; the entropy coder is next.
-
-### Dictionary structure prototypes
-
-A scratch benchmark ran the `valach` encoder's search/insert loop on book1 over four
-structures; all produced the identical triplet sequence.
-
-| Structure | `-d 6 -l 7` | `-d 10 -l 7` |
-|---|---|---|
-| Current: algs4 red-black tree of boxed `Integer`s, `select` per candidate | 1,885 ms | 16,122 ms |
-| Chunked sorted `int[]` (two-level B+ tree, 512 per chunk, Fenwick over chunk sizes), neighbour walk | 533 ms | - |
-| The same with keys packed into two `long`s per position | 542 ms | 1,522 ms |
-| Encoder-only: final ranks presorted, Fenwick tree and bitset over rank space | 209 ms + 470 ms presort | 1,310 ms + 470 ms |
-
-The chunked array is 3.5x faster at the default window and 10x faster at `-d 10`, works for the
-decoder too, and uses 4 bytes per position instead of about 60. Packing keys gains nothing
-against a plain comparator over a byte array. The encoder-only structure is faster still but
-doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,048 are within
-15% of each other.
+JFR on book1, `valach -l 7` (80 samples compressing, 60 decompressing): the chunked index is
+about 43% of the time either way (`locate`, the Fenwick update), the context comparator 5-10%,
+and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its cumulative table.
 
 ### Other findings
 
@@ -162,27 +141,8 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
   `Readme-arith-coding.markdown`, so that file is required for exactly as long as `nayuki.arithcode`
   ships, and goes with it in phase 4.
 - **Incompressible input expands.** 2 MB of random bytes grow by 10.8% and take 13.9 s.
-- **Throughput.** About 0.45 MB/s compressing and 0.8 MB/s decompressing at the defaults; ExCom is
-  3x faster in C++ with the same model, and a Java coder with the structures above should match it.
-- **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
-  a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
-  statistic trees, the comparator, or a stream written by an older build.
-
-## Phase 3: dictionary engine
-
-### Byte comparisons through `ByteSequence`
-
-Every byte of every match goes through `byteAt` with bounds checks, `copy` allocates a
-`ByteBuilder` and arrays per triplet, and the encoder and decoder see different
-`ByteSequence` types, which the coders tell apart by downcasting.
-
-- **Where:** `dictionary.ByteSequence`, `ByteArray`, `ByteBuilder`, `DictionaryBase.match`/`copy`,
-  every coder.
-- **Approach:** one `SegmentBuffer` (a padded `byte[]` with a fill mark) for both sides. Forward
-  matching uses `Arrays.mismatch` (vectorised in the JDK); a decoder copy is one `arraycopy`, or a
-  byte loop when the match overlaps its own output. Related faults go with it: `ByteBuilder.clone`
-  copies the whole capacity, `ByteBuilder.equals` compares contents while `hashCode` hashes
-  array identity, and `ByteArray.array()` returns its internal array.
+- **Throughput.** Before phase 3: about 0.45 MB/s compressing and 0.8 MB/s decompressing at the
+  defaults, against ExCom's 1.4 MB/s in C++ with the same model. After it: 1.5 and 1.8 MB/s.
 
 ## Phase 4: entropy coding
 
@@ -233,9 +193,8 @@ The big refactor, on a tested and measured base. Container changes are batched i
 
 ### One update rule, shared by both sides
 
-Each coder class is both encoder and decoder, and its mode depends on the runtime type of its
-`ByteSequence`: every `decodeStep` downcasts to `ByteBuilder`. `encodeStep` and `decodeStep`
-each restate the dictionary update and the end-of-segment shortening of a match (for example
+Each coder class is both encoder and decoder, and which it is depends on which half of its API
+is called. `encodeStep` and `decodeStep` each restate the dictionary update and the end-of-segment shortening of a match (for example
 `ValachTripletCoder` lines 41-53 against 85-90). That duplication is where the LCP defect lives,
 and where `AC.C`'s own decoder went wrong.
 

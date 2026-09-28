@@ -41,11 +41,6 @@ final class FakeDictionary implements Dictionary {
     }
 
     @Override
-    public byte[] copy(int cnt, int leng) {
-        throw new UnsupportedOperationException("Encoding never copies");
-    }
-
-    @Override
     public DictionaryInfo searchContent(int ctx, int idx) {
         throw new UnsupportedOperationException("Encoding searches through search");
     }

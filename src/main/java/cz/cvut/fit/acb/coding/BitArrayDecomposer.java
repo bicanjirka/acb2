@@ -1,10 +1,10 @@
 package cz.cvut.fit.acb.coding;
 
-import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -24,13 +24,12 @@ public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecompose
             if (byteSize < Long.BYTES) {
                 throw new MalformedStreamException("The bit stream has no room for its bit count");
             }
-            ByteBuilder bb = new ByteBuilder(byteSize);
-            for (byte[] bArr : bytes) {
-                bb.append(bArr);
-            }
-            ByteBuffer stream = ByteBuffer.wrap(bb.array());
+            ByteArrayOutputStream joined = new ByteArrayOutputStream(byteSize);
+            bytes.forEach(joined::writeBytes);
+            byte[] all = joined.toByteArray();
+            ByteBuffer stream = ByteBuffer.wrap(all);
             bitsRemaining = stream.getLong();
-            bais = new ByteArrayInputStream(bb.array(), Long.BYTES, stream.remaining());
+            bais = new ByteArrayInputStream(all, Long.BYTES, stream.remaining());
             bsis = new BitStreamInputStream(bais);
         }
         return new ByteArrayDecomposerInner(bsis, index.bitSize());

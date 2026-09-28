@@ -21,7 +21,7 @@ class ChunkedContextIndexPropertiesTest {
     void afterAnyInsertsItAgreesWithASortedListOnEveryRankAndEveryPosition(
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
             @ForAll long seed) {
-        ContextOrder order = ContextOrder.byLastBytes(new ByteArray(text));
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text));
         ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         Random random = new Random(seed);
@@ -48,7 +48,7 @@ class ChunkedContextIndexPropertiesTest {
     void cursorsWalkTheSameNeighboursAsASortedList(@ForAll("texts") byte[] text,
                                                     @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
                                                     @ForAll long seed) {
-        ContextOrder order = ContextOrder.byLastBytes(new ByteArray(text));
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text));
         ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         for (int position = 0; position < text.length; position++) {

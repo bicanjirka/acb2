@@ -1,8 +1,8 @@
 package cz.cvut.fit.acb.triplets.coder;
 
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
@@ -19,11 +19,11 @@ public abstract sealed class BaseTripletCoder implements TripletCoder
         permits SimpleTripletCoder, SalomonTripletCoder, ValachTripletCoder, LCPTripletCoder {
 
     private final Dictionary dictionary;
-    private final ByteSequence sequence;
+    private final SegmentBuffer segment;
     private final int distanceBits;
 
-    protected BaseTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits) {
-        this.sequence = sequence;
+    protected BaseTripletCoder(SegmentBuffer segment, Dictionary dictionary, int distanceBits) {
+        this.segment = segment;
         this.dictionary = dictionary;
         this.distanceBits = distanceBits;
     }
@@ -31,7 +31,7 @@ public abstract sealed class BaseTripletCoder implements TripletCoder
     @Override
     public void encode(Consumer<TripletSupplier> output) {
         int idx = 0;
-        int ceiling = this.sequence.length();
+        int ceiling = this.segment.length();
         while (idx < ceiling) {
             DictionaryInfo info = this.dictionary.search(idx);
             idx = this.encodeStep(idx, info, output);
@@ -78,8 +78,20 @@ public abstract sealed class BaseTripletCoder implements TripletCoder
         return this.dictionary;
     }
 
-    protected final ByteSequence sequence() {
-        return this.sequence;
+    protected final SegmentBuffer segment() {
+        return this.segment;
+    }
+
+    /**
+     * Appends the first {@code length} bytes of the content of rank {@code rank}, repeating them if
+     * the content is shorter.
+     *
+     * @throws MalformedStreamException if the rank is not in the dictionary
+     */
+    protected final void appendContent(int rank, int length) throws MalformedStreamException {
+        if (length > 0) {
+            this.segment.appendCopy(this.dictionary.select(rank), length);
+        }
     }
 
     /** Keeps a signed distance's low bits, as the distance field stores it. */

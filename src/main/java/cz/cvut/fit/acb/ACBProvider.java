@@ -1,8 +1,8 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 
@@ -14,9 +14,9 @@ import java.util.List;
  *
  */
 public interface ACBProvider {
-    Dictionary getDictionary(ByteSequence sequence);
+    Dictionary getDictionary(SegmentBuffer segment);
 
-    TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary);
+    TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary);
 
     TripletWriter getTripletWriter();
 

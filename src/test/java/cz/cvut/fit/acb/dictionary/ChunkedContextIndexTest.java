@@ -20,13 +20,13 @@ class ChunkedContextIndexTest {
     }
 
     private static ChunkedContextIndex indexOver(int length) {
-        return new ChunkedContextIndex(ContextOrder.byLastBytes(new ByteArray(new byte[length])));
+        return new ChunkedContextIndex(ContextOrder.byLastBytes(SegmentBuffer.of(new byte[length])));
     }
 
     @Test
     void aTextThatFillsManyDefaultChunksInPositionOrderAgreesWithASortedList() {
         byte[] text = textOfTwoLetters(3_000);
-        ContextOrder order = ContextOrder.byLastBytes(new ByteArray(text));
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text));
         ChunkedContextIndex actual = new ChunkedContextIndex(order);
         SortedListContextIndex expected = new SortedListContextIndex(order);
 

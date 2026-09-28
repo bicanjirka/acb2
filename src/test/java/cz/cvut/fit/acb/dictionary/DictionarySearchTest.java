@@ -12,7 +12,7 @@ class DictionarySearchTest {
 
     private static Dictionary dictionaryOf(String text) {
         return new ACBProviderImpl(CompressionSettings.defaults())
-                .getDictionary(new ByteArray(text.getBytes(StandardCharsets.US_ASCII)));
+                .getDictionary(SegmentBuffer.of(text.getBytes(StandardCharsets.US_ASCII)));
     }
 
     @Test

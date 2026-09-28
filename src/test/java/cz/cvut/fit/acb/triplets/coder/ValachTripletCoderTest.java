@@ -1,6 +1,6 @@
 package cz.cvut.fit.acb.triplets.coder;
 
-import cz.cvut.fit.acb.dictionary.ByteArray;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.triplets.coder.FieldRecorder.Field;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +16,7 @@ class ValachTripletCoderTest {
 
     @Test
     void aOneByteMatchEndingTheSegmentIsWrittenAsALiteral() {
-        ByteArray segment = new ByteArray(new byte[]{'a', 'b'});
+        SegmentBuffer segment = SegmentBuffer.of(new byte[]{'a', 'b'});
         FakeDictionary dictionary = FakeDictionary.matching(idx -> idx == 1 ? match(0, 1) : noMatch());
         FieldRecorder fields = new FieldRecorder();
 
@@ -29,7 +29,7 @@ class ValachTripletCoderTest {
 
     @Test
     void aLongerMatchEndingTheSegmentGivesUpItsLastByteAsTheLiteral() {
-        ByteArray segment = new ByteArray(new byte[]{'a', 'a', 'z'});
+        SegmentBuffer segment = SegmentBuffer.of(new byte[]{'a', 'a', 'z'});
         FakeDictionary dictionary = FakeDictionary.matching(idx -> idx == 1 ? match(3, 2) : noMatch());
         FieldRecorder fields = new FieldRecorder();
 

@@ -15,12 +15,13 @@ public interface ContextOrder {
      * that runs out of bytes, or ties, sorts by the smaller position first. Reads only bytes before
      * the positions.
      */
-    static ContextOrder byLastBytes(ByteSequence sequence) {
+    static ContextOrder byLastBytes(SegmentBuffer segment) {
         return (first, second) -> {
+            byte[] bytes = segment.bytes();
             int limit = Math.min(Math.min(first, second), DEPTH);
             for (int k = 1; k <= limit; k++) {
-                byte a = sequence.byteAt(first - k);
-                byte b = sequence.byteAt(second - k);
+                byte a = bytes[first - k];
+                byte b = bytes[second - k];
                 if (a != b) {
                     return a - b;
                 }

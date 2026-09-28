@@ -7,13 +7,6 @@ public interface Dictionary {
     /** How many positions the dictionary holds. */
     int size();
 
-    /**
-     * The first {@code leng} bytes of the content of rank {@code cnt}, repeated if it is shorter.
-     *
-     * @throws MalformedStreamException if the rank is not in the dictionary
-     */
-    byte[] copy(int cnt, int leng) throws MalformedStreamException;
-
     DictionaryInfo search(int idx);
 
     DictionaryInfo searchContent(int ctx, int idx);

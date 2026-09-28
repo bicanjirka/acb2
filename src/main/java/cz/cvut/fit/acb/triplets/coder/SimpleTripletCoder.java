@@ -1,9 +1,8 @@
 package cz.cvut.fit.acb.triplets.coder;
 
-import cz.cvut.fit.acb.dictionary.ByteBuilder;
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
@@ -18,8 +17,8 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
     private final TripletFieldId lengField;
     private final TripletFieldId byteField;
 
-    public SimpleTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
-        super(sequence, dictionary, distanceBits);
+    public SimpleTripletCoder(SegmentBuffer segment, Dictionary dictionary, int distanceBits, int lengthBits) {
+        super(segment, dictionary, distanceBits);
         this.distField = new TripletFieldId(0, distanceBits, TripletFieldKind.DISTANCE);
         this.lengField = new TripletFieldId(1, lengthBits, TripletFieldKind.LENGTH);
         this.byteField = new TripletFieldId(2, Byte.SIZE, TripletFieldKind.LITERAL);
@@ -30,12 +29,12 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
         int ctx = info.getContext();
         int cnt = info.getContent();
         int leng2 = info.getLength();
-        int leng = leng2 + idx == sequence().length() ? leng2 - 1 : leng2;
+        int leng = leng2 + idx == segment().length() ? leng2 - 1 : leng2;
 
         dictionary().update(idx, leng + 1);
         idx += leng;
         int dist = cnt == -1 ? 0 : ctx - cnt;
-        byte b = sequence().byteAt(idx);
+        byte b = segment().byteAt(idx);
 
         output.accept(visitor -> {
             visitor.write(distField, dist & distanceMask());
@@ -60,17 +59,11 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
             throw new MalformedStreamException("The stream ends inside a triplet");
         }
         byte b = (byte) literal;
-        ByteBuilder builder = ((ByteBuilder) sequence());
-
         int ctx = dictionary().searchContext(idx);
         int cnt = ctx - dist;
 
-        if (leng > 0) {
-            byte[] seq = dictionary().copy(cnt, leng);
-            builder.append(seq);
-        }
-
-        builder.append(b);
+        appendContent(cnt, leng);
+        segment().append(b);
         int consumed = leng + 1;
         dictionary().update(idx, consumed);
         return idx + consumed;

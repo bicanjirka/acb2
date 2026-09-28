@@ -6,12 +6,12 @@ import cz.cvut.fit.acb.coding.BitArrayComposer;
 import cz.cvut.fit.acb.coding.BitArrayDecomposer;
 import cz.cvut.fit.acb.coding.ByteToTripletConverter;
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.ChunkedContextIndex;
 import cz.cvut.fit.acb.dictionary.ContextOrder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryBase;
 import cz.cvut.fit.acb.dictionary.DictionaryLCP;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.LCPTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
@@ -30,26 +30,26 @@ public final class ACBProviderImpl implements ACBProvider {
     }
 
     @Override
-    public Dictionary getDictionary(ByteSequence sequence) {
+    public Dictionary getDictionary(SegmentBuffer segment) {
         int maxDistance = this.settings.maxDistance();
         int maxLength = this.settings.maxLength();
-        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(sequence));
+        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment));
         return switch (this.settings.tripletCoding()) {
-            case LCP -> new DictionaryLCP(index, sequence, maxDistance, maxLength);
-            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(index, sequence, maxDistance, maxLength);
+            case LCP -> new DictionaryLCP(index, segment, maxDistance, maxLength);
+            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(index, segment, maxDistance, maxLength);
         };
     }
 
     @Override
-    public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
+    public TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary) {
         int distanceBits = this.settings.distanceBits();
         int lengthBits = this.settings.lengthBits();
         return switch (this.settings.tripletCoding()) {
-            case SALOMON -> new SalomonTripletCoder.SalomonByteless(sequence, dictionary, distanceBits, lengthBits);
-            case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(sequence, dictionary, distanceBits, lengthBits);
-            case SIMPLE -> new SimpleTripletCoder(sequence, dictionary, distanceBits, lengthBits);
-            case VALACH -> new ValachTripletCoder(sequence, dictionary, distanceBits, lengthBits);
-            case LCP -> new LCPTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+            case SALOMON -> new SalomonTripletCoder.SalomonByteless(segment, dictionary, distanceBits, lengthBits);
+            case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(segment, dictionary, distanceBits, lengthBits);
+            case SIMPLE -> new SimpleTripletCoder(segment, dictionary, distanceBits, lengthBits);
+            case VALACH -> new ValachTripletCoder(segment, dictionary, distanceBits, lengthBits);
+            case LCP -> new LCPTripletCoder(segment, dictionary, distanceBits, lengthBits);
         };
     }
 

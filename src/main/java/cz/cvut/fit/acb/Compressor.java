@@ -1,8 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.ByteArray;
-import cz.cvut.fit.acb.dictionary.ByteBuilder;
+import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
@@ -11,6 +10,7 @@ import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -72,8 +72,8 @@ public final class Compressor {
             }
             inputBytes += segment.length;
             segmentCount++;
-            ByteArray sequence = new ByteArray(segment);
-            provider.getCoder(sequence, provider.getDictionary(sequence)).encode(triplet -> {
+            SegmentBuffer buffer = SegmentBuffer.of(segment);
+            provider.getCoder(buffer, provider.getDictionary(buffer)).encode(triplet -> {
                 triplets.increment();
                 triplet.visit(writer);
             });
@@ -89,9 +89,9 @@ public final class Compressor {
     }
 
     public byte[] decompress(CompressedStream stream) throws MalformedStreamException {
-        ByteBuilder decoded = new ByteBuilder();
-        this.decompress(stream, decoded::append);
-        return decoded.array();
+        ByteArrayOutputStream decoded = new ByteArrayOutputStream();
+        this.decompress(stream, decoded::writeBytes);
+        return decoded.toByteArray();
     }
 
     /** Hands each decoded segment to {@code segments} as soon as it is complete. */
@@ -109,10 +109,10 @@ public final class Compressor {
         TripletCoder.DecodeFlag flag;
         long bytes = 0;
         do {
-            ByteBuilder segment = new ByteBuilder();
+            SegmentBuffer segment = SegmentBuffer.empty();
             flag = provider.getCoder(segment, provider.getDictionary(segment)).decode(reader);
             if (segment.length() > 0) {
-                segments.accept(segment.array());
+                segments.accept(segment.toArray());
                 bytes += segment.length();
             }
         } while (flag != TripletCoder.DecodeFlag.EOF);

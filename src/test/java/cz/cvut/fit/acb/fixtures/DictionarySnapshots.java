@@ -70,11 +70,6 @@ public final class DictionarySnapshots {
         }
 
         @Override
-        public byte[] copy(int cnt, int leng) throws MalformedStreamException {
-            return this.delegate.copy(cnt, leng);
-        }
-
-        @Override
         public DictionaryInfo search(int idx) {
             return this.delegate.search(idx);
         }

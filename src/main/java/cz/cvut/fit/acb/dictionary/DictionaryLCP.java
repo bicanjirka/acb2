@@ -2,8 +2,8 @@ package cz.cvut.fit.acb.dictionary;
 
 public final class DictionaryLCP extends DictionaryBase {
 
-    public DictionaryLCP(ContextIndex index, ByteSequence sequence, int maxDistance, int maxLength) {
-        super(index, sequence, maxDistance, maxLength);
+    public DictionaryLCP(ContextIndex index, SegmentBuffer segment, int maxDistance, int maxLength) {
+        super(index, segment, maxDistance, maxLength);
     }
 
     @Override
@@ -50,15 +50,20 @@ public final class DictionaryLCP extends DictionaryBase {
         return cmp;
     }
 
-    @Override
-    protected int compare(int i, int j) {
+    private int compare(int i, int j) {
         if (i >= index().size())
             return Byte.MAX_VALUE;
         if (j >= index().size())
             return Byte.MIN_VALUE;
-        byte b1 = seq().byteAt(i);
-        byte b2 = seq().byteAt(j);
+        byte b1 = segment().byteAt(i);
+        byte b2 = segment().byteAt(j);
         return Byte.compare(b1, b2);
+    }
+
+    private boolean match(int i, int j) {
+        if (i >= segment().length())
+            return false;
+        return segment().byteAt(i) == segment().byteAt(j);
     }
 
 }
