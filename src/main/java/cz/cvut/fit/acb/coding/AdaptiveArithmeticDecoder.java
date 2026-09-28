@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 import java.util.List;
@@ -13,14 +14,18 @@ public class AdaptiveArithmeticDecoder extends ByteToTripletConverter<AdaptiveAr
     }
 
     @Override
-    protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes) {
+    protected AdaptiveArithmeticDecompress createNew(TripletFieldId index, List<byte[]> bytes)
+            throws MalformedStreamException {
+        if (index.index() >= bytes.size()) {
+            throw new MalformedStreamException("The payload has no array for triplet field " + index.index());
+        }
         return index.isLength() ?
                 new AdaptiveArithmeticDecompress(index.bitSize(), bytes.get(index.index()), lengthFreq) :
                 new AdaptiveArithmeticDecompress(index.bitSize(), bytes.get(index.index()));
     }
 
     @Override
-    protected int decompress(AdaptiveArithmeticDecompress object) {
+    protected int decompress(AdaptiveArithmeticDecompress object) throws MalformedStreamException {
         return object.decompress();
     }
 }

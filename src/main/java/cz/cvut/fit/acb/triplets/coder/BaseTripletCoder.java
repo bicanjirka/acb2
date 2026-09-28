@@ -3,6 +3,7 @@ package cz.cvut.fit.acb.triplets.coder;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.BitUtils;
@@ -38,7 +39,7 @@ public abstract sealed class BaseTripletCoder implements TripletCoder
     }
 
     @Override
-    public DecodeFlag decode(TripletProcessor input) {
+    public DecodeFlag decode(TripletProcessor input) throws MalformedStreamException {
         int ceiling = input.getSize();
         if (ceiling == 0) {
             return DecodeFlag.EOF;
@@ -50,13 +51,28 @@ public abstract sealed class BaseTripletCoder implements TripletCoder
         if (idx == ceiling) {
             return DecodeFlag.END_OF_PARTITION;
         }
-        return DecodeFlag.EOF;
+        if (idx == Integer.MAX_VALUE) {
+            return DecodeFlag.EOF;
+        }
+        throw new MalformedStreamException("A triplet runs " + (idx - ceiling) + " bytes past the end of its segment");
     }
 
     protected abstract int encodeStep(int idx, DictionaryInfo info, Consumer<TripletSupplier> output);
 
-    /** @return the index after the decoded triplet, or {@link Integer#MAX_VALUE} at end of stream */
-    protected abstract int decodeStep(int idx, TripletProcessor input);
+    /**
+     * @return the index after the decoded triplet, or {@link Integer#MAX_VALUE} if the stream ends
+     *         before a triplet
+     * @throws MalformedStreamException if the stream ends inside a triplet or a triplet is unsound
+     */
+    protected abstract int decodeStep(int idx, TripletProcessor input) throws MalformedStreamException;
+
+    /** A field that must be there once its triplet has begun. */
+    protected static int requireField(int value) throws MalformedStreamException {
+        if (value == -1) {
+            throw new MalformedStreamException("The stream ends inside a triplet");
+        }
+        return value;
+    }
 
     protected final Dictionary dictionary() {
         return this.dictionary;

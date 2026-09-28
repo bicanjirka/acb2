@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
@@ -60,7 +61,7 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
     protected abstract int encodeStepSpecific(int idx, Consumer<TripletSupplier> output, int leng, int dist);
 
     @Override
-    protected int decodeStep(int idx, TripletProcessor input) {
+    protected int decodeStep(int idx, TripletProcessor input) throws MalformedStreamException {
         ByteBuilder builder = ((ByteBuilder) sequence());
         int flag = input.read(flagField);
         if (flag == -1) {
@@ -68,24 +69,16 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         }
 
         if (flag == 0) {
-            int literal = input.read(byteField);
-            if (literal == -1) {
-                return Integer.MAX_VALUE;
-            }
-            byte b = (byte) literal;
+            byte b = (byte) requireField(input.read(byteField));
             LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             builder.append(b);
             dictionary().update(idx, 1);
 
             return idx + 1;
         } else {
-            int tempDist = input.read(distField);
+            int tempDist = requireField(input.read(distField));
             int dist = signedDistance(tempDist);
-            int leng = input.read(lengField);
-
-            if (tempDist == leng && leng == -1) {
-                return Integer.MAX_VALUE;
-            }
+            int leng = requireField(input.read(lengField));
             LOG.trace("Triplet {}", () -> TripletUtils.tripletString(1, dist, leng));
 
             int ctx = dictionary().searchContext(idx);
@@ -98,7 +91,8 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         }
     }
 
-    protected abstract int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input);
+    protected abstract int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input)
+            throws MalformedStreamException;
 
     public static final class SalomonByteless extends SalomonTripletCoder {
 
@@ -119,7 +113,8 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         }
 
         @Override
-        protected int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input) {
+        protected int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input)
+                throws MalformedStreamException {
             dictionary().update(idx, leng);
             return idx + leng;
         }
@@ -147,8 +142,9 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         }
 
         @Override
-        protected int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input) {
-            byte b = (byte) input.read(super.byteField);
+        protected int decodeStepSpecific(int idx, int leng, ByteBuilder builder, TripletProcessor input)
+                throws MalformedStreamException {
+            byte b = (byte) requireField(input.read(super.byteField));
             builder.append(b);
             dictionary().update(idx, leng + 1);
             return idx + leng + 1;

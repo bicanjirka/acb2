@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
@@ -62,22 +63,22 @@ public final class ValachTripletCoder extends BaseTripletCoder {
     }
 
     @Override
-    protected int decodeStep(int idx, TripletProcessor input) {
+    protected int decodeStep(int idx, TripletProcessor input) throws MalformedStreamException {
         ByteBuilder builder = ((ByteBuilder) sequence());
         int leng = input.read(lengField);
         if (leng == -1) {
             return Integer.MAX_VALUE;
         }
         if (leng == 0) {
-            byte b = (byte) input.read(byteField);
+            byte b = (byte) requireField(input.read(byteField));
             LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             builder.append(b);
             dictionary().update(idx, 1);
             return idx + 1;
         } else {
-            int tempDist = input.read(distField);
+            int tempDist = requireField(input.read(distField));
             int dist = signedDistance(tempDist);
-            byte b = (byte) input.read(byteField);
+            byte b = (byte) requireField(input.read(byteField));
             LOG.trace("Triplet {}", () -> TripletUtils.tripletString(leng, dist, b));
 
             int ctx = dictionary().searchContext(idx);

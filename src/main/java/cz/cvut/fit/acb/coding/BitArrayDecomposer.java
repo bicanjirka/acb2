@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.coding;
 
 import cz.cvut.fit.acb.dictionary.ByteBuilder;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 import java.io.ByteArrayInputStream;
@@ -16,9 +17,13 @@ public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecompose
     private long bitsRemaining;
 
     @Override
-    protected ByteArrayDecomposerInner createNew(TripletFieldId index, List<byte[]> bytes) {
+    protected ByteArrayDecomposerInner createNew(TripletFieldId index, List<byte[]> bytes)
+            throws MalformedStreamException {
         if (bais == null) {
             int byteSize = bytes.stream().mapToInt(value -> value.length).sum();
+            if (byteSize < Long.BYTES) {
+                throw new MalformedStreamException("The bit stream has no room for its bit count");
+            }
             ByteBuilder bb = new ByteBuilder(byteSize);
             for (byte[] bArr : bytes) {
                 bb.append(bArr);
@@ -32,7 +37,7 @@ public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecompose
     }
 
     @Override
-    protected int decompress(ByteArrayDecomposerInner object) {
+    protected int decompress(ByteArrayDecomposerInner object) throws MalformedStreamException {
         if (bitsRemaining < object.bitSize) {
             return -1;
         }
@@ -40,9 +45,8 @@ public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecompose
         try {
             return object.read();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new MalformedStreamException("The bit stream cannot be read: " + e.getMessage());
         }
-        return -1;
     }
 
     public static class ByteArrayDecomposerInner {

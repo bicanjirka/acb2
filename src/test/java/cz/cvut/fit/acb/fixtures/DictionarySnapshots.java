@@ -2,6 +2,7 @@ package cz.cvut.fit.acb.fixtures;
 
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +58,7 @@ public final class DictionarySnapshots {
         }
 
         @Override
-        public byte[] copy(int cnt, int leng) {
+        public byte[] copy(int cnt, int leng) throws MalformedStreamException {
             return this.delegate.copy(cnt, leng);
         }
 
@@ -83,7 +84,7 @@ public final class DictionarySnapshots {
         }
 
         @Override
-        public int select(int idx) {
+        public int select(int idx) throws MalformedStreamException {
             return this.delegate.select(idx);
         }
     }

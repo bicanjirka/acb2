@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.dictionary.ByteBuilder;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
@@ -53,17 +54,19 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
     }
 
     @Override
-    protected int decodeStep(int idx, TripletProcessor input) {
+    protected int decodeStep(int idx, TripletProcessor input) throws MalformedStreamException {
         int tempDist = input.read(distField);
+        if (tempDist == -1) {
+            return Integer.MAX_VALUE;
+        }
         int dist = signedDistance(tempDist);
         int leng = input.read(lengField);
         int literal = input.read(byteField);
+        if (leng == -1 || literal == -1) {
+            throw new MalformedStreamException("The stream ends inside a triplet");
+        }
         byte b = (byte) literal;
         ByteBuilder builder = ((ByteBuilder) sequence());
-
-        if (tempDist == -1 && leng == -1 && literal == -1) {
-            return Integer.MAX_VALUE;
-        }
         LOG.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
 
         int ctx = dictionary().searchContext(idx);

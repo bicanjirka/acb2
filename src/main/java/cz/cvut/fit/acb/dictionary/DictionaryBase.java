@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
 import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -48,9 +49,15 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     }
 
     @Override
-    public byte[] copy(int cnt, int leng) {
+    public byte[] copy(int cnt, int leng) throws MalformedStreamException {
+        if (leng == 0) {
+            return new byte[0];
+        }
         ByteBuilder bb = new ByteBuilder(leng);
-        int start = ost.select(cnt);
+        int start = select(cnt);
+        if (start >= seq.length()) {
+            throw new MalformedStreamException("Content at position " + start + " has nothing to copy");
+        }
         while (bb.length() < leng) {
             int end = start + leng - bb.length();
             end = Math.min(seq.length(), end);
@@ -143,7 +150,10 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     }
 
     @Override
-    public int select(int idx) {
+    public int select(int idx) throws MalformedStreamException {
+        if (idx < 0 || idx >= ost.size()) {
+            throw new MalformedStreamException("Rank " + idx + " is outside a dictionary of " + ost.size());
+        }
         return ost.select(idx);
     }
 

@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 
@@ -27,8 +28,12 @@ public abstract class ByteToTripletConverter<T> implements TripletProcessor {
     }
 
     @Override
-    public int read(TripletFieldId fieldId) {
-        T object = map.computeIfAbsent(fieldId.index(), k -> createNew(fieldId, bytes));
+    public int read(TripletFieldId fieldId) throws MalformedStreamException {
+        T object = map.get(fieldId.index());
+        if (object == null) {
+            object = createNew(fieldId, bytes);
+            map.put(fieldId.index(), object);
+        }
         return decompress(object);
     }
 
@@ -42,7 +47,7 @@ public abstract class ByteToTripletConverter<T> implements TripletProcessor {
         throw new UnsupportedOperationException();
     }
 
-    protected abstract T createNew(TripletFieldId index, List<byte[]> bytes);
+    protected abstract T createNew(TripletFieldId index, List<byte[]> bytes) throws MalformedStreamException;
 
-    protected abstract int decompress(T object);
+    protected abstract int decompress(T object) throws MalformedStreamException;
 }

@@ -2,6 +2,7 @@ package cz.cvut.fit.acb.fixtures;
 
 import cz.cvut.fit.acb.coding.FieldCost;
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 
@@ -81,7 +82,7 @@ public final class TripletLog {
         }
 
         @Override
-        public int read(TripletFieldId fieldId) {
+        public int read(TripletFieldId fieldId) throws MalformedStreamException {
             int value = this.delegate.read(fieldId);
             if (value == -1) {
                 return value;

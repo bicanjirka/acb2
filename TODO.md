@@ -179,23 +179,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ## Phase 1: correctness and hardening
 
-### Bad payloads fail with arbitrary exceptions or garbage
-
-A well-formed container with a corrupt payload is not caught: an out-of-range rank gives an NPE
-or `IndexOutOfBoundsException`, not `MalformedStreamException`. A payload with fewer arrays than
-fields fails the same way. `AdaptiveArithmeticDecompress` swallows an `IOException` and returns
-symbol 0, so decoding continues on invented data, and reads past an end-of-stream symbol keep
-decoding. `ValachTripletCoder.decodeStep` casts a `-1` end-of-stream read straight to a byte.
-Tests corrupt only the container, never the payload.
-
-- **Where:** `Compressor.decompress`, every `decodeStep` in `triplets.coder`,
-  `dictionary.DictionaryBase.copy`/`select`, `coding.ByteToTripletConverter.read`,
-  `coding.AdaptiveArithmeticDecompress`.
-- **Approach:** validate distances and ranks against the dictionary size in the decoder and
-  throw `MalformedStreamException`; stop at the first `-1`. Add a jqwik property that feeds
-  random payloads inside a valid container through `Compressor.decompress` and accepts only
-  success or `MalformedStreamException`.
-
 ### Swallowed I/O errors in the coding layer
 
 `printStackTrace` followed by carrying on, against the error rule in `CLAUDE.md`, in seven
@@ -414,7 +397,9 @@ symbol, which is why its alphabet is `2^n + 1`.
 - **Approach:** store the original length in the header and let the decoder loop by count. The
   sentinels, `DecodeFlag` and the EOF symbols go away. All fields of a segment go interleaved into
   one range-coded stream, in the order the decoder reads them (as ExCom does), which drops the
-  per-field length prefixes and makes the payload streamable.
+  per-field length prefixes and makes the payload streamable. The recorded length also bounds the
+  work and memory a crafted payload can demand: today a huge segment size in the payload decodes
+  as long as the fields can be read.
 
 ### Per-segment blocks and a stored fallback
 
@@ -498,8 +483,8 @@ came from output that was never decoded. What is known:
   the best, takes the largest LCP with the best among the candidates that sort below it: one
   `Arrays.mismatch` per candidate, and only when the sent length is non-zero. The length cap then
   applies to `L - lcp`, which lets matches exceed `2^bits - 1`, the point of the method. Remove
-  the CLI refusal and the test exclusion together, and re-measure Table 5.8 with round trips
-  verified.
+  the CLI refusal, the refusal in `Compressor.decompress` and the test exclusion together, and
+  re-measure Table 5.8 with round trips verified.
 
 ### Literals are coded order-0
 

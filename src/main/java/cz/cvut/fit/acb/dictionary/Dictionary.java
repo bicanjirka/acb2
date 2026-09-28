@@ -1,12 +1,19 @@
 package cz.cvut.fit.acb.dictionary;
 
+import cz.cvut.fit.acb.format.MalformedStreamException;
+
 import java.util.Comparator;
 
 public interface Dictionary {
 
     Dictionary clone();
 
-    byte[] copy(int cnt, int leng);
+    /**
+     * The first {@code leng} bytes of the content of rank {@code cnt}, repeated if it is shorter.
+     *
+     * @throws MalformedStreamException if the rank is not in the dictionary
+     */
+    byte[] copy(int cnt, int leng) throws MalformedStreamException;
 
     DictionaryInfo search(int idx);
 
@@ -16,7 +23,11 @@ public interface Dictionary {
 
     void update(int idx, int count);
 
-    int select(int idx);
+    /**
+     * @return the position of the entry with rank {@code idx}
+     * @throws MalformedStreamException if the rank is not in the dictionary
+     */
+    int select(int idx) throws MalformedStreamException;
 
     class ReverseIndexComparator implements Comparator<Integer> {
         private static final int MAGIC_CONST = 10;
