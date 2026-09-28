@@ -37,7 +37,7 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 `Compressor` (the in-memory core) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and
 `ACBFileIO` (its file side) · `ACBProvider*` (wires the strategies below from a
 `CompressionSettings` record) · `dictionary`
-(+ `core` order-statistic trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
+(+ the `ContextIndex` behind it) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
 `coding` (triplet↔byte: adaptive arithmetic, bit array) · `format` (the on-disk container:
 header, payload, CRC32) · `utils` (bit helpers). `nayuki.arithcode` is vendored MIT
 code (Project Nayuki) - keep its licence notice, don't restyle it.
@@ -56,9 +56,9 @@ code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 ## Tests
 
-- Quick tests must stay cheap: round trips over `SettingsCombination.representative()` only. The
-  full grid (`all()`), large inputs and anything long-running or memory-hungry go in a class or
-  method tagged `@Tag("slow")`, which only `-Pfull` runs.
+- Quick tests must stay cheap: round trips over `SettingsCombination.all()` on small inputs. Large
+  inputs and anything long-running or memory-hungry go in a class or method tagged
+  `@Tag("slow")`, which only `-Pfull` runs.
 - Round trips run in memory through `Compressor`, over every `fixtures.CorpusFile` (classpath
   `in/`). `fixtures.InterceptingProvider` wraps its
   components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.

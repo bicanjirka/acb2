@@ -16,21 +16,21 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** The quick round trips, over the representative settings; {@code FullRoundTripTest} covers every combination. */
+/** The round trips: every settings combination over the corpus and the degenerate inputs. */
 class RoundTripTest {
 
     static Stream<Arguments> settingsAndCorpus() {
-        return SettingsCombination.representative()
+        return SettingsCombination.all()
                 .flatMap(settings -> CorpusFile.all().map(file -> Arguments.of(settings, file)));
     }
 
     static Stream<Arguments> settingsAndDegenerateInputs() {
-        return SettingsCombination.representative()
+        return SettingsCombination.all()
                 .flatMap(settings -> DegenerateInput.all().map(input -> Arguments.of(settings, input)));
     }
 
     static Stream<SettingsCombination> workingSettings() {
-        return SettingsCombination.representative().filter(settings -> settings.knownRoundTripDefect().isEmpty());
+        return SettingsCombination.all().filter(settings -> settings.knownRoundTripDefect().isEmpty());
     }
 
     @ParameterizedTest(name = "{0} {1}")

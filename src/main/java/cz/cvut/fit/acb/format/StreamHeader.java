@@ -1,7 +1,6 @@
 package cz.cvut.fit.acb.format;
 
 import cz.cvut.fit.acb.CompressionSettings;
-import cz.cvut.fit.acb.DictionaryStructure;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 
@@ -10,8 +9,8 @@ import java.util.Objects;
 
 /**
  * The settings a stream was coded with - everything decoding depends on. Frequencies beyond the
- * length alphabet are dropped, since the coder ignores them. The dictionary structure
- * is left out, since it only affects speed, and so is the segment size, which the payload records.
+ * length alphabet are dropped, since the coder ignores them. The segment size is left out, since
+ * the payload records it.
  */
 public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripletCoding, EntropyCoding entropyCoding,
                            int[] lengthFrequencies) {
@@ -34,14 +33,13 @@ public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripl
     /**
      * @throws IllegalArgumentException if a value is out of the range {@link CompressionSettings} accepts
      */
-    public CompressionSettings toSettings(DictionaryStructure dictionaryStructure) {
+    public CompressionSettings toSettings() {
         return CompressionSettings.defaults()
                 .withDistanceBits(this.distanceBits)
                 .withLengthBits(this.lengthBits)
                 .withTripletCoding(this.tripletCoding)
                 .withEntropyCoding(this.entropyCoding)
-                .withLengthFrequencies(this.lengthFrequencies)
-                .withDictionaryStructure(dictionaryStructure);
+                .withLengthFrequencies(this.lengthFrequencies);
     }
 
     @Override

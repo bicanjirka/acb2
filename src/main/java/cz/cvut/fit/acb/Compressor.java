@@ -23,8 +23,7 @@ import java.util.function.Function;
 /**
  * Compresses bytes into a {@link CompressedStream} and back, in memory. Holds no state between
  * calls, so one instance serves any number of streams. Each segment is coded with a dictionary of
- * its own; decompression takes the coding settings from the stream's header and only the
- * dictionary structure from this instance.
+ * its own; decompression takes the coding settings from the stream's header.
  */
 public final class Compressor {
 
@@ -105,7 +104,7 @@ public final class Compressor {
         if (stream.header().tripletCoding() == TripletCoding.LCP) {
             throw new MalformedStreamException("LCP streams cannot be decoded: the LCP dictionary diverges");
         }
-        ACBProvider provider = this.components.apply(stream.header().toSettings(this.settings.dictionaryStructure()));
+        ACBProvider provider = this.components.apply(stream.header().toSettings());
         TripletProcessor reader = provider.getTripletReader(payload);
         TripletCoder.DecodeFlag flag;
         long bytes = 0;

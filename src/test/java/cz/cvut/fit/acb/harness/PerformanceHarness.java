@@ -2,7 +2,6 @@ package cz.cvut.fit.acb.harness;
 
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.Compressor;
-import cz.cvut.fit.acb.DictionaryStructure;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 import cz.cvut.fit.acb.fixtures.GeneratedInput;
@@ -103,8 +102,7 @@ public final class PerformanceHarness {
 
     private static List<TripletCoding> workingCoders() {
         return Arrays.stream(TripletCoding.values())
-                .filter(coder -> new SettingsCombination(coder, DictionaryStructure.RED_BLACK,
-                        EntropyCoding.ADAPTIVE_ARITHMETIC).knownRoundTripDefect().isEmpty())
+                .filter(coder -> new SettingsCombination(coder, EntropyCoding.ADAPTIVE_ARITHMETIC).knownRoundTripDefect().isEmpty())
                 .toList();
     }
 

@@ -1,43 +1,24 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.format.MalformedStreamException;
-
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.function.Function;
 
 public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
 
-    private final OrderStatisticTree<Integer> ost;
+    private final ContextIndex index;
     private final ByteSequence seq;
     private final int maxDistance;
     private final int maxLength;
 
-    /** {@code trees} builds the order-statistic tree the dictionary sorts its contexts in. */
-    public DictionaryBase(Function<Comparator<Integer>, OrderStatisticTree<Integer>> trees, ByteSequence sequence,
-                          int maxDistance, int maxLength) {
+    /** {@code index} must order the positions of {@code sequence}, which the dictionary reads but never changes. */
+    public DictionaryBase(ContextIndex index, ByteSequence sequence, int maxDistance, int maxLength) {
+        this.index = index;
         this.seq = sequence;
         this.maxDistance = maxDistance;
         this.maxLength = maxLength;
-        this.ost = trees.apply(new ReverseIndexComparator(sequence));
     }
 
-    private DictionaryBase(DictionaryBase dictionary) {
-        this.ost = dictionary.ost.clone();
-        this.seq = dictionary.seq.clone();
-        this.maxDistance = dictionary.maxDistance;
-        this.maxLength = dictionary.maxLength;
-    }
-
-    @Override
-    public Dictionary clone() {
-        return new DictionaryBase(this);
-    }
-
-    protected final OrderStatisticTree<Integer> ost() {
-        return this.ost;
+    protected final ContextIndex index() {
+        return this.index;
     }
 
     protected final ByteSequence seq() {
@@ -46,6 +27,11 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
 
     protected final int maxLength() {
         return this.maxLength;
+    }
+
+    @Override
+    public int size() {
+        return this.index.size();
     }
 
     @Override
@@ -65,23 +51,6 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
             bb.append(arr);
         }
         return bb.array();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof DictionaryBase)) return false;
-        DictionaryBase that = (DictionaryBase) o;
-        return maxDistance == that.maxDistance &&
-                maxLength == that.maxLength &&
-                Objects.equals(ost, that.ost) &&
-                (Objects.equals(seq, that.seq) ||
-                        Arrays.equals(seq.array(0, ost.size()), that.seq.array(0, ost.size())));
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ost, seq, maxDistance, maxLength);
     }
 
     protected boolean match(int i, int j) {
@@ -111,7 +80,7 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     @Override
     public DictionaryInfo searchContent(int ctx, int idx) {
         int first = Math.max(0, ctx - maxDistance + 1);
-        int last = Math.min(ost.size() - 1, ctx + maxDistance);
+        int last = Math.min(index.size() - 1, ctx + maxDistance);
         return searchContent(ctx, idx, first, last);
     }
 
@@ -122,47 +91,57 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
     protected DictionaryInfo searchContent(int ctx, int idx, int first, int last) {
         int bestIdx = -1;
         int bestLen = 0;
-        int reach = Math.max(ctx - first, last - ctx);
-        for (int offset = 0; offset <= reach && bestLen < maxLength; offset++) {
-            for (int side = 0; side < (offset == 0 ? 1 : 2); side++) {
-                int i = side == 0 ? ctx + offset : ctx - offset;
-                if (i < first || i > last) {
-                    continue;
+        if (first <= last) {
+            ContextCursor above = index.cursorAt(Math.max(ctx, first));
+            ContextCursor below = ctx - 1 >= first ? index.cursorAt(ctx - 1) : null;
+            for (int offset = 0; bestLen < maxLength && (above != null || below != null); offset++) {
+                if (above != null && above.rank() == ctx + offset) {
+                    int len = matchLength(idx, above.position());
+                    if (len > bestLen) {
+                        bestLen = len;
+                        bestIdx = above.rank();
+                    }
+                    above = above.rank() < last && above.moveUp() ? above : null;
                 }
-                int cnt = ost.select(i);
-                int comLen = 0;
-                while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
-                    comLen++;
-                }
-                if (comLen > bestLen) {
-                    bestLen = comLen;
-                    bestIdx = i;
+                if (below != null && offset > 0) {
+                    int len = matchLength(idx, below.position());
+                    if (len > bestLen) {
+                        bestLen = len;
+                        bestIdx = below.rank();
+                    }
+                    below = below.rank() > first && below.moveDown() ? below : null;
                 }
             }
         }
         return new DictionaryInfo(ctx, bestIdx, bestLen);
     }
 
+    private int matchLength(int idx, int cnt) {
+        int length = 0;
+        while (match(idx + length, cnt + length) && length < maxLength) {
+            length++;
+        }
+        return length;
+    }
+
     @Override
     public int searchContext(int idx) {
-        int rank = ost.rank(idx);
-        return rank - 1;
+        return index.rank(idx) - 1;
     }
 
     @Override
     public void update(int idx, int count) {
         for (int i = 0; i < count; i++) {
-            int key = idx + i;
-            ost.put(key);
+            index.insert(idx + i);
         }
     }
 
     @Override
     public int select(int idx) throws MalformedStreamException {
-        if (idx < 0 || idx >= ost.size()) {
-            throw new MalformedStreamException("Rank " + idx + " is outside a dictionary of " + ost.size());
+        if (idx < 0 || idx >= index.size()) {
+            throw new MalformedStreamException("Rank " + idx + " is outside a dictionary of " + index.size());
         }
-        return ost.select(idx);
+        return index.cursorAt(idx).position();
     }
 
 }

@@ -1,15 +1,9 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
-
-import java.util.Comparator;
-import java.util.function.Function;
-
 public final class DictionaryLCP extends DictionaryBase {
 
-    public DictionaryLCP(Function<Comparator<Integer>, OrderStatisticTree<Integer>> trees, ByteSequence sequence,
-                         int maxDistance, int maxLength) {
-        super(trees, sequence, maxDistance, maxLength);
+    public DictionaryLCP(ContextIndex index, ByteSequence sequence, int maxDistance, int maxLength) {
+        super(index, sequence, maxDistance, maxLength);
     }
 
     @Override
@@ -18,10 +12,11 @@ public final class DictionaryLCP extends DictionaryBase {
         int bestLen = 0;
         int lcp = 0; // longest common prefix with second best content
         int lcpIdx = 0; // index of the second best content
-        for (int i = first; i <= last; i++) {
-            int cnt = ost().select(i);
+        ContextCursor cursor = first <= last ? index().cursorAt(first) : null;
+        for (int i = first; cursor != null && i <= last; i++, cursor = cursor.moveUp() ? cursor : null) {
+            int cnt = cursor.position();
             int comLen = 0; // common length
-            while ((cnt + comLen) < ost().size() && match(idx + comLen, cnt + comLen) && comLen < maxLength()) {
+            while ((cnt + comLen) < index().size() && match(idx + comLen, cnt + comLen) && comLen < maxLength()) {
                 comLen++;
             }
             if (comLen > lcp) {
@@ -57,9 +52,9 @@ public final class DictionaryLCP extends DictionaryBase {
 
     @Override
     protected int compare(int i, int j) {
-        if (i >= ost().size())
+        if (i >= index().size())
             return Byte.MAX_VALUE;
-        if (j >= ost().size())
+        if (j >= index().size())
             return Byte.MIN_VALUE;
         byte b1 = seq().byteAt(i);
         byte b2 = seq().byteAt(j);

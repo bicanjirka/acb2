@@ -31,7 +31,7 @@ public final class RoundTripChecks {
     }
 
     public static void degenerateInputRoundTrips(SettingsCombination settings, DegenerateInput input) {
-        settings.knownRoundTripDefect(input).ifPresent(reason -> assumeTrue(false, reason));
+        settings.knownRoundTripDefect().ifPresent(reason -> assumeTrue(false, reason));
 
         for (int segmentSize : new int[]{CompressionSettings.defaults().segmentSize(), SMALL_SEGMENT}) {
             byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize),

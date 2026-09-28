@@ -29,7 +29,7 @@ class CliParserTest {
     @Test
     void everyOptionLandsInTheRequest() throws CliParser.UsageException {
         CliRequest.Work work = this.work("in", "out", "-de", "-f", "-d", "9", "-l", "3", "-bs", "-tc", "valach",
-                "-ds", "st", "-af", "5,4", "-log", "debug", "-m");
+                "-af", "5,4", "-log", "debug", "-m");
 
         assertThat(work.mode()).isEqualTo(CliRequest.Mode.DECOMPRESS);
         assertThat(work.force()).isTrue();
@@ -37,7 +37,7 @@ class CliParserTest {
         assertThat(work.measure()).isEqualTo(CliRequest.Measure.console());
         assertThat(work.settings()).isEqualTo(CompressionSettings.defaults()
                 .withDistanceBits(9).withLengthBits(3).withEntropyCoding(EntropyCoding.BIT_ARRAY)
-                .withTripletCoding(TripletCoding.VALACH).withDictionaryStructure(DictionaryStructure.ST)
+                .withTripletCoding(TripletCoding.VALACH)
                 .withLengthFrequencies(5, 4));
     }
 

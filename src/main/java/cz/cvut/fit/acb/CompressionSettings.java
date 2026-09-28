@@ -8,8 +8,7 @@ import java.util.Objects;
  * the {@code withX} copies; the constructor rejects values no stream can carry.
  */
 public record CompressionSettings(int distanceBits, int lengthBits, TripletCoding tripletCoding,
-                                  DictionaryStructure dictionaryStructure, EntropyCoding entropyCoding,
-                                  int[] lengthFrequencies, int segmentSize) {
+                                  EntropyCoding entropyCoding, int[] lengthFrequencies, int segmentSize) {
 
     /** Wider fields only inflate the arithmetic model: 2^bits symbols each; 24 bits took 98% of a text. */
     public static final int MAX_FIELD_BITS = 16;
@@ -21,13 +20,12 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
     public static final long MAX_LENGTH_MODEL_TOTAL = 1L << 24;
 
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
-            DictionaryStructure.RED_BLACK, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[0], 1_000_000);
+            EntropyCoding.ADAPTIVE_ARITHMETIC, new int[0], 1_000_000);
 
     public CompressionSettings {
         requireFieldBits("distance", distanceBits);
         requireFieldBits("length", lengthBits);
         Objects.requireNonNull(tripletCoding, "tripletCoding");
-        Objects.requireNonNull(dictionaryStructure, "dictionaryStructure");
         Objects.requireNonNull(entropyCoding, "entropyCoding");
         lengthFrequencies = lengthFrequencies.clone();
         requireLengthFrequencies(lengthBits, lengthFrequencies);
@@ -66,38 +64,33 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
     }
 
     public CompressionSettings withDistanceBits(int bits) {
-        return new CompressionSettings(bits, this.lengthBits, this.tripletCoding, this.dictionaryStructure,
+        return new CompressionSettings(bits, this.lengthBits, this.tripletCoding,
                 this.entropyCoding, this.lengthFrequencies, this.segmentSize);
     }
 
     public CompressionSettings withLengthBits(int bits) {
-        return new CompressionSettings(this.distanceBits, bits, this.tripletCoding, this.dictionaryStructure,
+        return new CompressionSettings(this.distanceBits, bits, this.tripletCoding,
                 this.entropyCoding, this.lengthFrequencies, this.segmentSize);
     }
 
     public CompressionSettings withTripletCoding(TripletCoding coding) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, coding, this.dictionaryStructure,
-                this.entropyCoding, this.lengthFrequencies, this.segmentSize);
-    }
-
-    public CompressionSettings withDictionaryStructure(DictionaryStructure structure) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding, structure,
+        return new CompressionSettings(this.distanceBits, this.lengthBits, coding,
                 this.entropyCoding, this.lengthFrequencies, this.segmentSize);
     }
 
     public CompressionSettings withEntropyCoding(EntropyCoding coding) {
         return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.dictionaryStructure, coding, this.lengthFrequencies, this.segmentSize);
+                coding, this.lengthFrequencies, this.segmentSize);
     }
 
     public CompressionSettings withLengthFrequencies(int... frequencies) {
         return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.dictionaryStructure, this.entropyCoding, frequencies, this.segmentSize);
+                this.entropyCoding, frequencies, this.segmentSize);
     }
 
     public CompressionSettings withSegmentSize(int size) {
         return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.dictionaryStructure, this.entropyCoding, this.lengthFrequencies, size);
+                this.entropyCoding, this.lengthFrequencies, size);
     }
 
     @Override
@@ -121,7 +114,6 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
                 && this.distanceBits == that.distanceBits
                 && this.lengthBits == that.lengthBits
                 && this.tripletCoding == that.tripletCoding
-                && this.dictionaryStructure == that.dictionaryStructure
                 && this.entropyCoding == that.entropyCoding
                 && Arrays.equals(this.lengthFrequencies, that.lengthFrequencies)
                 && this.segmentSize == that.segmentSize;
@@ -129,14 +121,14 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
 
     @Override
     public int hashCode() {
-        return 31 * Objects.hash(this.distanceBits, this.lengthBits, this.tripletCoding, this.dictionaryStructure,
+        return 31 * Objects.hash(this.distanceBits, this.lengthBits, this.tripletCoding,
                 this.entropyCoding, this.segmentSize) + Arrays.hashCode(this.lengthFrequencies);
     }
 
     @Override
     public String toString() {
         return "CompressionSettings[distanceBits=" + this.distanceBits + ", lengthBits=" + this.lengthBits
-                + ", tripletCoding=" + this.tripletCoding + ", dictionaryStructure=" + this.dictionaryStructure
+                + ", tripletCoding=" + this.tripletCoding
                 + ", entropyCoding=" + this.entropyCoding
                 + ", lengthFrequencies=" + Arrays.toString(this.lengthFrequencies)
                 + ", segmentSize=" + this.segmentSize + "]";

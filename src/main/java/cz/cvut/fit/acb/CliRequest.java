@@ -41,8 +41,8 @@ public sealed interface CliRequest permits CliRequest.Help, CliRequest.Work {
     }
 
     /**
-     * A job for {@code input} into {@code output}. For a decompression only the dictionary structure of
-     * the settings applies, since the rest comes from each file.
+     * A job for {@code input} into {@code output}. For a decompression the settings do not apply,
+     * since they come from each file.
      */
     record Work(Path input, Path output, Mode mode, Measure measure, CompressionSettings settings,
                 Optional<Level> logLevel, boolean force) implements CliRequest {

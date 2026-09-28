@@ -35,7 +35,7 @@ final class CliParser {
 
     CliParser() {
         this.options.addOption("de", "decompress", false,
-                "decompress input (default is to compress); coding settings are read from the file, so only -ds applies");
+                "decompress input (default is to compress); coding settings are read from the file, so the coding options do not apply");
         this.options.addOption("h", "help", false, "print this help");
         this.options.addOption("f", "force", false, "overwrite output files that already exist");
         this.options.addOption("bs", "bit-stream-array", false,
@@ -82,13 +82,6 @@ final class CliParser {
                 .argName("coder")
                 .desc("<coder> represents triplet coding strategy (default is valach)\n"
                         + "values = " + Arrays.toString(TripletCoding.values()))
-                .build());
-        this.options.addOption(Option.builder("ds")
-                .longOpt("dict-struct")
-                .hasArg()
-                .argName("struct")
-                .desc("<struct> represents data structure used in dictionary (default is red_black)\n"
-                        + "values = " + Arrays.toString(DictionaryStructure.values()))
                 .build());
     }
 
@@ -157,10 +150,6 @@ final class CliParser {
                 throw new UsageException("triplet-coder LCP is experimental and its output does not decompress yet");
             }
             settings = settings.withTripletCoding(coding);
-        }
-        if (cmd.hasOption("ds")) {
-            settings = settings.withDictionaryStructure(
-                    parseEnum(DictionaryStructure.class, cmd.getOptionValue("ds"), "dictionary-structure"));
         }
         return settings;
     }

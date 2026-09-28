@@ -158,16 +158,9 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ### Other findings
 
-- **Licences.** `dictionary.core` (`BST`, `RedBlackBST`, `BinarySearchST`, about 1,800 lines) is
-  algs4 code under GPL-3, which cannot ship under `acb-licence` (non-profit only; GPL forbids
-  added restrictions) and is not declared anywhere. `coding.RangeCoding` is LGPL-3 (dead code).
-  `coding.ArithmeticCoding` was copied from a Google Code project with no stated licence (dead
-  code). The Nayuki files carry no header; their MIT notice lives only in
+- **Licences.** The Nayuki files carry no header; their MIT notice lives only in
   `Readme-arith-coding.markdown`, so that file is required for exactly as long as `nayuki.arithcode`
   ships, and goes with it in phase 4.
-- **`-ds bst` crashes.** 200 KB of one repeated byte: `StackOverflowError`. Equal contexts are
-  ordered by position, so the unbalanced tree becomes a chain and the recursive `put` overflows.
-  It escapes `main`'s `catch (Exception)`.
 - **Incompressible input expands.** 2 MB of random bytes grow by 10.8% and take 13.9 s.
 - **Throughput.** About 0.45 MB/s compressing and 0.8 MB/s decompressing at the defaults; ExCom is
   3x faster in C++ with the same model, and a Java coder with the structures above should match it.
@@ -176,37 +169,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
   statistic trees, the comparator, or a stream written by an older build.
 
 ## Phase 3: dictionary engine
-
-### Replace the algs4 trees with one primitive order-statistic structure
-
-The three trees are the hot spot (85% of the time), the source of the `bst` crash (a 50 KB run of
-one byte overflows the stack; the tests skip that case in
-`SettingsCombination.knownRoundTripDefect(DegenerateInput)`, and the exclusion goes with the
-trees), GPL-3 code in a non-profit-licensed project, and boxed: every position is an `Integer`, every comparison goes
-through `Comparator<Integer>`, every candidate costs an O(log n) `select`. `OrderStatisticTree`
-inherits a 16-method `Serializable` interface and uses five methods.
-
-- **Where:** `dictionary.core` (replaced), `dictionary.DictionaryBase`, `dictionary.DictionaryLCP`,
-  `DictionaryStructure`, `CompressionSettings`, `ACBProviderImpl`, `ACBClient` (`-ds`), `README.md`.
-- **Approach:** one `ContextIndex` over `int` positions: a chunked sorted array (a two-level
-  B+ tree: chunks of about 512 positions, split when full, a Fenwick tree over chunk sizes for
-  `rank` and `select`), with a cursor that walks neighbours in both directions without
-  `select`. `insert` reuses the slot the preceding search found for the same position, so the
-  first context of every step costs one descent, not two. Compare contexts over a padded
-  `byte[]` (sentinel bytes before the segment remove the bounds checks). Delete `BST`,
-  `RedBlackBST`, `BinarySearchST`, `OrderStatisticTree` and `BinarySearchTree`, and the `-da`
-  flag for them in the surefire `argLine`. Test the index
-  against a brute-force sorted-list oracle with jqwik (rank, select, neighbours after random
-  inserts, including equal contexts). Target from the prototype: book1's search loop under 0.6 s
-  at `-d 6`, under 1.6 s at `-d 10`.
-- **`-ds` (decided by the user: keep the seam, drop the menu):** it existed for the thesis's
-  experiment (§4.4, §5.2, Tables 5.4 and 5.5: time and memory of three backing structures), never
-  changed the output, and the tests ran every structure only to prove that. `ContextIndex` stays
-  an interface with one production implementation. The brute-force oracle lives in tests, and
-  a second fast structure (the encoder-only presorted Fenwick, or a plain `int[]` with
-  `arraycopy` as the thesis's `BinarySearchST` baseline) goes in the performance harness if a
-  comparison is wanted. Remove `DictionaryStructure`, `-ds`, and that dimension of
-  `SettingsCombination`, and record the thesis comparison in `docs/ARCHITECTURE.md`.
 
 ### Byte comparisons through `ByteSequence`
 
@@ -300,14 +262,11 @@ documents that every segment but the last has the first one's size, and never ch
 
 ### Split the dictionary by audience
 
-`Dictionary` mixes encoder methods (`search`, `searchContent`), decoder methods (`copy`,
-`select`) and test-only members (`clone`, and `equals`/`hashCode`, used only by
-`fixtures.DictionarySnapshots`), and exposes rank arithmetic.
+`Dictionary` mixes encoder methods (`search`, `searchContent`) and decoder methods (`copy`,
+`select`), and exposes rank arithmetic.
 
-- **Where:** `dictionary.Dictionary`, `dictionary.DictionaryBase`, `fixtures.DictionarySnapshots`.
-- **Approach:** narrow encoder and decoder views over the `ContextIndex` from phase 3; snapshots
-  built by the test harness from public queries instead of `clone`/`equals` on production
-  classes.
+- **Where:** `dictionary.Dictionary`, `dictionary.DictionaryBase`.
+- **Approach:** narrow encoder and decoder views over the `ContextIndex`.
 
 ### Record the length; drop the end-of-stream sentinels
 

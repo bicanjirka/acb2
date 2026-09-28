@@ -8,7 +8,6 @@ import java.util.stream.Stream;
 /** An input built to hit an edge of the search or the segment end, generated in memory from a fixed seed. */
 public record DegenerateInput(String name, byte[] bytes) {
 
-    private static final String LONG_RUN = "longRunOfOneByte";
     private static final int RUN_LENGTH = 50_000;
     private static final long SEED = 20260928L;
 
@@ -19,7 +18,7 @@ public record DegenerateInput(String name, byte[] bytes) {
     public static DegenerateInput longRunOfOneByte() {
         byte[] run = new byte[RUN_LENGTH];
         Arrays.fill(run, (byte) 'a');
-        return new DegenerateInput(LONG_RUN, run);
+        return new DegenerateInput("longRunOfOneByte", run);
     }
 
     /** Every byte value twice, in ascending and then descending order, so signed and unsigned order differ. */
@@ -45,10 +44,6 @@ public record DegenerateInput(String name, byte[] bytes) {
         byte[] bytes = Arrays.copyOf(head, head.length + 120);
         System.arraycopy(head, 40, bytes, head.length, 120);
         return new DegenerateInput("endingInLongMatch", bytes);
-    }
-
-    public boolean isLongRun() {
-        return this.name.equals(LONG_RUN);
     }
 
     @Override

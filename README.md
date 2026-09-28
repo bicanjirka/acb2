@@ -33,7 +33,7 @@ Diagnostics go to standard error; help and measurements go to standard output. T
 when the arguments were not understood.
 
 A compressed file records the coding settings it was written with, so decompression reads them
-from the file. The only option that applies when decompressing is `-ds`.
+from the file; only `-f`, `-m` and `-log` apply when decompressing.
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -42,7 +42,6 @@ from the file. The only option that applies when decompressing is `-ds`.
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
 | `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
 | `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `valach` |
-| `-ds S`, `--dict-struct S` | Dictionary tree: `red_black`, `bst`, `st` | `red_black` |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of arithmetic coding | arithmetic |
 | `-af F`, `--arith-freq F` | Initial arithmetic-coder frequencies for lengths, comma-separated | all 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
@@ -60,13 +59,6 @@ from the file. The only option that applies when decompressing is `-ds`.
 - **lcp** is experimental. The CLI refuses it because its output doesn't decompress yet (see
   `TODO.md`).
 
-### Dictionary structures
-
-All three are order-statistic trees that yield the same ranks, so the choice changes only speed.
-Your choice when decompressing doesn't have to match the one used for compression.
-`red_black` is a red-black BST, `bst` is an unbalanced BST, and `st` is a sorted-array symbol
-table searched by binary search.
-
 ## Development
 
 ```bash
@@ -81,6 +73,4 @@ Working constraints and code style are in `CLAUDE.md`. Known gaps and planned wo
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
 `nayuki.arithcode` is vendored from Project Nayuki under the MIT licence (see
-`Readme-arith-coding.markdown`). `cz.cvut.fit.acb.dictionary.core` is adapted from Sedgewick and
-Wayne's *Algorithms* (algs4), which is distributed under the GPL-3; it is due to be replaced (see
-`TODO.md`).
+`Readme-arith-coding.markdown`); it is due to be replaced (see `TODO.md`).

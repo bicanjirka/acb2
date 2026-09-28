@@ -124,19 +124,6 @@ class ACBClientTest {
     }
 
     @Test
-    void aFileCompressedWithOneDictionaryStructureDecompressesWithAnother() throws IOException {
-        Path input = this.corpusFile("loremipsum");
-        Path compressed = this.dir.resolve("lorem.acb");
-        Path restored = this.dir.resolve("lorem.out");
-        run(input, compressed, "-ds", "st");
-
-        int exitCode = run(compressed, restored, "-de", "-ds", "red_black");
-
-        assertThat(exitCode).isEqualTo(OK);
-        assertThat(restored).hasSameBinaryContentAs(input);
-    }
-
-    @Test
     void decompressingAFileThatIsNotAnAcbStreamFailsAndWritesNothing() throws IOException {
         Path input = this.corpusFile("loremipsum");
         Path output = this.dir.resolve("lorem.out");

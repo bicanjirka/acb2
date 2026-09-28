@@ -36,8 +36,8 @@ final class FakeDictionary implements Dictionary {
     }
 
     @Override
-    public Dictionary clone() {
-        throw new UnsupportedOperationException("Encoding never clones");
+    public int size() {
+        throw new UnsupportedOperationException("Encoding never asks the size");
     }
 
     @Override

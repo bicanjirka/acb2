@@ -4,7 +4,6 @@ import cz.cvut.fit.acb.CompressionResult;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.CompressionStats;
 import cz.cvut.fit.acb.Compressor;
-import cz.cvut.fit.acb.DictionaryStructure;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 import cz.cvut.fit.acb.fixtures.SettingsCombination;
@@ -178,7 +177,7 @@ public final class RatioHarness {
         int[] selectedDistances = distances;
         int[] selectedLengths = lengths;
         return entropies.stream().flatMap(entropy -> selected.stream()
-                .filter(coder -> new SettingsCombination(coder, DictionaryStructure.RED_BLACK, entropy)
+                .filter(coder -> new SettingsCombination(coder, entropy)
                         .knownRoundTripDefect().isEmpty())
                 .flatMap(coder -> Arrays.stream(selectedDistances).boxed()
                         .flatMap(d -> Arrays.stream(selectedLengths).mapToObj(l -> CompressionSettings.defaults()

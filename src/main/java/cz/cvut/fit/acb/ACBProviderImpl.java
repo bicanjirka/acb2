@@ -7,13 +7,11 @@ import cz.cvut.fit.acb.coding.BitArrayDecomposer;
 import cz.cvut.fit.acb.coding.ByteToTripletConverter;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
+import cz.cvut.fit.acb.dictionary.ChunkedContextIndex;
+import cz.cvut.fit.acb.dictionary.ContextOrder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryBase;
 import cz.cvut.fit.acb.dictionary.DictionaryLCP;
-import cz.cvut.fit.acb.dictionary.core.BST;
-import cz.cvut.fit.acb.dictionary.core.BinarySearchST;
-import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
-import cz.cvut.fit.acb.dictionary.core.RedBlackBST;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.LCPTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
@@ -21,7 +19,6 @@ import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 
-import java.util.Comparator;
 import java.util.List;
 
 public final class ACBProviderImpl implements ACBProvider {
@@ -36,9 +33,10 @@ public final class ACBProviderImpl implements ACBProvider {
     public Dictionary getDictionary(ByteSequence sequence) {
         int maxDistance = this.settings.maxDistance();
         int maxLength = this.settings.maxLength();
+        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(sequence));
         return switch (this.settings.tripletCoding()) {
-            case LCP -> new DictionaryLCP(this::newTree, sequence, maxDistance, maxLength);
-            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this::newTree, sequence, maxDistance, maxLength);
+            case LCP -> new DictionaryLCP(index, sequence, maxDistance, maxLength);
+            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(index, sequence, maxDistance, maxLength);
         };
     }
 
@@ -70,13 +68,5 @@ public final class ACBProviderImpl implements ACBProvider {
             case BIT_ARRAY -> new BitArrayDecomposer();
         };
         return converter.open(payload);
-    }
-
-    private OrderStatisticTree<Integer> newTree(Comparator<Integer> comparator) {
-        return switch (this.settings.dictionaryStructure()) {
-            case RED_BLACK -> new RedBlackBST<>(comparator);
-            case BST -> new BST<>(comparator);
-            case ST -> new BinarySearchST<>(comparator);
-        };
     }
 }
