@@ -9,14 +9,10 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
 public final class LCPTripletCoder extends BaseTripletCoder {
-
-    private static final Logger LOG = LogManager.getLogger();
 
     private final TripletFieldId distField;
     private final TripletFieldId lengField;
@@ -42,7 +38,6 @@ public final class LCPTripletCoder extends BaseTripletCoder {
         int dist = cnt == -1 ? 0 : ctx - cnt;
         byte b = sequence().byteAt(idx);
 
-        LOG.trace("Triplet ({}, {}, {}), LCP {}", dist, leng, b, lcp);
         output.accept(visitor -> {
             visitor.write(distField, dist & distanceMask());
             visitor.write(lengField, leng);
@@ -77,7 +72,6 @@ public final class LCPTripletCoder extends BaseTripletCoder {
             lcp = dictionary().searchContent(ctx, key).getLcp();
             leng += lcp;
         }
-        LOG.trace("Triplet ({}, {}, {}), LCP {}", dist, leng - lcp, b, lcp);
 
         if (leng > 0) {
             byte[] seq = dictionary().copy(cnt, leng);

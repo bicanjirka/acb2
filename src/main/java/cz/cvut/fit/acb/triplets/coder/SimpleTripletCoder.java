@@ -9,15 +9,10 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
-import cz.cvut.fit.acb.utils.TripletUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
 public final class SimpleTripletCoder extends BaseTripletCoder {
-
-    private static final Logger LOG = LogManager.getLogger();
 
     private final TripletFieldId distField;
     private final TripletFieldId lengField;
@@ -42,7 +37,6 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
         int dist = cnt == -1 ? 0 : ctx - cnt;
         byte b = sequence().byteAt(idx);
 
-        LOG.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
         output.accept(visitor -> {
             visitor.write(distField, dist & distanceMask());
             visitor.write(lengField, leng);
@@ -67,7 +61,6 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
         }
         byte b = (byte) literal;
         ByteBuilder builder = ((ByteBuilder) sequence());
-        LOG.trace("Triplet {}", () -> TripletUtils.tripletString(dist, leng, b));
 
         int ctx = dictionary().searchContext(idx);
         int cnt = ctx - dist;

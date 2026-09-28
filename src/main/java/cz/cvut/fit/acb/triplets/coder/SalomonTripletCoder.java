@@ -9,16 +9,12 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
-import cz.cvut.fit.acb.utils.TripletUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
 public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         permits SalomonTripletCoder.SalomonByteless, SalomonTripletCoder.SalomonByteful {
 
-    private static final Logger LOG = LogManager.getLogger();
     private static final int BIT_FLAG = 1;
 
     private final TripletFieldId flagField;
@@ -46,7 +42,6 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
             // flag 0
             byte b = sequence().byteAt(idx);
             dictionary().update(idx, 1);
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             output.accept(visitor -> {
                 visitor.write(flagField, 0);
                 visitor.write(byteField, b & 0xFF);
@@ -70,7 +65,6 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
 
         if (flag == 0) {
             byte b = (byte) requireField(input.read(byteField));
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             builder.append(b);
             dictionary().update(idx, 1);
 
@@ -79,7 +73,6 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
             int tempDist = requireField(input.read(distField));
             int dist = signedDistance(tempDist);
             int leng = requireField(input.read(lengField));
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(1, dist, leng));
 
             int ctx = dictionary().searchContext(idx);
             int cnt = ctx - dist;
@@ -103,7 +96,6 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
         @Override
         protected int encodeStepSpecific(int idx, Consumer<TripletSupplier> output, int leng, int dist) {
             dictionary().update(idx, leng);
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(1, dist, leng));
             output.accept(visitor -> {
                 visitor.write(super.flagField, 1);
                 visitor.write(super.distField, dist & distanceMask());
@@ -131,7 +123,6 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
             int leng2 = leng + idx == sequence().length() ? leng - 1 : leng;
             dictionary().update(idx, leng2 + 1);
             byte b = sequence().byteAt(idx + leng2);
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(1, dist, leng2, b));
             output.accept(visitor -> {
                 visitor.write(super.flagField, 1);
                 visitor.write(super.distField, dist & distanceMask());

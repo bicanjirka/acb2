@@ -9,15 +9,10 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
-import cz.cvut.fit.acb.utils.TripletUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
 public final class ValachTripletCoder extends BaseTripletCoder {
-
-    private static final Logger LOG = LogManager.getLogger();
 
     private final TripletFieldId distField;
     private final TripletFieldId lengField;
@@ -43,7 +38,6 @@ public final class ValachTripletCoder extends BaseTripletCoder {
         if (leng2 == 0) {
             dictionary().update(idx, 1);
             byte b = sequence().byteAt(idx);
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             output.accept(visitor -> {
                 visitor.write(lengField, 0);
                 visitor.write(byteField, b & 0xFF);
@@ -52,7 +46,6 @@ public final class ValachTripletCoder extends BaseTripletCoder {
             dictionary().update(idx, leng2 + 1);
             idx += leng2;
             byte b = sequence().byteAt(idx);
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(leng2, dist, b));
             output.accept(visitor -> {
                 visitor.write(lengField, leng2);
                 visitor.write(distField, dist & distanceMask());
@@ -71,7 +64,6 @@ public final class ValachTripletCoder extends BaseTripletCoder {
         }
         if (leng == 0) {
             byte b = (byte) requireField(input.read(byteField));
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(0, b));
             builder.append(b);
             dictionary().update(idx, 1);
             return idx + 1;
@@ -79,7 +71,6 @@ public final class ValachTripletCoder extends BaseTripletCoder {
             int tempDist = requireField(input.read(distField));
             int dist = signedDistance(tempDist);
             byte b = (byte) requireField(input.read(byteField));
-            LOG.trace("Triplet {}", () -> TripletUtils.tripletString(leng, dist, b));
 
             int ctx = dictionary().searchContext(idx);
             int cnt = ctx - dist;

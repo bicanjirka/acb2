@@ -8,6 +8,8 @@ import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -25,6 +27,8 @@ import java.util.function.Function;
  * dictionary structure from this instance.
  */
 public final class Compressor {
+
+    private static final Logger LOG = LogManager.getLogger();
 
     private final CompressionSettings settings;
     private final Function<CompressionSettings, ACBProvider> components;
@@ -79,8 +83,10 @@ public final class Compressor {
             writer.setSize(0);
         }
         CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings), writer.finish());
-        return new CompressionResult(stream,
-                new CompressionStats(inputBytes, segmentCount, triplets.sum(), writer.costs()));
+        CompressionStats stats = new CompressionStats(inputBytes, segmentCount, triplets.sum(), writer.costs());
+        LOG.debug("Compressed {} bytes in {} segments into {} triplets, {} bits of fields", stats.inputBytes(),
+                stats.segments(), stats.triplets(), stats.fieldBits());
+        return new CompressionResult(stream, stats);
     }
 
     public byte[] decompress(CompressedStream stream) throws MalformedStreamException {
@@ -102,13 +108,16 @@ public final class Compressor {
         ACBProvider provider = this.components.apply(stream.header().toSettings(this.settings.dictionaryStructure()));
         TripletProcessor reader = provider.getTripletReader(payload);
         TripletCoder.DecodeFlag flag;
+        long bytes = 0;
         do {
             ByteBuilder segment = new ByteBuilder();
             flag = provider.getCoder(segment, provider.getDictionary(segment)).decode(reader);
             if (segment.length() > 0) {
                 segments.accept(segment.array());
+                bytes += segment.length();
             }
         } while (flag != TripletCoder.DecodeFlag.EOF);
+        LOG.debug("Decompressed {} bytes", bytes);
     }
 
     private static Iterator<byte[]> segmentsOf(byte[] input, int segmentSize) {
