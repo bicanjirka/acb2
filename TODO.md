@@ -67,13 +67,12 @@ Nothing checks formatting or the `CLAUDE.md` rules mechanically.
 
 ### Project documentation
 
-`Readme-arith-coding.markdown` is the vendored Nayuki readme; the project has no README of its
-own and no rationale document.
+The project has no rationale document, and the vendored Nayuki readme
+(`Readme-arith-coding.markdown`) sits at the repository root instead of beside its package.
 
-- **Where:** repository root, `docs/`.
-- **Approach:** a `README.md` (what ACB is, build, CLI usage, the coder and dictionary
-  options) and `docs/ARCHITECTURE.md` for the why behind the design. Move the Nayuki readme
-  beside its package.
+- **Where:** `docs/`, repository root.
+- **Approach:** `docs/ARCHITECTURE.md` for the why behind the design. Move the Nayuki readme
+  beside its package and update the link in `README.md`.
 
 ## Measurement and performance
 
