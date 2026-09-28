@@ -1,63 +1,63 @@
 package cz.cvut.fit.acb.coding;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Arrays;
-
 import nayuki.arithcode.ArithmeticEncoder;
 import nayuki.arithcode.BitOutputStream;
 import nayuki.arithcode.FlatFrequencyTable;
 import nayuki.arithcode.FrequencyTable;
 import nayuki.arithcode.SimpleFrequencyTable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
+
 /**
  * @author jiri.bican
  */
 class AdaptiveArithmeticCompress {
-	
-	private final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-	private final BitOutputStream bitOut = new BitOutputStream(byteOut);
-	private final ArithmeticEncoder enc = new ArithmeticEncoder(bitOut);
-	private final FrequencyTable freq;
-	private final int eof;
-	
-	public AdaptiveArithmeticCompress(int bitSize) {
-		eof = 1 << bitSize; // last symbol is EOF flag
-		int numSymbols = eof + 1;
-		// Initialize with all symbol frequencies at 1
-		freq = new SimpleFrequencyTable(new FlatFrequencyTable(numSymbols));
-	}
-	
-	public AdaptiveArithmeticCompress(int bitSize, int[] freqVal) {
-		eof = 1 << bitSize; // last symbol is EOF flag
-		int numSymbols = eof + 1;
-		int[] freq1 = Arrays.copyOf(freqVal, numSymbols);
-		if (freqVal.length < numSymbols) {
-			Arrays.fill(freq1, freqVal.length, numSymbols, 1);
-		}
-		freq = new SimpleFrequencyTable(freq1);
-	}
-	
-	public void compress(int b) {
-		try {
-			enc.write(freq, b);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		freq.increment(b);
-	}
-	
-	public void terminate() {
-		try {
-			enc.write(freq, eof);
-			enc.finish();
-			bitOut.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public byte[] array() {
-		return byteOut.toByteArray();
-	}
+
+    private final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+    private final BitOutputStream bitOut = new BitOutputStream(byteOut);
+    private final ArithmeticEncoder enc = new ArithmeticEncoder(bitOut);
+    private final FrequencyTable freq;
+    private final int eof;
+
+    public AdaptiveArithmeticCompress(int bitSize) {
+        eof = 1 << bitSize; // last symbol is EOF flag
+        int numSymbols = eof + 1;
+        // Initialize with all symbol frequencies at 1
+        freq = new SimpleFrequencyTable(new FlatFrequencyTable(numSymbols));
+    }
+
+    public AdaptiveArithmeticCompress(int bitSize, int[] freqVal) {
+        eof = 1 << bitSize; // last symbol is EOF flag
+        int numSymbols = eof + 1;
+        int[] freq1 = Arrays.copyOf(freqVal, numSymbols);
+        if (freqVal.length < numSymbols) {
+            Arrays.fill(freq1, freqVal.length, numSymbols, 1);
+        }
+        freq = new SimpleFrequencyTable(freq1);
+    }
+
+    public void compress(int b) {
+        try {
+            enc.write(freq, b);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        freq.increment(b);
+    }
+
+    public void terminate() {
+        try {
+            enc.write(freq, eof);
+            enc.finish();
+            bitOut.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public byte[] array() {
+        return byteOut.toByteArray();
+    }
 }

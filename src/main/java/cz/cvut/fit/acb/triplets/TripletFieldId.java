@@ -7,13 +7,13 @@ package cz.cvut.fit.acb.triplets;
  * @author jiri.bican
  */
 public record TripletFieldId(int index, int bitSize, boolean isLength) {
-	
-	public TripletFieldId(int index, int bitSize) {
-		this(index, bitSize, false);
-	}
-	
-	@Override
-	public String toString() {
-		return "[" + this.index + ", " + this.bitSize + ']';
-	}
+
+    public TripletFieldId(int index, int bitSize) {
+        this(index, bitSize, false);
+    }
+
+    @Override
+    public String toString() {
+        return "[" + this.index + ", " + this.bitSize + ']';
+    }
 }

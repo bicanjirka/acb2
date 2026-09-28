@@ -1,8 +1,5 @@
 package cz.cvut.fit.acb;
 
-import java.util.Comparator;
-import java.util.List;
-
 import cz.cvut.fit.acb.coding.AdaptiveArithmeticDecoder;
 import cz.cvut.fit.acb.coding.AdaptiveArithmeticEncoder;
 import cz.cvut.fit.acb.coding.BitArrayComposer;
@@ -24,62 +21,65 @@ import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
 
+import java.util.Comparator;
+import java.util.List;
+
 /**
  * @author jiri.bican
  */
 public final class ACBProviderImpl implements ACBProvider {
 
-	private final CompressionSettings settings;
+    private final CompressionSettings settings;
 
-	public ACBProviderImpl(CompressionSettings settings) {
-		this.settings = settings;
-	}
+    public ACBProviderImpl(CompressionSettings settings) {
+        this.settings = settings;
+    }
 
-	@Override
-	public Dictionary getDictionary(ByteSequence sequence) {
-		int maxDistance = this.settings.maxDistance();
-		int maxLength = this.settings.maxLength();
-		return switch (this.settings.tripletCoding()) {
-			case LCP -> new DictionaryLCP(this::newTree, sequence, maxDistance, maxLength);
-			case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this::newTree, sequence, maxDistance, maxLength);
-		};
-	}
+    @Override
+    public Dictionary getDictionary(ByteSequence sequence) {
+        int maxDistance = this.settings.maxDistance();
+        int maxLength = this.settings.maxLength();
+        return switch (this.settings.tripletCoding()) {
+            case LCP -> new DictionaryLCP(this::newTree, sequence, maxDistance, maxLength);
+            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this::newTree, sequence, maxDistance, maxLength);
+        };
+    }
 
-	@Override
-	public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
-		int distanceBits = this.settings.distanceBits();
-		int lengthBits = this.settings.lengthBits();
-		return switch (this.settings.tripletCoding()) {
-			case SALOMON -> new SalomonTripletCoder.SalomonByteless(sequence, dictionary, distanceBits, lengthBits);
-			case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(sequence, dictionary, distanceBits, lengthBits);
-			case SIMPLE -> new SimpleTripletCoder(sequence, dictionary, distanceBits, lengthBits);
-			case VALACH -> new ValachTripletCoder(sequence, dictionary, distanceBits, lengthBits);
-			case LCP -> new LCPTripletCoder(sequence, dictionary, distanceBits, lengthBits);
-		};
-	}
+    @Override
+    public TripletCoder getCoder(ByteSequence sequence, Dictionary dictionary) {
+        int distanceBits = this.settings.distanceBits();
+        int lengthBits = this.settings.lengthBits();
+        return switch (this.settings.tripletCoding()) {
+            case SALOMON -> new SalomonTripletCoder.SalomonByteless(sequence, dictionary, distanceBits, lengthBits);
+            case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(sequence, dictionary, distanceBits, lengthBits);
+            case SIMPLE -> new SimpleTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+            case VALACH -> new ValachTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+            case LCP -> new LCPTripletCoder(sequence, dictionary, distanceBits, lengthBits);
+        };
+    }
 
-	@Override
-	public TripletWriter getTripletWriter() {
-		return switch (this.settings.entropyCoding()) {
-			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticEncoder(this.settings.lengthFrequencies());
-			case BIT_ARRAY -> new BitArrayComposer();
-		};
-	}
-	
-	@Override
-	public TripletProcessor getTripletReader(List<byte[]> payload) {
-		ByteToTripletConverter<?> converter = switch (this.settings.entropyCoding()) {
-			case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticDecoder(this.settings.lengthFrequencies());
-			case BIT_ARRAY -> new BitArrayDecomposer();
-		};
-		return converter.open(payload);
-	}
-	
-	private OrderStatisticTree<Integer> newTree(Comparator<Integer> comparator) {
-		return switch (this.settings.dictionaryStructure()) {
-			case RED_BLACK -> new RedBlackBST<>(comparator);
-			case BST -> new BST<>(comparator);
-			case ST -> new BinarySearchST<>(comparator);
-		};
-	}
+    @Override
+    public TripletWriter getTripletWriter() {
+        return switch (this.settings.entropyCoding()) {
+            case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticEncoder(this.settings.lengthFrequencies());
+            case BIT_ARRAY -> new BitArrayComposer();
+        };
+    }
+
+    @Override
+    public TripletProcessor getTripletReader(List<byte[]> payload) {
+        ByteToTripletConverter<?> converter = switch (this.settings.entropyCoding()) {
+            case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticDecoder(this.settings.lengthFrequencies());
+            case BIT_ARRAY -> new BitArrayDecomposer();
+        };
+        return converter.open(payload);
+    }
+
+    private OrderStatisticTree<Integer> newTree(Comparator<Integer> comparator) {
+        return switch (this.settings.dictionaryStructure()) {
+            case RED_BLACK -> new RedBlackBST<>(comparator);
+            case BST -> new BST<>(comparator);
+            case ST -> new BinarySearchST<>(comparator);
+        };
+    }
 }
