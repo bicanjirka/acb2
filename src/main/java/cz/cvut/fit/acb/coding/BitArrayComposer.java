@@ -42,7 +42,7 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
             object.write(value);
             bitsWritten += object.bitSize;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new UncheckedIOException("In-memory bit writing failed", e);
         }
     }
 

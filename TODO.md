@@ -179,18 +179,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ## Phase 1: correctness and hardening
 
-### Swallowed I/O errors in the coding layer
-
-`printStackTrace` followed by carrying on, against the error rule in `CLAUDE.md`, in seven
-places. In the encoder a swallowed failure produces a corrupt `.acb` without any error.
-
-- **Where:** `coding.AdaptiveArithmeticCompress` (`compress`, `terminate`),
-  `coding.AdaptiveArithmeticDecompress` (constructors, `decompress`),
-  `coding.BitArrayComposer.compress`, `coding.BitArrayDecomposer.decompress`.
-- **Approach:** these are in-memory streams, so rethrow as `UncheckedIOException` on the
-  encoder side and as `MalformedStreamException` on the decoder side. Delete the
-  `noPrintStackTrace` suppression in `checkstyle.xml` in the same commit.
-
 ### CLI and logging hygiene
 
 The CLI logs to standard output, where `-m` writes its measurements. Every error is printed

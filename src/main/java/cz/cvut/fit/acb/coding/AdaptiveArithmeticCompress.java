@@ -8,6 +8,7 @@ import nayuki.arithcode.SimpleFrequencyTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 
 class AdaptiveArithmeticCompress {
@@ -39,7 +40,7 @@ class AdaptiveArithmeticCompress {
         try {
             enc.write(freq, b);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new UncheckedIOException("In-memory arithmetic coding failed", e);
         }
         freq.increment(b);
     }
@@ -50,7 +51,7 @@ class AdaptiveArithmeticCompress {
             enc.finish();
             bitOut.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new UncheckedIOException("In-memory arithmetic coding failed", e);
         }
     }
 
