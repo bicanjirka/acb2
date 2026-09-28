@@ -11,6 +11,7 @@ mvn test
 mvn verify                                      # + coverage report, target/site/jacoco
 mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
+java -jar target/acb.jar input.acb output -de   # settings come from the file
 ```
 
 `target/acb.jar` is shaded (dependencies bundled); the entry point is
@@ -32,13 +33,17 @@ mvn package && java -jar target/acb.jar input output [options]
 `ACB` (compress/decompress driver) · `ACBClient` (CLI) · `ACBFileIO` · `ACBProvider*` (wires
 the strategies below from `ACBProviderParameters`) · `dictionary` (+ `core` order-statistic
 trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) · `coding` (triplet↔byte:
-adaptive arithmetic, bit array) · `utils` (`ChainBuilder` pipeline). `nayuki.arithcode` is
+adaptive arithmetic, bit array) · `format` (the on-disk container: header, payload, CRC32) ·
+`utils` (`ChainBuilder` pipeline). `nayuki.arithcode` is
 vendored MIT code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 ## Boundaries
 
-- A compressed stream is only decodable with the same `ACBProviderParameters` it was encoded
-  with; any change to triplet layout or coding breaks existing compressed files.
+- A compressed file carries its coding settings in a `format.StreamHeader`; decoding uses only
+  those plus a free choice of dictionary structure. Any change to the container layout, the coder
+  codes, or how a coder lays out triplets bumps `ContainerFormat.VERSION`.
+- Untrusted input is read only through `ContainerFormat.decode`, which verifies the checksum and
+  bounds every count before allocating. Never deserialize with `ObjectInputStream`.
 - Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any
   input (`RoundTripPropertiesTest`).
 - `ACB.compress` keeps per-stream state: one instance handles streams one after another, never

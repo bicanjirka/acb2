@@ -10,10 +10,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
+import cz.cvut.fit.acb.format.CompressedStream;
+import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.format.StreamHeader;
 import cz.cvut.fit.acb.utils.ChainBuilder;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -37,11 +38,12 @@ public class ACBClient {
 	private static final int EXIT_CODE_OK = 0;
 	private static final int EXIT_CODE_FATAL = 1;
 	private static final int EXIT_CODE_HELP = 2;
+	private static final int MAX_FIELD_BITS = 30;
 	private static final Options options = new Options();
 	private static final Logger logger = LogManager.getLogger();
 
 	static {
-		options.addOption("de", "decompress", false, "decompress input (default is to compress)");
+		options.addOption("de", "decompress", false, "decompress input (default is to compress); coding settings are read from the file, so only -ds applies");
 		options.addOption("h", "help", false, "print this help");
 		options.addOption("bs", "bit-stream-array", false, "no coding is used for triplets (default is adaptive arithmetic coding)");
 		Option logger1 = Option.builder("log")
@@ -118,8 +120,8 @@ public class ACBClient {
 				System.exit(exitCode);
 			}
 			
-		} catch (Throwable t) {
-			t.printStackTrace();
+		} catch (Exception e) {
+			logger.error("Unexpected failure", e);
 			System.exit(EXIT_CODE_FATAL);
 		}
 	}
@@ -159,27 +161,13 @@ public class ACBClient {
 		logger.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
 		
 		ACBFileIO io = new ACBFileIO();
-		ACBProvider provider = new ACBProviderImpl(params);
-		ACB acb = new ACB(provider);
-		
-		Function<Path, Consumer<Path>> chain;
-		if (this.compress) {
-			chain = output -> ChainBuilder.create(io::openParse)
-					.chain(acb::compress)
-					.chain(provider.getT2BConverter())
-					.end(bytes -> io.saveObject(bytes, output));
-		} else {
-			chain = output -> ChainBuilder.create(io::openObject)
-					.chain(provider.getB2TConverter())
-					.chain(acb::decompress)
-					.end(io.parsedWriter(output));
-		}
+		FileAction action = this.compress ? compression(io, params) : decompression(io, params.tr);
 		
 		try {
 			List<String> measurements = new ArrayList<>();
 			for (FileJob job : this.jobs(Paths.get(this.input), Paths.get(this.output))) {
 				long start = System.nanoTime();
-				chain.apply(job.target()).accept(job.source());
+				action.apply(job.source(), job.target());
 				long millis = (System.nanoTime() - start) / 1_000_000;
 				long sourceSize = Files.size(job.source());
 				long targetSize = Files.size(job.target());
@@ -194,6 +182,10 @@ public class ACBClient {
 					measurements.forEach(System.out::println);
 				}
 			}
+		} catch (MalformedStreamException exp) {
+			System.err.println("Cannot decompress.  Reason: " + exp.getMessage());
+			logger.error("Cannot decompress.  Reason: {}", exp.getMessage());
+			return EXIT_CODE_FATAL;
 		} catch (IOException | UncheckedIOException exp) {
 			System.err.println("I/O Exception.  Reason: " + exp.getMessage());
 			logger.error("I/O Exception.  Reason: {}", exp.getMessage());
@@ -229,6 +221,34 @@ public class ACBClient {
 			}
 		}
 		return jobs;
+	}
+	
+	private static FileAction compression(ACBFileIO io, ACBProviderParameters params) {
+		ACBProvider provider = new ACBProviderImpl(params);
+		ACB acb = new ACB(provider);
+		StreamHeader header = StreamHeader.of(params);
+		return (source, target) -> ChainBuilder.create(io::openParse)
+				.chain(acb::compress)
+				.chain(provider.getT2BConverter())
+				.end(payload -> io.saveCompressed(new CompressedStream(header, payload), target))
+				.accept(source);
+	}
+	
+	/** Coding settings come from each file's header; only the dictionary structure is chosen here. */
+	private static FileAction decompression(ACBFileIO io, ACBProviderParameters.OrderStatisticTreeE structure) {
+		return (source, target) -> {
+			CompressedStream stream = io.openCompressed(source);
+			ACBProvider provider = new ACBProviderImpl(stream.header().toParameters(structure));
+			ACB acb = new ACB(provider);
+			ChainBuilder.create(provider.getB2TConverter())
+					.chain(acb::decompress)
+					.end(io.parsedWriter(target))
+					.accept(stream.payload());
+		};
+	}
+	
+	private interface FileAction {
+		void apply(Path source, Path target) throws IOException;
 	}
 	
 	private record FileJob(Path source, Path target) {
@@ -268,8 +288,8 @@ public class ACBClient {
 			int d;
 			try {
 				d = Integer.parseInt(val);
-				if (d <= 0) {
-					throw new ParseException("distance must be greater than zero: " + val);
+				if (d < 1 || d > MAX_FIELD_BITS) {
+					throw new ParseException("distance must be between 1 and " + MAX_FIELD_BITS + ": " + val);
 				}
 			} catch (NumberFormatException e) {
 				throw new ParseException("distance is not a number: " + val);
@@ -282,8 +302,8 @@ public class ACBClient {
 			int l;
 			try {
 				l = Integer.parseInt(val);
-				if (l <= 0) {
-					throw new ParseException("length must be greater than zero: " + val);
+				if (l < 1 || l > MAX_FIELD_BITS) {
+					throw new ParseException("length must be between 1 and " + MAX_FIELD_BITS + ": " + val);
 				}
 			} catch (NumberFormatException e) {
 				throw new ParseException("length is not a number: " + val);

@@ -1,13 +1,7 @@
 package cz.cvut.fit.acb;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
@@ -21,6 +15,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import cz.cvut.fit.acb.format.CompressedStream;
+import cz.cvut.fit.acb.format.ContainerFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -73,99 +69,41 @@ public class ACBFileIO {
 		return Executors.newWorkStealingPool();
 	}
 	
+	/** Feeds the file to {@code byteBufferConsumer} in segments of the buffer unit, then {@code null}. */
 	public void openParse(Path path, Consumer<ByteBuffer> byteBufferConsumer) {
-		try {
-			SeekableByteChannel sbc = Files.newByteChannel(path);
-			logger.debug("Opened file '{}' [size = {}] parsed into {} units, {} bytes each", path, sbc.size(), Math.ceil(sbc.size() / (double) bufferUnit), bufferUnit);
-			
+		try (SeekableByteChannel sbc = Files.newByteChannel(path)) {
+			logger.debug("Opened file '{}' [size = {}] parsed into {} units, {} bytes each", path, sbc.size(),
+					Math.ceil(sbc.size() / (double) this.bufferUnit), this.bufferUnit);
 			while (sbc.position() < sbc.size()) {
-				int size = (int) Math.min(bufferUnit, sbc.size() - sbc.position());
+				int size = (int) Math.min(this.bufferUnit, sbc.size() - sbc.position());
 				ByteBuffer bb = ByteBuffer.allocate(size);
-				sbc.read(bb);
-				
+				while (bb.hasRemaining()) {
+					if (sbc.read(bb) < 0) {
+						throw new EOFException("File shrank while reading: " + path);
+					}
+				}
 				byteBufferConsumer.accept(bb);
 			}
 			byteBufferConsumer.accept(null);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new UncheckedIOException("Cannot read " + path, e);
 		}
 	}
 	
-	public void saveObject(List<byte[]> bytes, Path output) {
+	public void saveCompressed(CompressedStream stream, Path output) {
+		byte[] bytes = ContainerFormat.encode(stream);
 		try {
-			Files.deleteIfExists(output);
-			OutputStream os = Files.newOutputStream(output);
-			ObjectOutputStream oos = new ObjectOutputStream(os);
-			oos.writeObject(bytes);
-			oos.close();
-			logAfterSave(bytes, output);
+			Files.write(output, bytes);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new UncheckedIOException("Cannot write " + output, e);
 		}
+		int payloadSize = stream.payload().stream().mapToInt(array -> array.length).sum();
+		logger.debug("Compressed into '{}' [size = {}, overhead = {}]", output, bytes.length, bytes.length - payloadSize);
 	}
 	
-	public void openObject(Path path, Consumer<List<byte[]>> listConsumer) {
-		try {
-			InputStream is = Files.newInputStream(path);
-			ObjectInputStream ois = new ObjectInputStream(is);
-			List<byte[]> bytes = (List<byte[]>) ois.readObject();
-			listConsumer.accept(bytes);
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void logAfterSave(List<byte[]> bytes, Path output) throws IOException {
-		int byteSize = bytes.stream().mapToInt(value -> value.length).sum();
-		long finalSize = Files.size(output);
-		logger.debug("Compressed into '{}' [size = {}, overhead = {}]", output, finalSize, finalSize - byteSize);
-		StringBuilder sb = new StringBuilder("Outputted byte array:");
-		for (int i = 0; i < bytes.size(); i++) {
-			byte[] b = bytes.get(i);
-			sb.append("\n").append(i).append(": ").append(b.length);
-		}
-		logger.debug(sb.toString());
-	}
-	
-	public void saveArray(List<byte[]> bytes, Path output) {
-		try {
-			Files.deleteIfExists(output);
-			DataOutputStream os = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(output)));
-			
-			os.writeInt(bytes.size());
-			for (byte[] bArr : bytes) {
-				os.writeInt(bArr.length);
-			}
-			for (byte[] bArr : bytes) {
-				os.write(bArr);
-			}
-			os.close();
-			
-			logAfterSave(bytes, output);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public void openArray(Path path, Consumer<List<byte[]>> listConsumer) {
-		try {
-			DataInputStream is = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)));
-			int listSize = is.readInt();
-			int[] arrSizes = new int[listSize];
-			for (int i = 0; i < listSize; i++) {
-				arrSizes[i] = is.readInt();
-			}
-			List<byte[]> bytes = new ArrayList<>(listSize);
-			for (int arrSize : arrSizes) {
-				byte[] bArr = new byte[arrSize];
-				is.readFully(bArr);
-				bytes.add(bArr);
-			}
-			
-			listConsumer.accept(bytes);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	/** @throws cz.cvut.fit.acb.format.MalformedStreamException if the file is not an intact ACB stream */
+	public CompressedStream openCompressed(Path path) throws IOException {
+		return ContainerFormat.decode(Files.readAllBytes(path));
 	}
 	
 	/**

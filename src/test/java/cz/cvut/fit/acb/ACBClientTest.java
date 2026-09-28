@@ -34,13 +34,13 @@ class ACBClientTest {
 	}
 	
 	@Test
-	void aCompressedFileDecompressesToTheOriginal() throws IOException {
+	void decompressionReadsTheCodingSettingsFromTheFile() throws IOException {
 		Path input = this.corpusFile("binary");
 		Path compressed = this.dir.resolve("binary.acb");
 		Path restored = this.dir.resolve("binary.out");
-		run(input, compressed, "-tc", "valach", "-bs");
+		run(input, compressed, "-tc", "valach", "-bs", "-d", "9", "-l", "3");
 		
-		int exitCode = run(compressed, restored, "-de", "-tc", "valach", "-bs");
+		int exitCode = run(compressed, restored, "-de");
 		
 		assertThat(exitCode).isEqualTo(OK);
 		assertThat(restored).hasSameBinaryContentAs(input);
@@ -103,16 +103,48 @@ class ACBClientTest {
 	}
 	
 	@Test
-	void customLengthFrequenciesRoundTripWhenBothSidesUseThem() throws IOException {
+	void customLengthFrequenciesTravelWithTheFile() throws IOException {
 		Path input = this.corpusFile("loremipsum");
 		Path compressed = this.dir.resolve("lorem.acb");
 		Path restored = this.dir.resolve("lorem.out");
 		run(input, compressed, "-af", "1,2,3,4");
 		
-		int exitCode = run(compressed, restored, "-de", "-af", "1,2,3,4");
+		int exitCode = run(compressed, restored, "-de");
 		
 		assertThat(exitCode).isEqualTo(OK);
 		assertThat(restored).hasSameBinaryContentAs(input);
+	}
+	
+	@Test
+	void aFileCompressedWithOneDictionaryStructureDecompressesWithAnother() throws IOException {
+		Path input = this.corpusFile("loremipsum");
+		Path compressed = this.dir.resolve("lorem.acb");
+		Path restored = this.dir.resolve("lorem.out");
+		run(input, compressed, "-ds", "st");
+		
+		int exitCode = run(compressed, restored, "-de", "-ds", "red_black");
+		
+		assertThat(exitCode).isEqualTo(OK);
+		assertThat(restored).hasSameBinaryContentAs(input);
+	}
+	
+	@Test
+	void decompressingAFileThatIsNotAnAcbStreamFailsAndWritesNothing() throws IOException {
+		Path input = this.corpusFile("loremipsum");
+		Path output = this.dir.resolve("lorem.out");
+		
+		int exitCode = run(input, output, "-de");
+		
+		assertThat(exitCode).isEqualTo(FATAL);
+		assertThat(output).doesNotExist();
+	}
+	
+	@Test
+	void bitWidthsBeyondWhatTheFormatStoresAreRejected() throws IOException {
+		Path input = this.corpusFile("aaaa");
+		
+		assertThat(run(input, this.dir.resolve("a"), "-d", "31")).isEqualTo(FATAL);
+		assertThat(run(input, this.dir.resolve("b"), "-l", "0")).isEqualTo(FATAL);
 	}
 	
 	@Test

@@ -7,10 +7,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import cz.cvut.fit.acb.fixtures.CorpusFile;
+import cz.cvut.fit.acb.format.CompressedStream;
+import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,46 +70,26 @@ class ACBFileIOTest {
 	}
 
 	@Test
-	void aSavedObjectListReadsBackEqual() {
-		Path path = this.dir.resolve("object");
-		for (int[] sizes : new int[][]{{0}, {1, 1, 1}, {10, 20}, randomSizes(50), {Short.MAX_VALUE}}) {
-			List<byte[]> saved = randomArrays(sizes);
-			AtomicReference<List<byte[]>> read = new AtomicReference<>();
-
-			ACBFileIO io = new ACBFileIO();
-			io.saveObject(saved, path);
-			io.openObject(path, read::set);
-
-			assertThat(read.get()).containsExactlyElementsOf(saved);
-		}
-	}
-
-	@Test
-	void aSavedArrayListReadsBackEqual() {
-		Path path = this.dir.resolve("array");
-		for (int[] sizes : new int[][]{{0}, {1, 1, 1}, {10, 20}, randomSizes(50), {Short.MAX_VALUE}}) {
-			List<byte[]> saved = randomArrays(sizes);
-			AtomicReference<List<byte[]>> read = new AtomicReference<>();
-
-			ACBFileIO io = new ACBFileIO();
-			io.saveArray(saved, path);
-			io.openArray(path, read::set);
-
-			assertThat(read.get()).containsExactlyElementsOf(saved);
-		}
-	}
-
-	@Test
-	void aSavedArrayListOfMoreThan255ArraysReadsBackEqual() {
-		Path path = this.dir.resolve("many");
-		List<byte[]> saved = randomArrays(new Random(300).ints(300, 0, 16).toArray());
-		AtomicReference<List<byte[]>> read = new AtomicReference<>();
-		
+	void aSavedCompressedStreamReadsBackEqual() throws IOException {
+		Path path = this.dir.resolve("stream.acb");
+		int[] sizes = IntStream.concat(IntStream.of(0, Short.MAX_VALUE), new Random(300).ints(300, 0, 64)).toArray();
+		CompressedStream saved = new CompressedStream(
+				StreamHeader.of(new ACBProviderParameters()), randomArrays(sizes));
 		ACBFileIO io = new ACBFileIO();
-		io.saveArray(saved, path);
-		io.openArray(path, read::set);
 		
-		assertThat(read.get()).containsExactlyElementsOf(saved);
+		io.saveCompressed(saved, path);
+		CompressedStream read = io.openCompressed(path);
+		
+		assertThat(read.header()).isEqualTo(saved.header());
+		assertThat(read.payload()).containsExactlyElementsOf(saved.payload());
+	}
+	
+	@Test
+	void openingAFileThatIsNotAnAcbStreamFailsAsMalformed() throws IOException {
+		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
+		
+		assertThatThrownBy(() -> new ACBFileIO().openCompressed(path))
+				.isInstanceOf(MalformedStreamException.class);
 	}
 	
 	@Test
@@ -131,10 +114,6 @@ class ACBFileIOTest {
 			sizes.add((int) Math.min(bufferSize, length - from));
 		}
 		return sizes;
-	}
-
-	private static int[] randomSizes(int count) {
-		return new Random(count).ints(count, 0, 1024).toArray();
 	}
 
 	private static List<byte[]> randomArrays(int... sizes) {
