@@ -20,9 +20,8 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
      */
     public static final long MAX_LENGTH_MODEL_TOTAL = 1L << 24;
 
-    private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 4, TripletCoding.SIMPLE,
-            DictionaryStructure.RED_BLACK, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[]{45, 13, 10, 7, 5, 4},
-            1_000_000);
+    private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
+            DictionaryStructure.RED_BLACK, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[0], 1_000_000);
 
     public CompressionSettings {
         requireFieldBits("distance", distanceBits);

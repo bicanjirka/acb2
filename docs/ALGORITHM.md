@@ -219,8 +219,8 @@ arithmetic-coded; both are wrong.
   next bytes of the funnel candidates for the new context.
 - **Statistics.** Frequency tables sorted by count, updated in sliding windows (2,048 literals,
   1,024 lengths) through a ring buffer, and one custom 32-bit arithmetic coder. The length table
-  starts at `{45, 13, 10, 7, 5, 4}` for excess lengths 0 to 5, which is where this project's
-  default length frequencies come from (here they model the raw length).
+  starts at `{45, 13, 10, 7, 5, 4}` for excess lengths 0 to 5. This project's length model starts
+  flat instead: over Calgary a flat start beat that table and several shapes of it by about 0.01%.
 - **The paper's own coding.** The code of a string is the candidate number, a "difference bit"
   (which side of it the current content sorts in content order) and an "extract" length. This is
   the LCP idea done right; `AC.C` implements the simpler `Pr_L` variant above. ACB 1.17 caps the

@@ -23,7 +23,7 @@ class CorruptPayloadTest {
     private static final TripletFieldId LITERAL = new TripletFieldId(2, 8, TripletFieldKind.LITERAL);
 
     private static final CompressionSettings SIMPLE_BITS = CompressionSettings.defaults()
-            .withTripletCoding(TripletCoding.SIMPLE).withEntropyCoding(EntropyCoding.BIT_ARRAY);
+            .withTripletCoding(TripletCoding.SIMPLE).withLengthBits(4).withEntropyCoding(EntropyCoding.BIT_ARRAY);
     private static final CompressionSettings SIMPLE_ARITHMETIC = SIMPLE_BITS
             .withEntropyCoding(EntropyCoding.ADAPTIVE_ARITHMETIC);
 

@@ -40,11 +40,11 @@ from the file. The only option that applies when decompressing is `-ds`.
 | `-de`, `--decompress` | Decompress instead of compress | compress |
 | `-f`, `--force` | Overwrite output files that already exist | refuse |
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
-| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 4 |
-| `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `simple` |
+| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
+| `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `valach` |
 | `-ds S`, `--dict-struct S` | Dictionary tree: `red_black`, `bst`, `st` | `red_black` |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of arithmetic coding | arithmetic |
-| `-af F`, `--arith-freq F` | Initial arithmetic-coder frequencies for lengths, comma-separated | `45,13,10,7,5,4`, then 1 |
+| `-af F`, `--arith-freq F` | Initial arithmetic-coder frequencies for lengths, comma-separated | all 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
 | `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `WARN` |
 | `-h`, `--help` | Print help | |

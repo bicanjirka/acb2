@@ -181,21 +181,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 Each changes only the encoder's choices; files carry their widths, so old files still decode
 and `VERSION` stays. Measure each on Calgary with round trips verified, and commit separately.
 
-### The default length field is too narrow
-
-The default 4-bit length caps a match at 15 bytes; ExCom defaults to 7 bits (127). With
-`-tc valach -l 7` Calgary shrinks from 1,049,160 to 1,012,317 bytes (-3.5%) at the same speed:
-pic 75,937 to 60,259 (-21%), trans 23,257 to 20,100 (-14%), progl 19,608 to 17,996 (-8%),
-book1 unchanged. The distance default (`-d 6`) already matches ExCom's ±31.
-
-- **Where:** `CompressionSettings.DEFAULTS` and its default length frequencies, the `-l` help
-  text in `ACBClient`, `README.md`.
-- **Approach:** make 7 the default length width, re-tune the initial length frequencies for the
-  wider alphabet (the current ones model `AC.C`'s excess length, not a raw length), and pick the
-  defaults with the ratio harness rather than by hand; also make `valach` the default layout,
-  which the thesis and ExCom both found best. Longer term, code lengths beyond a cutoff with an
-  escape (for example Elias-gamma) so the cap disappears.
-
 ### Ties pick the farthest match, and rank 0 is never a candidate
 
 The most frequent distances on book1 are 31, 30, 29, 28: the far edge of the window.
@@ -283,6 +268,15 @@ to compress. Nayuki's coder also emits one bit at a time and checks invariants o
   large ones; adaptive binary models for flags. Fields index an array, not a map. Verify the
   coder against a reference model on random distributions, then delete the vendored package, its
   tests and its readme together. Bumps `VERSION`.
+
+### A match is capped by the length field
+
+A match longer than `2^lengthBits - 1` is cut into several triplets, however repetitive the input
+(`pic` gains 21% from 4 to 7 bits, so the cap still costs ratio at 7).
+
+- **Where:** `coding`, the length field of each coder, `CompressionSettings.maxLength`.
+- **Approach:** code lengths beyond a cutoff with an escape (for example Elias-gamma) so the cap
+  disappears; measure against a wider fixed field. Bumps `VERSION`.
 
 ### The bit-array writer does not fit the per-field template
 

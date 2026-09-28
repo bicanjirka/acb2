@@ -60,7 +60,7 @@ final class CliParser {
                 .hasArg()
                 .argName("N")
                 .desc("N bits, 1 to " + CompressionSettings.MAX_FIELD_BITS
-                        + ", used for length triplet element (default is 4)\n"
+                        + ", used for length triplet element (default is 7)\n"
                         + "maximal length is 2^(N)-1")
                 .build());
         this.options.addOption(Option.builder("m")
@@ -74,13 +74,13 @@ final class CliParser {
                 .hasArg()
                 .argName("freq")
                 .desc("<freq> is comma separated array of positive integers defining init values of the arithmetic "
-                        + "coding frequency table for lengths (default is 45,13,10,7,5,4, then 1 for the rest)")
+                        + "coding frequency table for lengths (default is all 1; symbols past the list start at 1)")
                 .build());
         this.options.addOption(Option.builder("tc")
                 .longOpt("triplet-coder")
                 .hasArg()
                 .argName("coder")
-                .desc("<coder> represents triplet coding strategy (default is simple)\n"
+                .desc("<coder> represents triplet coding strategy (default is valach)\n"
                         + "values = " + Arrays.toString(TripletCoding.values()))
                 .build());
         this.options.addOption(Option.builder("ds")

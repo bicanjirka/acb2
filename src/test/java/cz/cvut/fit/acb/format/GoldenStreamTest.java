@@ -28,7 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GoldenStreamTest {
 
     private static final int SEGMENT_SIZE = 250;
-    private static final CompressionSettings BASE = CompressionSettings.defaults().withSegmentSize(SEGMENT_SIZE);
+    /** Spelled out, so that a change of the defaults cannot change what the files must decode to. */
+    private static final CompressionSettings BASE = CompressionSettings.defaults().withSegmentSize(SEGMENT_SIZE)
+            .withDistanceBits(6).withLengthBits(4).withLengthFrequencies(45, 13, 10, 7, 5, 4);
 
     record Golden(String name, CompressionSettings settings) {
 

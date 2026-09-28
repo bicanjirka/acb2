@@ -47,7 +47,8 @@ class CompressionSettingsTest {
 
     @Test
     void lengthFrequenciesBeyondTheLengthAlphabetAreDroppedFromTheHeader() {
-        CompressionSettings settings = CompressionSettings.defaults().withLengthBits(1);
+        CompressionSettings settings = CompressionSettings.defaults().withLengthBits(1)
+                .withLengthFrequencies(45, 13, 10, 7, 5, 4);
 
         assertThat(StreamHeader.of(settings).lengthFrequencies()).containsExactly(45, 13, 10);
     }
