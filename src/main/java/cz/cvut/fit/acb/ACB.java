@@ -16,8 +16,8 @@ import cz.cvut.fit.acb.triplets.coder.TripletCoder;
  */
 public class ACB {
 	
-	private ACBProvider provider;
-	private boolean first = true;
+	private final ACBProvider provider;
+	private boolean sizeAnnounced;
 	
 	public ACB(ACBProvider provider) {
 		this.provider = provider;
@@ -48,14 +48,23 @@ public class ACB {
 		System.out.println("append  " + (length > 0 ? new String(dict.copy(cnt, length)) : "nothing"));
 	}
 	
+	/**
+	 * Compresses one stream of segments ending with {@code null}. The first segment's size is
+	 * announced once per stream (zero for an empty stream), so one instance can compress several
+	 * streams in turn.
+	 */
 	public void compress(ByteBuffer byteBuffer, Consumer<TripletSupplier> tripletSupplierConsumer) {
 		if (byteBuffer == null) {
+			if (!this.sizeAnnounced) {
+				tripletSupplierConsumer.accept(visitor -> visitor.setSize(0));
+			}
+			this.sizeAnnounced = false;
 			tripletSupplierConsumer.accept(null);
 			return;
 		}
-		if (first) {
+		if (!this.sizeAnnounced) {
 			tripletSupplierConsumer.accept(visitor -> visitor.setSize(byteBuffer.capacity()));
-			first = false;
+			this.sizeAnnounced = true;
 		}
 		ByteArray arr = new ByteArray(byteBuffer.array());
 		Dictionary dict = provider.getDictionary(arr);

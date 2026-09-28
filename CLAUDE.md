@@ -41,7 +41,8 @@ vendored MIT code (Project Nayuki) - keep its licence notice, don't restyle it.
   with; any change to triplet layout or coding breaks existing compressed files.
 - Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any
   input (`RoundTripPropertiesTest`).
-- `ACB` holds state across calls; don't share one instance between independent streams.
+- `ACB.compress` keeps per-stream state: one instance handles streams one after another, never
+  two at once.
 
 ## Tests
 

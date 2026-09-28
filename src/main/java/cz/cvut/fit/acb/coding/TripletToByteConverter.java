@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
@@ -58,12 +57,10 @@ public abstract class TripletToByteConverter<T> implements Chainable<TripletSupp
 	}
 	
 	protected void terminate() {
-		Optional<Integer> mapSize = map.keySet().stream().max(Integer::compareTo);
-		if (!mapSize.isPresent())
-			return;
-		List<byte[]> ret = new ArrayList<>(mapSize.get() + 2); // +1 indexing from zero, +1 for additional segmentSize, +2 total
+		int fieldCount = map.keySet().stream().max(Integer::compareTo).map(max -> max + 1).orElse(0);
+		List<byte[]> ret = new ArrayList<>(fieldCount + 1);
 		ret.add(ByteBuffer.allocate(Integer.BYTES).putInt(segmentSize).array());
-		for (int i = 0; i <= mapSize.get(); i++) {
+		for (int i = 0; i < fieldCount; i++) {
 			T object = map.get(i);
 			byte[] bytes = object != null ? getArray(object) : new byte[0];
 			if (bytes != null) {

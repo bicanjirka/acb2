@@ -52,7 +52,10 @@ public abstract class BaseTripletCoder implements TripletCoder {
 	public DecodeFlag decode(TripletProcessor input) {
 		int idx = 0, tCount1 = 0;
 		int ceiling = input.getSize();
-		
+		if (ceiling == 0) {
+			return DecodeFlag.EOF;
+		}
+
 		while (idx < ceiling) {
 			idx = decodeStep(idx, input);
 			tCount1++;

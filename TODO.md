@@ -37,15 +37,6 @@ decoding calls `select` with a negative rank.
   the LCP explicitly or restrict the search to state both sides share, then finish or remove the
   coder.
 
-### Empty input cannot be compressed
-
-`ACB.compress` writes the size header only when it sees the first segment, so an empty input
-produces no output at all and decompressing it throws.
-
-- **Where:** `ACB.compress`, `ACB.decompress`.
-- **Approach:** announce the size unconditionally at the start of a stream; this falls out of
-  making `ACB` stateless per stream.
-
 ## Architecture in the house style
 
 The codebase predates the style in `CLAUDE.md`. These items move the compressor to a headless,

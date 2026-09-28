@@ -30,8 +30,13 @@ public final class PipelineFixtures {
 	}
 
 	public static List<byte[]> compress(ACBProvider provider, byte[] input, int segmentSize, TripletLog log) {
+		return compress(new ACB(provider), provider, input, segmentSize, log);
+	}
+	
+	/** Compresses with a caller-owned {@code acb}, so a test can reuse one across streams. */
+	public static List<byte[]> compress(ACB acb, ACBProvider provider, byte[] input, int segmentSize,
+	                                    TripletLog log) {
 		AtomicReference<List<byte[]>> compressed = new AtomicReference<>();
-		ACB acb = new ACB(provider);
 		ChainBuilder.create(segmentsOf(segmentSize))
 				.chain(acb::compress)
 				.chain(log::recordWrites)

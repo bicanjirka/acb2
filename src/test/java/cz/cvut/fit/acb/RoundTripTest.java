@@ -52,6 +52,34 @@ class RoundTripTest {
 		assertThat(snapshots.verified()).isEqualTo(snapshots.recorded()).isPositive();
 	}
 
+	static Stream<SettingsCombination> workingSettings() {
+		return SettingsCombination.all().filter(settings -> settings.knownRoundTripDefect().isEmpty());
+	}
+	
+	@ParameterizedTest
+	@MethodSource("workingSettings")
+	void anEmptyInputDecompressesToAnEmptyOutput(SettingsCombination settings) {
+		byte[] decompressed = PipelineFixtures.roundTrip(settings.provider(), new byte[0], 13);
+		
+		assertThat(decompressed).isEmpty();
+	}
+	
+	@ParameterizedTest
+	@MethodSource("workingSettings")
+	void oneAcbCompressesConsecutiveStreamsIndependently(SettingsCombination settings) {
+		ACBProvider provider = settings.provider();
+		ACB acb = new ACB(provider);
+		List<byte[]> inputs = CorpusFile.all().map(CorpusFile::bytes).toList();
+		
+		List<byte[]> decompressed = inputs.stream().map(input -> {
+			TripletLog log = new TripletLog();
+			List<byte[]> compressed = PipelineFixtures.compress(acb, provider, input, 13, log);
+			return PipelineFixtures.decompress(provider, compressed, log);
+		}).toList();
+		
+		assertThat(decompressed).containsExactlyElementsOf(inputs);
+	}
+	
 	private static int[] segmentSizesFor(int length) {
 		return IntStream.of(1, 13, length / 3, length / 2, length / 2 + 1, length - 2, length - 1, length, length + 1)
 				.filter(size -> size > 0)
