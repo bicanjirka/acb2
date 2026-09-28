@@ -48,10 +48,9 @@ entry immediately below where `idx` would be inserted, the *predecessor*. With a
 dictionary, or when `idx`'s context sorts below every entry, `ctx = -1`. The decoder computes the
 same rank.
 
-**3.2 The candidate window.** The candidates are the ranks `r` with `lo < r <= hi`, where
-`lo = max(0, ctx - D)` and `hi = min(size - 1, ctx + D)`. The distance of a candidate is
-`ctx - r`. With `lo = ctx - D` this is the range `-D .. D-1` that a `distanceBits`-bit signed
-field holds.
+**3.2 The candidate window.** The candidates are the ranks `r` with `first <= r <= last`, where
+`first = max(0, ctx - D + 1)` and `last = min(size - 1, ctx + D)`. The distance of a candidate is
+`ctx - r`, so it lies in the range `-D .. D-1` that a `distanceBits`-bit signed field holds.
 
 **3.3 The match.** A candidate at rank `r` is the entry at position `q`. Its match length is the
 number of consecutive `k = 0, 1, ...` with `s[idx+k] == s[q+k]`, at most `L`, stopping at the end
@@ -60,18 +59,15 @@ than the distance to its content. This is the thesis's §1.3.2 (overlapping buff
 copies from `q` and, on reaching its own output, keeps repeating what it copied, which gives the
 same bytes.
 
-**3.4 The best candidate.** The longest match wins. Among equal lengths the candidate with the
-lowest rank wins, that is, the one farthest below the context; the scan stops early at length `L`.
+**3.4 The best candidate.** The longest match wins. Candidates are examined by growing
+`|ctx - r|`, the rank above the context (distance `-k`) before the one below it (distance `+k`),
+so among equal lengths the nearest wins; the scan stops at length `L`. ExCom walks the same way.
 No candidate with a match of at least one byte means *no match*: the step is a literal.
 
 **3.5 Deviations.**
 - The predecessor is always the context reference. The thesis (§1.2, Example 1.2.1) takes the
   greater index of the two neighbours; ExCom and Buyanovsky's Lemma 3 take whichever neighbour
   agrees with the current context longer.
-- The tie rule (3.4) takes the farthest candidate. The thesis is silent; Broukhis's description
-  and ExCom take the nearest.
-- When `ctx - D < 0` the window starts at `lo = 0` and excludes rank 0, although its distance
-  fits.
 - The distance is `ctx - r`; the thesis writes `r - ctx`.
 
 ## 4. Segments and their ends
@@ -135,8 +131,8 @@ The length comes first, so that the distance can be left out of a literal: `len 
 by the literal alone, 1 byte (also when 4.2 shortened a match to 0). `len > 0` is followed by
 `dist` and the literal; `len + 1` bytes.
 
-Deviations: all of 2.3 and 3.5. ExCom also takes the nearest content and the better-agreeing
-context neighbour, which 3.5 lists.
+Deviations: all of 2.3 and 3.5. ExCom also takes the better-agreeing context neighbour,
+which 3.5 lists.
 
 ### 5.5 `lcp`: `(dist, len - lcp, literal)`
 
@@ -180,9 +176,8 @@ predecessor. The same input under the other coders:
 | `salomon2` | `(0,m) (0,i) (0,s) (1,1,1,i) (1,0,3,p) (1,1,1,i)` |
 | `valach` | `(0,m) (0,i) (0,s) (1,1,i) (3,0,p) (1,1,i)` (written as `(len, dist, literal)`) |
 
-`sssss`, `simple`: the thesis (§1.3.2) gives `(0,0,s) (0,3,s)`; the code gives
-`(0,0,s) (0,0,s) (0,2,s)`. The second step cannot use the only entry, rank 0, because of the
-window rule in 3.5.
+`sssss`, `simple`: the thesis (§1.3.2) gives `(0,0,s) (0,3,s)`, and so does the code: the second
+step uses the only entry, rank 0.
 
 ## 7. Buyanovsky's associative coder
 

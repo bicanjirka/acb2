@@ -12,7 +12,6 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 2 | Encoder-only ratio wins | small | no |
 | 3 | Dictionary engine: primitive, cache-friendly, licence-clean | medium | no |
 | 4 | Own range coder and adaptive models; drop the vendored Nayuki code | medium | `VERSION` 2 |
 | 5 | Encoder/decoder symmetry refactor and container v2 | large | `VERSION` 3 |
@@ -23,8 +22,8 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research, planning and phases 0 and 1 are finished. Start with phase 2, first
-entry (the default length field). Do not redo the research below; its numbers are final unless the code changes.
+State on 2026-09-28: research, planning and phases 0 to 2 are finished. Start with phase 3, first
+entry (the primitive order-statistic structure). Do not redo the research below; its numbers are final unless the code changes.
 Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
 says how to run them.
 
@@ -175,29 +174,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 - **Tests.** The suite (45 s under `mvn verify`, all green) covers only the default bit widths,
   a corpus of five files under 500 bytes, and never checks ratio or speed. Nothing tests the order-
   statistic trees, the comparator, or a stream written by an older build.
-
-## Phase 2: encoder-only ratio wins
-
-Each changes only the encoder's choices; files carry their widths, so old files still decode
-and `VERSION` stays. Measure each on Calgary with round trips verified, and commit separately.
-
-### Ties pick the farthest match, and rank 0 is never a candidate
-
-The most frequent distances on book1 are 31, 30, 29, 28: the far edge of the window.
-`searchContent` keeps the first candidate of a given length (strict `>`) and scans from the
-farthest rank, while Broukhis's description picks the nearest, and ExCom walks outward from the
-context so the nearest wins by construction. Separately, `searchContent` scans from `lo + 1`, so
-when `lo` is clamped to 0, rank 0 is never a candidate although its distance fits. Both fixes
-together, measured on Calgary: `simple` 1,040,155 (-3.4%), `valach` 1,021,875 (-2.6%),
-`valach -d 8 -l 5` 985,371 (-3.7%), `valach -d 10 -l 6` 962,297 (-4.6%), all round-tripping.
-
-- **Where:** `dictionary.DictionaryBase.searchContent`, `dictionary.DictionaryLCP.searchContent`.
-- **Approach:** walk outward from the context as ExCom does (distance 0, -1, +1, -2, ...), so
-  the first longest match is the nearest and the walk can stop at `maxLength`; scan from `lo` and
-  skip only candidates with `ctx - i > maxDistance - 1`. Tests: among equal matches the nearest is
-  chosen; rank 0 is found. The LCP coder needs the opposite tie rule (phase 6), so the rule
-  belongs to the coder, not the dictionary. Delete the matching deviations from
-  `docs/ALGORITHM.md` section 3.5 and update its worked examples.
 
 ## Phase 3: dictionary engine
 
@@ -419,6 +395,9 @@ came from output that was never decoded. What is known:
   already has, so order and LCP are computed on bytes before the current index, and a content
   truncated there counts as smaller.
 
+- **Tie rule:** the best content is the lexicographically smallest of the maximal matches, the
+  opposite of the nearest-wins walk of `DictionaryBase.searchContent`, so the rule belongs to the
+  coder's search, not to the shared scan.
 - **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`, the `-tc` check in
   `ACBClient`, `SettingsCombination.knownDictionaryDefect`.
 - **Approach:** implement §3.3.1 exactly, with the visibility rule, efficiently. The encoder

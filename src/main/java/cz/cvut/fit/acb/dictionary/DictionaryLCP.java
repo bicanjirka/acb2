@@ -13,12 +13,12 @@ public final class DictionaryLCP extends DictionaryBase {
     }
 
     @Override
-    protected DictionaryInfo searchContent(int ctx, int idx, int lo, int hi) {
+    protected DictionaryInfo searchContent(int ctx, int idx, int first, int last) {
         int bestIdx = -1;
         int bestLen = 0;
         int lcp = 0; // longest common prefix with second best content
         int lcpIdx = 0; // index of the second best content
-        for (int i = lo + 1; i <= hi; i++) {
+        for (int i = first; i <= last; i++) {
             int cnt = ost().select(i);
             int comLen = 0; // common length
             while ((cnt + comLen) < ost().size() && match(idx + comLen, cnt + comLen) && comLen < maxLength()) {

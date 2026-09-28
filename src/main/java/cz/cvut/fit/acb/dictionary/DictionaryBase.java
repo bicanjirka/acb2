@@ -110,25 +110,33 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
 
     @Override
     public DictionaryInfo searchContent(int ctx, int idx) {
-        int lo = Math.max(0, ctx - maxDistance);
-        int hi = Math.min(ost.size() - 1, ctx + maxDistance);
-        return searchContent(ctx, idx, lo, hi);
+        int first = Math.max(0, ctx - maxDistance + 1);
+        int last = Math.min(ost.size() - 1, ctx + maxDistance);
+        return searchContent(ctx, idx, first, last);
     }
 
-    protected DictionaryInfo searchContent(int ctx, int idx, int lo, int hi) {
+    /**
+     * Scans the ranks {@code first .. last} outward from the context, so the first longest match is
+     * the nearest; at equal distance the rank above the context wins, as in ExCom.
+     */
+    protected DictionaryInfo searchContent(int ctx, int idx, int first, int last) {
         int bestIdx = -1;
         int bestLen = 0;
-        for (int i = lo + 1; i <= hi; i++) {
-            int cnt = ost.select(i);
-            int comLen = 0;
-            while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
-                comLen++;
-            }
-            if (comLen > bestLen) {
-                bestLen = comLen;
-                bestIdx = i;
-                if (bestLen == maxLength) {
-                    break;
+        int reach = Math.max(ctx - first, last - ctx);
+        for (int offset = 0; offset <= reach && bestLen < maxLength; offset++) {
+            for (int side = 0; side < (offset == 0 ? 1 : 2); side++) {
+                int i = side == 0 ? ctx + offset : ctx - offset;
+                if (i < first || i > last) {
+                    continue;
+                }
+                int cnt = ost.select(i);
+                int comLen = 0;
+                while (match(idx + comLen, cnt + comLen) && comLen < maxLength) {
+                    comLen++;
+                }
+                if (comLen > bestLen) {
+                    bestLen = comLen;
+                    bestIdx = i;
                 }
             }
         }
