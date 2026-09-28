@@ -1,39 +1,18 @@
 package cz.cvut.fit.acb.utils;
 
-import org.apache.logging.log4j.util.Supplier;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * @author jiri.bican
  */
-public class TripletUtils {
+public final class TripletUtils {
 	
-	public static Supplier[] tripletString(int var1, int var2, byte var3) {
-		Supplier supplier;
-		supplier = () -> String.format("(%d, %d, %d)", var1, var2, var3);
-		return new Supplier[]{supplier};
+	private TripletUtils() {
 	}
 	
-	public static Supplier[] tripletString(int var1, int var2, int var3) {
-		Supplier supplier;
-		supplier = () -> String.format("(%d, %d, %d)", var1, var2, var3);
-		return new Supplier[]{supplier};
-	}
-	
-	public static Supplier[] tripletString(int var1, int var2) {
-		Supplier supplier;
-		supplier = () -> String.format("(%d, %d)", var1, var2);
-		return new Supplier[]{supplier};
-	}
-	
-	public static Supplier[] tripletString(int var1, byte var2) {
-		Supplier supplier;
-		supplier = () -> String.format("(%d, %d)", var1, var2);
-		return new Supplier[]{supplier};
-	}
-	
-	public static Supplier[] tripletString(int var1, int var2, int var3, byte var4) {
-		Supplier supplier;
-		supplier = () -> String.format("(%d, %d, %d, %d)", var1, var2, var3, var4);
-		return new Supplier[]{supplier};
+	/** A triplet's fields in coding order, as {@code (a, b, c)}; bytes print signed. */
+	public static String tripletString(int... fields) {
+		return Arrays.stream(fields).mapToObj(String::valueOf).collect(Collectors.joining(", ", "(", ")"));
 	}
 }
