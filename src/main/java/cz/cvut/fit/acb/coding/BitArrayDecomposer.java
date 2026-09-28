@@ -13,8 +13,8 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
  */
 public class BitArrayDecomposer extends ByteToTripletConverter<BitArrayDecomposer.ByteArrayDecomposerInner> {
 	
-	ByteArrayInputStream bais;
-	BitStreamInputStream bsis;
+	private ByteArrayInputStream bais;
+	private BitStreamInputStream bsis;
 	/** The composer pads the last byte, so the stream ends where its recorded bit count runs out. */
 	private long bitsRemaining;
 	

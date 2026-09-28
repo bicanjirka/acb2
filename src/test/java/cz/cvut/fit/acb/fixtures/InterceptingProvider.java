@@ -1,6 +1,5 @@
 package cz.cvut.fit.acb.fixtures;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -11,7 +10,6 @@ import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 
@@ -54,8 +52,4 @@ public final class InterceptingProvider implements ACBProvider {
 		return this.log.checking(this.delegate.getTripletReader(payload));
 	}
 	
-	@Override
-	public <T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator) {
-		return this.delegate.getOrderStatisticTree(comparator);
-	}
 }

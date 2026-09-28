@@ -40,8 +40,8 @@ public final class ACBProviderImpl implements ACBProvider {
 		int maxDistance = this.settings.maxDistance();
 		int maxLength = this.settings.maxLength();
 		return switch (this.settings.tripletCoding()) {
-			case LCP -> new DictionaryLCP(this, sequence, maxDistance, maxLength);
-			case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this, sequence, maxDistance, maxLength);
+			case LCP -> new DictionaryLCP(this::newTree, sequence, maxDistance, maxLength);
+			case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(this::newTree, sequence, maxDistance, maxLength);
 		};
 	}
 
@@ -75,8 +75,7 @@ public final class ACBProviderImpl implements ACBProvider {
 		return converter.open(payload);
 	}
 	
-	@Override
-	public <T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator) {
+	private OrderStatisticTree<Integer> newTree(Comparator<Integer> comparator) {
 		return switch (this.settings.dictionaryStructure()) {
 			case RED_BLACK -> new RedBlackBST<>(comparator);
 			case BST -> new BST<>(comparator);

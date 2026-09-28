@@ -31,9 +31,7 @@ closed, because the files it wrote did not decompress. What is known:
 
 ## Architecture in the house style
 
-The codebase predates the style in `CLAUDE.md`. These items move the compressor to a headless,
-testable core with the CLI and file I/O as thin adapters around it. Split into sub-commits, each
-green on its own.
+The core follows the style in `CLAUDE.md`; what is left here is an option, not a defect.
 
 ### Triplets as records
 
@@ -48,15 +46,6 @@ defect - an option, recorded with its cost.
 - **Why not yet:** it helps only the encoder (decoding still reads field by field), adds an object
   per triplet in the hot loop, and duplicates the layout each coder already states once. Worth it
   if tests or tooling start needing whole triplets, for example a triplet-level diff of two coders.
-
-### Injection, fakes and fixtures
-
-Collaborators are built inside constructors through `ACBProvider`, and the tests reuse one wide
-wrapper provider.
-
-- **Where:** `ACBProvider`, `ACBProviderImpl`, `dictionary`, `triplets.coder`, test `utils`.
-- **Approach:** constructor injection into `final` fields; hand-written fakes named by role
-  (`FakeDictionary`, `FakeTripletCoder`); shared setup in a `fixtures` test package.
 
 ## Enforced style and cleanup
 

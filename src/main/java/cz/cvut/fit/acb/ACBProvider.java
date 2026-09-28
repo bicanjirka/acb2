@@ -1,12 +1,10 @@
 package cz.cvut.fit.acb;
 
-import java.util.Comparator;
 import java.util.List;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
 
@@ -24,6 +22,5 @@ public interface ACBProvider {
 	TripletWriter getTripletWriter();
 	
 	TripletProcessor getTripletReader(List<byte[]> payload);
-	
-	<T> OrderStatisticTree<T> getOrderStatisticTree(Comparator<T> comparator);
+
 }

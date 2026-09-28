@@ -1,14 +1,18 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.ACBProvider;
+import java.util.Comparator;
+import java.util.function.Function;
+
+import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 
 /**
  * @author jiri.bican
  */
-public class DictionaryLCP extends DictionaryBase {
+public final class DictionaryLCP extends DictionaryBase {
 	
-	public DictionaryLCP(ACBProvider provider, ByteSequence sequence, int maxDistance, int maxLength) {
-		super(provider, sequence, maxDistance, maxLength);
+	public DictionaryLCP(Function<Comparator<Integer>, OrderStatisticTree<Integer>> trees, ByteSequence sequence,
+	                     int maxDistance, int maxLength) {
+		super(trees, sequence, maxDistance, maxLength);
 	}
 	
 	@Override
@@ -18,9 +22,9 @@ public class DictionaryLCP extends DictionaryBase {
 		int lcp = 0; // longest common prefix with second best content
 		int lcpIdx = 0; // index of the second best content
 		for (int i = lo + 1; i <= hi; i++) {
-			int cnt = ost.select(i); // TODO do not select for every node, utilize neighbour links
+			int cnt = ost().select(i); // TODO do not select for every node, utilize neighbour links
 			int comLen = 0; // common length
-			while ((cnt + comLen) < ost.size() && match(idx + comLen, cnt + comLen) && comLen < maxLength) {
+			while ((cnt + comLen) < ost().size() && match(idx + comLen, cnt + comLen) && comLen < maxLength()) {
 				comLen++;
 			}
 			if (comLen > lcp) {
@@ -47,7 +51,7 @@ public class DictionaryLCP extends DictionaryBase {
 				
 			}*/
 		}
-		return new DictionaryInfo(ctx, bestIdx, Math.min(maxLength, bestLen - lcp), lcp);
+		return new DictionaryInfo(ctx, bestIdx, Math.min(maxLength(), bestLen - lcp), lcp);
 	}
 	
 	private int compare(int i, int j, int offset) {
@@ -61,24 +65,24 @@ public class DictionaryLCP extends DictionaryBase {
 	
 	@Override
 	protected int compare(int i, int j) {
-		if (i >= ost.size())
+		if (i >= ost().size())
 			return Byte.MAX_VALUE;
-		if (j >= ost.size())
+		if (j >= ost().size())
 			return Byte.MIN_VALUE;
-		byte b1 = seq.byteAt(i);
-		byte b2 = seq.byteAt(j);
+		byte b1 = seq().byteAt(i);
+		byte b2 = seq().byteAt(j);
 		return Byte.compare(b1, b2);
 	}
 	
 	/*private int compare(int i, int j, int offset) {
 		int cmp = 0;
-		int pos1 = ost.select(i); // TODO do not query, cash from key (select above)
-		int pos2 = ost.select(j);
+		int pos1 = ost().select(i); // TODO do not query, cash from key (select above)
+		int pos2 = ost().select(j);
 		while (cmp == 0) {
 			offset++;
 			cmp = compare(pos1 + offset, pos2 + offset);
 		}
-//		System.out.println("comparing "+new String(seq.array(pos1, pos1+offset))+" ["+cmp+"] "+new String(seq.array(pos2, pos2+offset)));
+//		System.out.println("comparing "+new String(seq().array(pos1, pos1+offset))+" ["+cmp+"] "+new String(seq().array(pos2, pos2+offset)));
 		return cmp;
 	}*/
 	

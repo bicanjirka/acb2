@@ -1,26 +1,29 @@
 package cz.cvut.fit.acb.dictionary;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.Function;
 
-import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.dictionary.core.OrderStatisticTree;
 
 /**
  * @author jiri.bican
  */
-public class DictionaryBase implements Dictionary {
+public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
 	
-	protected OrderStatisticTree<Integer> ost;
-	protected ByteSequence seq;
-	protected int maxDistance;
-	protected int maxLength;
+	private final OrderStatisticTree<Integer> ost;
+	private final ByteSequence seq;
+	private final int maxDistance;
+	private final int maxLength;
 	
-	public DictionaryBase(ACBProvider provider, ByteSequence sequence, int maxDistance, int maxLength) {
+	/** {@code trees} builds the order-statistic tree the dictionary sorts its contexts in. */
+	public DictionaryBase(Function<Comparator<Integer>, OrderStatisticTree<Integer>> trees, ByteSequence sequence,
+	                      int maxDistance, int maxLength) {
 		this.seq = sequence;
 		this.maxDistance = maxDistance;
 		this.maxLength = maxLength;
-		this.ost = provider.getOrderStatisticTree(new ReverseIndexComparator(seq));
+		this.ost = trees.apply(new ReverseIndexComparator(sequence));
 	}
 	
 	private DictionaryBase(DictionaryBase dictionary) {
@@ -33,6 +36,18 @@ public class DictionaryBase implements Dictionary {
 	@Override
 	public Dictionary clone() {
 		return new DictionaryBase(this);
+	}
+	
+	protected final OrderStatisticTree<Integer> ost() {
+		return this.ost;
+	}
+	
+	protected final ByteSequence seq() {
+		return this.seq;
+	}
+	
+	protected final int maxLength() {
+		return this.maxLength;
 	}
 	
 	@Override

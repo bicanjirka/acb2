@@ -13,8 +13,8 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
  */
 public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.BitArrayComposerInner> {
 	
-	ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
-	BitStreamOutputStream bitOutputStream = new BitStreamOutputStream(arrayOutputStream);
+	private final ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
+	private final BitStreamOutputStream bitOutputStream = new BitStreamOutputStream(arrayOutputStream);
 	private boolean doReturn = false;
 	private long bitsWritten;
 	
@@ -56,8 +56,8 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 	}
 	
 	public static class BitArrayComposerInner {
-		private BitStreamOutputStream outputStream;
-		private int bitSize;
+		private final BitStreamOutputStream outputStream;
+		private final int bitSize;
 		
 		public BitArrayComposerInner(BitStreamOutputStream outputStream, int bitSize) {
 			this.outputStream = outputStream;
