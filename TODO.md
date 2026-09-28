@@ -12,12 +12,22 @@ the generated inputs, never silently passed; closing an item removes its exclusi
 ### LCP dictionary diverges between encoder and decoder
 
 The decoder's dictionary differs from the encoder's after a few updates, and segmented
-decoding calls `select` with a negative rank.
+decoding calls `select` with a negative rank. `ACBClient` refuses `-tc lcp` until this is
+closed, because the files it wrote did not decompress. What is known:
 
-- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`.
-- **Approach:** the decoder recomputes the LCP from its own partial dictionary; either encode
-  the LCP explicitly or restrict the search to state both sides share, then finish or remove the
-  coder.
+- `DictionaryLCP.searchContent` mixes ranks and text positions: `bestIdx` holds a rank, but the
+  equal-length branch assigns it `cnt` (a position) and compares `bestIdx + bestLen` as a
+  position.
+- The scheme sends `length - lcp` and lets the decoder recover `lcp` as the longest common
+  prefix of the chosen content with its best neighbour. That only agrees with the encoder's
+  second-best match against the text when there is no tie: a content matching the text as far as
+  the best one shares at least `bestLen` with it, so the decoder adds back too much.
+
+- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`, the `-tc` check in
+  `ACBClient.parseCommandLine`.
+- **Approach:** fix the rank/position confusion, then define the second-best content so both
+  sides compute it from shared state (for example, the best-matching neighbour of the chosen
+  content, ties broken by rank). Remove the CLI refusal and the test exclusion together.
 
 ## Architecture in the house style
 
@@ -89,12 +99,12 @@ Nothing checks formatting or the `CLAUDE.md` rules mechanically.
   `System.out` outside the CLI. `nayuki.arithcode` is excluded. The tabs-to-spaces reformat is
   its own commit, listed in `.git-blame-ignore-revs`.
 
-### Dead code and naming
+### Dead code
 
 - **Where:** `coding.RangeCoding`, `coding.ArithmeticCoding`, `ACBFileIO.openParallel`, the
-  `ìnput` field in `ACBClient`, the `ACB.print*` debug helpers.
-- **Approach:** delete what has no caller; rename the non-ASCII identifier; move any debug
-  output worth keeping behind `DEBUG` logging.
+  `ACB.print*` debug helpers.
+- **Approach:** delete what has no caller; move any debug output worth keeping behind `DEBUG`
+  logging.
 
 ### Project documentation
 

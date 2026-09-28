@@ -73,8 +73,9 @@ public class ACBProviderImpl implements ACBProvider {
 		
 		switch (params.cd) {
 			case ADAPTIVE_ARITHMETIC:
-				t2bConverter = AdaptiveArithmeticEncoder::new;
-				b2tConverter = AdaptiveArithmeticDecoder::new;
+				int[] lengthFrequencies = params.lengthFrequencies.clone();
+				t2bConverter = () -> new AdaptiveArithmeticEncoder(lengthFrequencies);
+				b2tConverter = () -> new AdaptiveArithmeticDecoder(lengthFrequencies);
 				break;
 			case BIT_ARRAY:
 				t2bConverter = BitArrayComposer::new;
@@ -87,10 +88,10 @@ public class ACBProviderImpl implements ACBProvider {
 				orderStatisticTree = RedBlackBST::new;
 				break;
 			case BST:
-				orderStatisticTree = BinarySearchST::new;
+				orderStatisticTree = BST::new;
 				break;
 			case ST:
-				orderStatisticTree = BST::new;
+				orderStatisticTree = BinarySearchST::new;
 				break;
 		}
 		

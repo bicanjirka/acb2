@@ -10,6 +10,7 @@ public class ACBProviderParameters {
 	public TripletCoderE tc = TripletCoderE.SIMPLE;
 	public CoderE cd = CoderE.ADAPTIVE_ARITHMETIC;
 	public OrderStatisticTreeE tr = OrderStatisticTreeE.RED_BLACK;
+	public int[] lengthFrequencies = {45, 13, 10, 7, 5, 4};
 	
 	public enum TripletCoderE {
 		SALOMON, SALOMON2, SIMPLE, VALACH, LCP

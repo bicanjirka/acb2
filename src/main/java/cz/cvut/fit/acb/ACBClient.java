@@ -1,13 +1,18 @@
 package cz.cvut.fit.acb;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import cz.cvut.fit.acb.utils.ChainBuilder;
 import org.apache.commons.cli.CommandLine;
@@ -73,7 +78,7 @@ public class ACBClient {
 				.longOpt("arith-freq")
 				.hasArg()
 				.argName("freq")
-				.desc("<freq> is comma separated array of integers defining init values of arithmetic coding frequency table (default is 45,13,10,7,5,4,1...)")
+				.desc("<freq> is comma separated array of positive integers defining init values of the arithmetic coding frequency table for lengths (default is 45,13,10,7,5,4, then 1 for the rest); decompress with the same values")
 				.build();
 		options.addOption(freq);
 		Option tripCoder = Option.builder("tc")
@@ -94,11 +99,11 @@ public class ACBClient {
 		options.addOption(struct);
 	}
 	
-	private String ìnput;
+	private String input;
 	private String output;
 	private boolean compress = true;
 	private boolean measure;
-	private String measureOutput;
+	private Optional<String> measureOutput = Optional.empty();
 	
 	public static void main(String[] args) {
 		
@@ -126,51 +131,39 @@ public class ACBClient {
 				"input - input file or directory", options);
 	}
 	
-	private int run(String[] args) {
+	int run(String[] args) {
 		if (args.length < 2) {
 			return EXIT_CODE_HELP;
 		}
 		
-		// create the parser
 		CommandLineParser parser = new DefaultParser();
-		ACBProviderParameters params = null;
+		ACBProviderParameters params;
 		try {
-			// parse the command line arguments
 			CommandLine cmd = parser.parse(options, args);
-			
-			if (cmd == null || cmd.hasOption('h')) {
+			if (cmd.hasOption('h')) {
 				return EXIT_CODE_HELP;
 			}
-			
 			params = parseCommandLine(cmd);
-			
 		} catch (ParseException exp) {
-			// oops, something went wrong
 			System.err.println("Parsing failed.  Reason: " + exp.getMessage());
-			logger.error("Parsing failed.  Reason: " + exp.getMessage());
-			return ACBClient.EXIT_CODE_FATAL;
+			logger.error("Parsing failed.  Reason: {}", exp.getMessage());
+			return EXIT_CODE_FATAL;
 		}
 		
-		assert params != null;
-		logger.info("{} {}", compress ? "compressing" : "decompressing", ìnput);
+		logger.info("{} {}", this.compress ? "compressing" : "decompressing", this.input);
 		logger.debug("distance bits = {}", params.distanceBits);
 		logger.debug("length bits = {}", params.lengthBits);
 		logger.debug("triplet coding = {}", params.tc.name());
 		logger.debug("dictionary structure = {}", params.tr.name());
 		logger.debug("triplet coder = {}", params.cd.name());
-		if (measure) {
-			logger.debug("measuring is ON, output into {}", "console"); // TODO console - file
-		} else {
-			logger.debug("measuring is OFF");
-		}
+		logger.debug("measuring is {}", this.measure ? "ON, output into " + this.measureOutput.orElse("console") : "OFF");
 		
 		ACBFileIO io = new ACBFileIO();
 		ACBProvider provider = new ACBProviderImpl(params);
 		ACB acb = new ACB(provider);
 		
 		Function<Path, Consumer<Path>> chain;
-		
-		if (compress) {
+		if (this.compress) {
 			chain = output -> ChainBuilder.create(io::openParse)
 					.chain(acb::compress)
 					.chain(provider.getT2BConverter())
@@ -182,69 +175,63 @@ public class ACBClient {
 					.end(io.parsedWriter(output));
 		}
 		
-		Path in = Paths.get(ìnput);
-		Path out = Paths.get(output);
-		File[] inFiles = new File[0];
-		
 		try {
-			Files.deleteIfExists(out);
-			if (!Files.exists(in)) {
-				throw new IOException("Input file or directory does not exists: " + this.ìnput);
+			List<String> measurements = new ArrayList<>();
+			for (FileJob job : this.jobs(Paths.get(this.input), Paths.get(this.output))) {
+				long start = System.nanoTime();
+				chain.apply(job.target()).accept(job.source());
+				long millis = (System.nanoTime() - start) / 1_000_000;
+				long sourceSize = Files.size(job.source());
+				long targetSize = Files.size(job.target());
+				measurements.add(String.format(Locale.ROOT, "%s	time: %d ms	in: %d B	out: %d B	ratio: %.4f",
+						job.source().getFileName(), millis, sourceSize, targetSize,
+						sourceSize == 0 ? 0.0 : (double) targetSize / sourceSize));
 			}
-			File file = in.toFile();
-			if (file.isDirectory()) {
-				inFiles = file.listFiles();
-			} else if (file.isFile()) {
-				inFiles = new File[]{file};
-			} else {
-				// do nothing
+			if (this.measure) {
+				if (this.measureOutput.isPresent()) {
+					Files.write(Paths.get(this.measureOutput.get()), measurements);
+				} else {
+					measurements.forEach(System.out::println);
+				}
 			}
-		} catch (IOException exp) {
+		} catch (IOException | UncheckedIOException exp) {
 			System.err.println("I/O Exception.  Reason: " + exp.getMessage());
-			logger.error("I/O Exception.  Reason: " + exp.getMessage());
-			return ACBClient.EXIT_CODE_FATAL;
+			logger.error("I/O Exception.  Reason: {}", exp.getMessage());
+			return EXIT_CODE_FATAL;
 		}
-		try {
-			for (int i = 0; i < inFiles.length; i++) {
-				File file = inFiles[i];
-//				File outf = File.createTempFile(file.getName(), String.valueOf(i));
-				long t1 = System.currentTimeMillis();
-				long s1 = file.length();
-				chain.apply(file.toPath()).accept(in);
-				long t2 = System.currentTimeMillis();
-				long s2 = file.length();
-				Thread.sleep(500);
-				if (measure) System.out.println(file.getName() + "\ttime: " + (t2 - t1) + "\tcompress:" + ((double) s2 / s1));
-			}
-		} catch (InterruptedException ex) {
-//			ex.printStackTrace();
-		}
-		/*TripletToByteConverter<?> encoder = provider.getT2BConverter();
-		ChainBuilder.create(io::openParse)
-				.chain(acb::compress)
-				.chain(encoder)
-				.end(bytes -> io.saveObject(bytes, out))
-				.accept(in);
-		
-		//////////////////////////////////////////////////////
-		
-		ChainBuilder.create(io::openObject)
-				.chain(provider.getB2TConverter())
-				.chain(acb::decompress)
-				.end(byteBuffer -> {
-					try {
-						if (byteBuffer == null) return;
-						byte[] inBytes = Files.readAllBytes(in);
-						byte[] outBytes = byteBuffer.array();
-//					logger.info("Input  = " + new String(inBytes));
-//					logger.info("Output = " + new String(outBytes));
-						logger.info("Input Output equals = {}", Arrays.equals(inBytes, outBytes));
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}).accept(out);*/
-		
 		return EXIT_CODE_OK;
+	}
+	
+	/**
+	 * A file input maps to the output path, or into it when it is a directory; a directory input
+	 * maps each regular file inside it to the same name in the output directory.
+	 */
+	private List<FileJob> jobs(Path in, Path out) throws IOException {
+		if (!Files.exists(in)) {
+			throw new IOException("Input file or directory does not exist: " + in);
+		}
+		List<FileJob> jobs = new ArrayList<>();
+		if (Files.isDirectory(in)) {
+			if (Files.exists(out) && !Files.isDirectory(out)) {
+				throw new IOException("Input is a directory, so the output must be one too: " + out);
+			}
+			Files.createDirectories(out);
+			try (Stream<Path> files = Files.list(in)) {
+				files.filter(Files::isRegularFile).sorted()
+						.forEach(file -> jobs.add(new FileJob(file, out.resolve(file.getFileName()))));
+			}
+		} else {
+			jobs.add(new FileJob(in, Files.isDirectory(out) ? out.resolve(in.getFileName()) : out));
+		}
+		for (FileJob job : jobs) {
+			if (Files.exists(job.target()) && Files.isSameFile(job.source(), job.target())) {
+				throw new IOException("Output would overwrite its input: " + job.target());
+			}
+		}
+		return jobs;
+	}
+	
+	private record FileJob(Path source, Path target) {
 	}
 	
 	private ACBProviderParameters parseCommandLine(CommandLine cmd) throws ParseException {
@@ -253,7 +240,7 @@ public class ACBClient {
 		if (args == null || args.length != 2) {
 			throw new ParseException("Bad usage: arguments [input, output] required, found: " + Arrays.toString(args));
 		}
-		ìnput = args[0];
+		input = args[0];
 		output = args[1];
 		
 		if (cmd.hasOption("de")) {
@@ -312,14 +299,19 @@ public class ACBClient {
 		
 		if (cmd.hasOption("af")) {
 			String val = cmd.getOptionValue("af");
-			String[] split = val.split(",");
-			// TODO handle frequencies
+			try {
+				params.lengthFrequencies = Arrays.stream(val.split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
+			} catch (NumberFormatException e) {
+				throw new ParseException("arith-freq is not a comma separated list of integers: " + val);
+			}
+			if (Arrays.stream(params.lengthFrequencies).anyMatch(f -> f <= 0)) {
+				throw new ParseException("arith-freq values must be greater than zero: " + val);
+			}
 		}
 		
 		if (cmd.hasOption("m")) {
 			measure = true;
-			String val = cmd.getOptionValue("m");
-			measureOutput = val;
+			measureOutput = Optional.ofNullable(cmd.getOptionValue("m"));
 		}
 		
 		if (cmd.hasOption("tc")) {
@@ -328,6 +320,9 @@ public class ACBClient {
 					.filter(e1 -> e1.name().equalsIgnoreCase(val)).findAny().orElse(null);
 			if (e == null) {
 				throw new ParseException("triplet-coder invalid: " + val + ", allowed values: " + Arrays.toString(ACBProviderParameters.TripletCoderE.values()));
+			}
+			if (e == ACBProviderParameters.TripletCoderE.LCP) {
+				throw new ParseException("triplet-coder LCP is experimental and its output does not decompress yet");
 			}
 			params.tc = e;
 		}

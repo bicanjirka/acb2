@@ -11,7 +11,11 @@ import cz.cvut.fit.acb.triplets.TripletFieldId;
 public class AdaptiveArithmeticEncoder extends TripletToByteConverter<AdaptiveArithmeticCompress> {
 	
 	private final Collection<Runnable> onTerminate = new ArrayList<>();
-	private final int[] lengthFreq = {45, 13, 10, 7, 5, 4};
+	private final int[] lengthFreq;
+	
+	public AdaptiveArithmeticEncoder(int[] lengthFreq) {
+		this.lengthFreq = lengthFreq.clone();
+	}
 	
 	@Override
 	protected byte[] getArray(AdaptiveArithmeticCompress object) {
