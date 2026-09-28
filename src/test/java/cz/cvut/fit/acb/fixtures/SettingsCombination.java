@@ -29,9 +29,6 @@ public record SettingsCombination(TripletCoderE tripletCoding, OrderStatisticTre
 
 	/** Combinations whose decoder dictionary diverges from the encoder's; see {@code TODO.md}. */
 	public Optional<String> knownDictionaryDefect() {
-		if (this.entropyCoding == CoderE.BIT_ARRAY) {
-			return Optional.of("Bit-array decoding reads trailing padding as triplets (TODO.md)");
-		}
 		if (this.tripletCoding == TripletCoderE.LCP) {
 			return Optional.of("LCP dictionary diverges between encoder and decoder (TODO.md)");
 		}

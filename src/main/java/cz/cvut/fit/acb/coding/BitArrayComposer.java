@@ -2,6 +2,7 @@ package cz.cvut.fit.acb.coding;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
@@ -13,12 +14,14 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 	ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
 	BitStreamOutputStream bitOutputStream = new BitStreamOutputStream(arrayOutputStream);
 	private boolean doReturn = false;
+	private long bitsWritten;
 	
 	@Override
 	protected byte[] getArray(BitArrayComposerInner object) {
 		byte[] bytes = null;
 		if (doReturn) {
-			bytes = arrayOutputStream.toByteArray();
+			byte[] bits = arrayOutputStream.toByteArray();
+			bytes = ByteBuffer.allocate(Long.BYTES + bits.length).putLong(bitsWritten).put(bits).array();
 			doReturn = false;
 		}
 		return bytes;
@@ -33,6 +36,7 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 	protected void compress(BitArrayComposerInner object, int value) {
 		try {
 			object.write(value);
+			bitsWritten += object.bitSize;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

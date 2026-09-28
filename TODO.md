@@ -9,15 +9,6 @@ Found by `RoundTripTest` and `RoundTripPropertiesTest`. The affected combination
 with a reason (`SettingsCombination.knownRoundTripDefect`/`knownDictionaryDefect`) or kept out of
 the generated inputs, never silently passed; closing an item removes its exclusion.
 
-### Bit-array entropy coding never round-trips
-
-With `-bs`, every triplet coder decodes extra triplets after the encoder's last one: the decoder
-reads the zero padding of the final byte as more fields.
-
-- **Where:** `coding.BitArrayComposer`, `coding.BitArrayDecomposer`.
-- **Approach:** record the number of triplets (or of meaningful bits) so the decomposer stops
-  at the real end rather than at the byte boundary.
-
 ### LCP dictionary diverges between encoder and decoder
 
 The decoder's dictionary differs from the encoder's after a few updates, and segmented
