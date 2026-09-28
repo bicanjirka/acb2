@@ -179,24 +179,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ## Phase 1: correctness and hardening
 
-### Header bit widths allow allocating gigabytes
-
-The header accepts bit widths up to `CompressionSettings.MAX_FIELD_BITS` (30), and the adaptive
-arithmetic model allocates `2^bits + 1` ints, plus as many again for the cumulative table.
-Compressing with `-d 30` fails with `OutOfMemoryError` at a 512 MB heap. The decoder builds the
-same model from the header, so a crafted file of about 30 bytes with a recomputed CRC should do
-the same. This breaks the rule that decoding bounds every count before allocating. Wide fields
-are not useful anyway: `-d 24` compressed a 3.5 KB text to 98% of its size. The same holds for
-the length frequencies: any count and any positive value is accepted, and a sum beyond the
-model's limit fails with `IllegalArgumentException` instead of `MalformedStreamException`.
-
-- **Where:** `CompressionSettings.MAX_FIELD_BITS`, `format.ContainerFormat.bits` and the
-  frequency loop, `coding.AdaptiveArithmeticCompress`/`AdaptiveArithmeticDecompress`.
-- **Approach:** cap the widths at 16 (ExCom caps at 12) in the settings and therefore in
-  decoding; bound the frequency count by the length alphabet and each value by what the model
-  can total. Tests: a header with a wider field or oversized frequencies is rejected as
-  malformed.
-
 ### Bad payloads fail with arbitrary exceptions or garbage
 
 A well-formed container with a corrupt payload is not caught: an out-of-range rank gives an NPE

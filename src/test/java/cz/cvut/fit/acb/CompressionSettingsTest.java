@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -32,6 +33,23 @@ class CompressionSettingsTest {
     void lengthFrequenciesMustBePositive() {
         assertThatThrownBy(() -> CompressionSettings.defaults().withLengthFrequencies(3, 0))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void lengthFrequenciesThatOverflowTheModelAreRejected() {
+        int tooMuch = (int) CompressionSettings.MAX_LENGTH_MODEL_TOTAL;
+
+        assertThatThrownBy(() -> CompressionSettings.defaults().withLengthFrequencies(tooMuch, 1))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> CompressionSettings.defaults().withLengthFrequencies(Integer.MAX_VALUE, Integer.MAX_VALUE))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void lengthFrequenciesBeyondTheLengthAlphabetAreDroppedFromTheHeader() {
+        CompressionSettings settings = CompressionSettings.defaults().withLengthBits(1);
+
+        assertThat(StreamHeader.of(settings).lengthFrequencies()).containsExactly(45, 13, 10);
     }
 
     @Test

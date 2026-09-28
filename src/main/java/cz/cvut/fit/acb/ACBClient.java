@@ -51,7 +51,7 @@ public class ACBClient {
                 .longOpt("distance")
                 .hasArg()
                 .argName("N")
-                .desc("N bits used for distance triplet element (default is 6)\n" +
+                .desc("N bits, 1 to 16, used for distance triplet element (default is 6)\n" +
                         "maximal context-content distance is 2^(N - 1)")
                 .build();
         options.addOption(distance);
@@ -59,7 +59,7 @@ public class ACBClient {
                 .longOpt("length")
                 .hasArg()
                 .argName("N")
-                .desc("N bits used for length triplet element (default is 4)\n" +
+                .desc("N bits, 1 to 16, used for length triplet element (default is 4)\n" +
                         "maximal length is 2^(N)-1")
                 .build();
         options.addOption(length);

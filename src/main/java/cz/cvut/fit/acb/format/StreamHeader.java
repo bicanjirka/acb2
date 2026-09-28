@@ -9,7 +9,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * The settings a stream was coded with - everything decoding depends on. The dictionary structure
+ * The settings a stream was coded with - everything decoding depends on. Frequencies beyond the
+ * length alphabet are dropped, since the coder ignores them. The dictionary structure
  * is left out, since it only affects speed, and so is the segment size, which the payload records.
  */
 public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripletCoding, EntropyCoding entropyCoding,
@@ -20,8 +21,9 @@ public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripl
     }
 
     public static StreamHeader of(CompressionSettings settings) {
+        int alphabet = CompressionSettings.lengthAlphabetSize(settings.lengthBits());
         return new StreamHeader(settings.distanceBits(), settings.lengthBits(), settings.tripletCoding(),
-                settings.entropyCoding(), settings.lengthFrequencies());
+                settings.entropyCoding(), Arrays.stream(settings.lengthFrequencies()).limit(alphabet).toArray());
     }
 
     @Override

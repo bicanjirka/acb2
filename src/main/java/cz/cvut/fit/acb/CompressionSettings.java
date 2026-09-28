@@ -11,7 +11,14 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
                                   DictionaryStructure dictionaryStructure, EntropyCoding entropyCoding,
                                   int[] lengthFrequencies, int segmentSize) {
 
-    public static final int MAX_FIELD_BITS = 30;
+    /** Wider fields only inflate the arithmetic model: 2^bits symbols each; 24 bits took 98% of a text. */
+    public static final int MAX_FIELD_BITS = 16;
+
+    /**
+     * Most the length model's starting frequencies may total. The arithmetic coder fails at a total
+     * of 2^30, and adaptation adds to it, so the start leaves the rest of that room to the stream.
+     */
+    public static final long MAX_LENGTH_MODEL_TOTAL = 1L << 24;
 
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 4, TripletCoding.SIMPLE,
             DictionaryStructure.RED_BLACK, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[]{45, 13, 10, 7, 5, 4},
@@ -24,12 +31,34 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         Objects.requireNonNull(dictionaryStructure, "dictionaryStructure");
         Objects.requireNonNull(entropyCoding, "entropyCoding");
         lengthFrequencies = lengthFrequencies.clone();
-        if (Arrays.stream(lengthFrequencies).anyMatch(f -> f <= 0)) {
-            throw new IllegalArgumentException("length frequencies must be greater than zero: "
-                    + Arrays.toString(lengthFrequencies));
-        }
+        requireLengthFrequencies(lengthBits, lengthFrequencies);
         if (segmentSize < 1) {
             throw new IllegalArgumentException("segment size must be greater than zero: " + segmentSize);
+        }
+    }
+
+    /** Symbols of a length field's model: every length, then the end of the stream. */
+    public static int lengthAlphabetSize(int lengthBits) {
+        return (1 << lengthBits) + 1;
+    }
+
+    /**
+     * Frequencies past the alphabet are ignored by the coder and every symbol they leave out starts
+     * at 1; this checks that the model's starting total, counted that way, is small enough.
+     *
+     * @throws IllegalArgumentException if a frequency is not positive or the starting total is too large
+     */
+    public static void requireLengthFrequencies(int lengthBits, int[] frequencies) {
+        if (Arrays.stream(frequencies).anyMatch(f -> f <= 0)) {
+            throw new IllegalArgumentException("length frequencies must be greater than zero: "
+                    + Arrays.toString(frequencies));
+        }
+        int alphabet = lengthAlphabetSize(lengthBits);
+        long total = Arrays.stream(frequencies).limit(alphabet).asLongStream().sum()
+                + Math.max(0, alphabet - frequencies.length);
+        if (total > MAX_LENGTH_MODEL_TOTAL) {
+            throw new IllegalArgumentException("length frequencies total " + total + ", more than "
+                    + MAX_LENGTH_MODEL_TOTAL);
         }
     }
 

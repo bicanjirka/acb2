@@ -86,12 +86,18 @@ public final class ContainerFormat {
             int lengthBits = bits(in.get(), "length");
             TripletCoding tripletCoding = byCode(TRIPLET_CODES, in.get(), "triplet coding");
             EntropyCoding entropyCoding = byCode(ENTROPY_CODES, in.get(), "entropy coding");
-            int[] frequencies = new int[count(in, Integer.BYTES, "frequency")];
+            int frequencyCount = count(in, Integer.BYTES, "frequency");
+            if (frequencyCount > CompressionSettings.lengthAlphabetSize(lengthBits)) {
+                throw new MalformedStreamException("Invalid frequency count " + frequencyCount);
+            }
+            int[] frequencies = new int[frequencyCount];
             for (int i = 0; i < frequencies.length; i++) {
                 frequencies[i] = in.getInt();
-                if (frequencies[i] <= 0) {
-                    throw new MalformedStreamException("Invalid length frequency " + frequencies[i]);
-                }
+            }
+            try {
+                CompressionSettings.requireLengthFrequencies(lengthBits, frequencies);
+            } catch (IllegalArgumentException e) {
+                throw new MalformedStreamException("Invalid length frequencies: " + e.getMessage());
             }
             int arrayCount = count(in, Integer.BYTES, "array");
             List<byte[]> payload = new ArrayList<>(arrayCount);

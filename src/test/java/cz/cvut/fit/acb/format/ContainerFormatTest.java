@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.format;
 
+import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,35 @@ class ContainerFormatTest {
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
                 .isInstanceOf(MalformedStreamException.class).hasMessageContaining("byte count");
+    }
+
+    @Test
+    void aFieldWiderThanTheSettingsAllowAreRejectedBeforeAnyModelIsBuilt() {
+        byte[] encoded = encoded();
+        encoded[4] = (byte) (CompressionSettings.MAX_FIELD_BITS + 1);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("distance bit width");
+    }
+
+    @Test
+    void moreLengthFrequenciesThanTheLengthAlphabetHasSymbolsAreRejected() {
+        StreamHeader narrow = new StreamHeader(6, 1, TripletCoding.VALACH, EntropyCoding.ADAPTIVE_ARITHMETIC,
+                new int[]{1, 1, 1});
+        byte[] encoded = ContainerFormat.encode(new CompressedStream(narrow, PAYLOAD));
+        ByteBuffer.wrap(encoded).putInt(8, 4);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("frequency count");
+    }
+
+    @Test
+    void lengthFrequenciesTheModelCannotTotalAreRejected() {
+        byte[] encoded = encoded();
+        ByteBuffer.wrap(encoded).putInt(8 + Integer.BYTES, Integer.MAX_VALUE);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("length frequencies");
     }
 
     private static byte[] encoded() {
