@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,9 +66,48 @@ class ACBFileIOTest {
         try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
             writer.accept(new byte[]{1, 2});
             writer.accept(new byte[]{3});
+            writer.commit();
         }
 
         assertThat(path).hasBinaryContent(new byte[]{1, 2, 3});
+    }
+
+    @Test
+    void segmentsThatAreNotCommittedLeaveNothingBehind() throws IOException {
+        Path path = this.dir.resolve("segments");
+
+        try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+            writer.accept(new byte[]{1, 2});
+        }
+
+        assertThat(this.dir).isEmptyDirectory();
+    }
+
+    @Test
+    void aCommitReplacesTheFileThatWasThereAndLeavesNoTemporaryFile() throws IOException {
+        Path path = Files.write(this.dir.resolve("segments"), new byte[]{9, 9, 9, 9});
+
+        try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+            writer.accept(new byte[]{1});
+            assertThat(path).hasBinaryContent(new byte[]{9, 9, 9, 9});
+            writer.commit();
+        }
+
+        assertThat(path).hasBinaryContent(new byte[]{1});
+        try (Stream<Path> files = Files.list(this.dir)) {
+            assertThat(files).containsExactly(path);
+        }
+    }
+
+    @Test
+    void savingACompressedStreamLeavesOnlyTheOutput() throws IOException {
+        Path path = this.dir.resolve("stream.acb");
+
+        this.io.saveCompressed(new CompressedStream(StreamHeader.of(CompressionSettings.defaults()), List.of()), path);
+
+        try (Stream<Path> files = Files.list(this.dir)) {
+            assertThat(files).containsExactly(path);
+        }
     }
 
     @Test

@@ -24,7 +24,13 @@ java -jar target/acb.jar input.acb output -de          # decompress
 ```
 
 `input` can be a file or a directory. For a directory, every regular file in it is processed
-into the same file name inside the `output` directory. The output never overwrites its input.
+into the same file name inside the `output` directory. An output file that already exists is
+refused unless you pass `-f`, and an output is written to a temporary file and moved into place,
+so a failure leaves neither a partial file nor a replaced one.
+
+Diagnostics go to standard error; help and measurements go to standard output. The exit code is
+0 on success (and for `-h`), 1 when the work failed (a missing input, a corrupt stream), and 2
+when the arguments were not understood.
 
 A compressed file records the coding settings it was written with, so decompression reads them
 from the file. The only option that applies when decompressing is `-ds`.
@@ -32,14 +38,15 @@ from the file. The only option that applies when decompressing is `-ds`.
 | Option | Meaning | Default |
 |---|---|---|
 | `-de`, `--decompress` | Decompress instead of compress | compress |
-| `-d N`, `--distance N` | Bits for the distance field; max distance is 2^(N−1) | 6 |
-| `-l N`, `--length N` | Bits for the length field; max length is 2^N − 1 | 4 |
+| `-f`, `--force` | Overwrite output files that already exist | refuse |
+| `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
+| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 4 |
 | `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `simple` |
 | `-ds S`, `--dict-struct S` | Dictionary tree: `red_black`, `bst`, `st` | `red_black` |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of arithmetic coding | arithmetic |
 | `-af F`, `--arith-freq F` | Initial arithmetic-coder frequencies for lengths, comma-separated | `45,13,10,7,5,4`, then 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
-| `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `INFO` |
+| `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `WARN` |
 | `-h`, `--help` | Print help | |
 
 ### Triplet coders

@@ -179,29 +179,6 @@ doubles the code that must agree; keep it in reserve. Chunk sizes from 128 to 2,
 
 ## Phase 1: correctness and hardening
 
-### CLI and logging hygiene
-
-The CLI logs to standard output, where `-m` writes its measurements. Every error is printed
-twice (once by `System.err`, once by the logger). A decompression that fails half-way leaves a
-partial output file. The help path exits 0 even for a usage error. `ACBClient` fills mutable
-instance fields while parsing, keeps `Options` static, and reconfigures Log4j as a side effect of
-parsing. The core logs per triplet through lambdas that allocate on every call even when tracing
-is off, and `CLAUDE.md` names Log4j 2 while the user's other projects use SLF4J with Logback.
-
-- **Where:** `ACBClient`, `ACBFileIO`, `src/main/resources/log4j2.xml`, `pom.xml`, the coders'
-  `LOG.trace` calls, `CLAUDE.md`.
-- **Approach:**
-  - Parse into an immutable `CliRequest` record (paths, mode, measure target, settings, log
-    level) and apply the log level in `run`.
-  - Log to standard error only; print a failure once, as one line, and the stack trace only at
-    `DEBUG`; exit 0 for success and `-h`, 1 for a failure, 2 for bad usage.
-  - Write each output to a temporary sibling and move it into place when complete, so a failure
-    leaves nothing behind; refuse to overwrite an existing output unless `-f` is given.
-  - Drop the per-triplet trace logging from the core; `CompressionStats` (phase 0) and the test
-    fixture `TripletLog` cover inspection. Keep one `DEBUG` line per stream.
-  - Logging stack: stay on Log4j 2 (the user's decision). The core uses `log4j-api` only;
-    `log4j-core` is touched only by the CLI, for setting the level.
-
 ### Documentation errors
 
 `README.md` names the vendored package `cz.cvut.fit.acb.nayuki.arithcode`; it is

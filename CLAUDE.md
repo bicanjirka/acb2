@@ -34,11 +34,12 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 
 ## Packages (`cz.cvut.fit.acb.*`)
 
-`Compressor` (the in-memory core) · `ACBClient` (CLI) and `ACBFileIO` (its file side) ·
-`ACBProvider*` (wires the strategies below from a `CompressionSettings` record) · `dictionary`
+`Compressor` (the in-memory core) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and
+`ACBFileIO` (its file side) · `ACBProvider*` (wires the strategies below from a
+`CompressionSettings` record) · `dictionary`
 (+ `core` order-statistic trees) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
 `coding` (triplet↔byte: adaptive arithmetic, bit array) · `format` (the on-disk container:
-header, payload, CRC32) · `utils` (bit and triplet helpers). `nayuki.arithcode` is vendored MIT
+header, payload, CRC32) · `utils` (bit helpers). `nayuki.arithcode` is vendored MIT
 code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 ## Boundaries

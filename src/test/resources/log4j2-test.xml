@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Appenders>
-        <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%-1level] [%t] %logger{1}:\t %msg%n"/>
+        <Console name="Console" target="SYSTEM_ERR">
+            <PatternLayout pattern="%-5level %logger{1}: %msg%n"/>
         </Console>
     </Appenders>
     <Loggers>
+        <!-- The client tests provoke its failures on purpose. -->
+        <Logger name="cz.cvut.fit.acb.ACBClient" level="off"/>
         <Root level="warn">
             <AppenderRef ref="Console"/>
         </Root>
