@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -167,47 +168,35 @@ public class ACBFileIO {
 		}
 	}
 	
-	public void saveParsed(ByteBuffer byteBuffer, Path output) {
-		if (byteBuffer != null) {
-			SaveParsedSingleton.get(output).write(byteBuffer);
-		} else {
-			SaveParsedSingleton.get(output).close();
-		}
+	/**
+	 * Writes each decoded segment to {@code output} in order; the {@code null} end-of-stream marker
+	 * closes the file. Every call returns an independent writer.
+	 */
+	public Consumer<ByteBuffer> parsedWriter(Path output) {
+		return new ParsedWriter(output);
 	}
-	
-	private static class SaveParsedSingleton {
-		private static SaveParsedSingleton instance;
-		private OutputStream outputStream;
-		
-		private SaveParsedSingleton(Path path) {
-			try {
-				outputStream = Files.newOutputStream(path);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+
+	private static final class ParsedWriter implements Consumer<ByteBuffer> {
+		private final Path output;
+		private OutputStream stream;
+
+		private ParsedWriter(Path output) {
+			this.output = output;
 		}
-		
-		public static SaveParsedSingleton get(Path path) {
-			if (instance == null) {
-				instance = new SaveParsedSingleton(path);
-			}
-			return instance;
-		}
-		
-		public void write(ByteBuffer byteBuffer) {
+
+		@Override
+		public void accept(ByteBuffer byteBuffer) {
 			try {
-				outputStream.write(byteBuffer.array());
+				if (this.stream == null) {
+					this.stream = Files.newOutputStream(this.output);
+				}
+				if (byteBuffer != null) {
+					this.stream.write(byteBuffer.array());
+				} else {
+					this.stream.close();
+				}
 			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		public void close() {
-			try {
-				outputStream.close();
-				instance = null;
-			} catch (IOException e) {
-				e.printStackTrace();
+				throw new UncheckedIOException("Cannot write " + this.output, e);
 			}
 		}
 	}

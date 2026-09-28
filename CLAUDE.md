@@ -3,12 +3,13 @@
 Master-thesis compressor (CTU FIT): LZ77-style context/content dictionary producing triplets,
 then entropy-coded. Java 26, Maven, opened in IntelliJ from `pom.xml`.
 Runtime deps: commons-cli, Log4j 2 (config in `src/main/resources/log4j2.xml`; tests use the
-quieter `log4j2-test.xml`). Tests: JUnit 4.
+quieter `log4j2-test.xml`). Tests: JUnit 5 (Jupiter 6) + AssertJ + jqwik.
 
 ```bash
 mvn -q compile
-mvn test                                        # runs only *Test classes - see Tests
-mvn test -Dtest='*Test*'                        # every test, including the ACB round trips
+mvn test
+mvn verify                                      # + coverage report, target/site/jacoco
+mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
 ```
 
@@ -38,16 +39,18 @@ vendored MIT code (Project Nayuki) - keep its licence notice, don't restyle it.
 
 - A compressed stream is only decodable with the same `ACBProviderParameters` it was encoded
   with; any change to triplet layout or coding breaks existing compressed files.
-- Every triplet coder must round-trip at any segment size (`ACBTest.testSegmentedExecution`).
-- `ACB` and `ACBFileIO.SaveParsedSingleton` hold state across calls; don't share one instance
-  between independent streams.
+- Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any
+  input (`RoundTripPropertiesTest`).
+- `ACB` holds state across calls; don't share one instance between independent streams.
 
 ## Tests
 
-- Surefire runs only `*Test` classes, so `ACBTestCoder`, `ACBTestTripletCoder` and
-  `ACBTestDictionaryStructures` are skipped by plain `mvn test`. They write to
-  `src/test/resources/out/`, which must exist.
-- Test inputs are read from `src/test/resources/in/` by relative path; run from the project root.
+- Round trips run in memory through `fixtures.PipelineFixtures`, over every
+  `fixtures.SettingsCombination` and every `fixtures.CorpusFile` (classpath `in/`). Files only
+  in `@TempDir`.
+- A combination with an open `TODO.md` defect is skipped with its reason
+  (`SettingsCombination.known*Defect`), never passed; fixing it deletes the exclusion.
+- Seed every `Random`. jqwik prints its seed on failure; keep generated inputs small.
 
 ## Code style for new and rewritten code
 

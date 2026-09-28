@@ -4,12 +4,14 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.Random;
 
-import junit.framework.TestCase;
-import static org.junit.Assert.assertArrayEquals;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 
-public abstract class ArithmeticCodingTest extends TestCase {
+public abstract class ArithmeticCodingTest {
 	
 	private static Random random = new Random();
 	

@@ -179,7 +179,7 @@ public class ACBClient {
 			chain = output -> ChainBuilder.create(io::openObject)
 					.chain(provider.getB2TConverter())
 					.chain(acb::decompress)
-					.end(byteBuffer -> io.saveParsed(byteBuffer, output));
+					.end(io.parsedWriter(output));
 		}
 		
 		Path in = Paths.get(ìnput);

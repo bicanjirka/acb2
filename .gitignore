@@ -7,7 +7,6 @@ target/
 out/
 
 # Test and experiment outputs
-src/test/resources/out/
 corpuses/out-*
 
 # OS / editor

@@ -1,170 +1,137 @@
 package cz.cvut.fit.acb;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import org.junit.Test;
+import cz.cvut.fit.acb.fixtures.CorpusFile;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * @author jiri.bican
- */
-//@RunWith(Parameterized.class)
-public class ACBFileIOTest {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-//	private Path path;
-	
-	//	@Parameterized.Parameters
-	public static Collection<Path[]> data() throws IOException {
-		File f = new File("src/t2b/resources/in");
-		File[] array = f.listFiles(File::isFile);
-		if (array == null)
-			fail();
-		return Arrays.stream(array).map(File::toPath).map(path1 -> new Path[]{path1}).collect(Collectors.toList());
+class ACBFileIOTest {
+
+	private static final int[] BUFFER_SIZES = {1, 2, 13, 1000, 1_000_000, Integer.MAX_VALUE};
+
+	@TempDir
+	Path dir;
+
+	static List<CorpusFile> corpus() {
+		return CorpusFile.all().toList();
 	}
 
-//	public ACBFileIOTest(Path path) {
-//		this.path = path;
-//	}
-	
-	@Test
-	public void openParallel() throws Exception {
-		
-	}
-	
-	@Test
-	public void openParseCount() throws Exception {
-		File f = new File("src/test/resources/in");
-		File[] array = f.listFiles(File::isFile);
-		if (array == null)
-			fail();
-		for (File file : array) {
-			try {
-				openParseCount(file, -1);
-				fail();
-			} catch (IllegalArgumentException e) {
-				// expected
-			}
-			openParseCount(file, 1);
-			openParseCount(file, 2);
-			openParseCount(file, 13);
-			openParseCount(file, 1000);
-			openParseCount(file, 1000000);
-			openParseCount(file, Integer.MAX_VALUE);
+	@ParameterizedTest
+	@MethodSource("corpus")
+	void openParseCutsAFileIntoFullBuffersAndOneShorterRemainder(CorpusFile file) throws IOException {
+		Path path = this.write(file);
+
+		for (int bufferSize : BUFFER_SIZES) {
+			List<Integer> segmentSizes = new ArrayList<>();
+			new ACBFileIO(bufferSize).openParse(path, segment -> {
+				if (segment != null) {
+					segmentSizes.add(segment.array().length);
+				}
+			});
+
+			assertThat(segmentSizes).as("buffer size %d", bufferSize)
+					.isEqualTo(expectedSegmentSizes(file.bytes().length, bufferSize));
 		}
 	}
-	
-	private void openParseCount(File file, int bufferSize) throws Exception {
-		assertTrue(file.exists());
-		Path path = file.toPath();
-		ACBFileIO io = new ACBFileIO(bufferSize);
-		final int[] count = {0};
-		io.openParse(path, byteBuffer -> {
-			if (byteBuffer != null) count[0]++;
-		});
-		int expCount = (int) Math.ceil((double) Files.size(path) / (double) bufferSize);
-		assertEquals(expCount, count[0]);
-	}
-	
+
 	@Test
-	public void openParseSize() throws Exception {
-		File f = new File("src/test/resources/in");
-		File[] array = f.listFiles(File::isFile);
-		if (array == null)
-			fail();
-		int[] bufferSizes = new int[]{};
-		for (File file : array) {
-			try {
-				openParseSize(file, -1);
-				fail();
-			} catch (IllegalArgumentException e) {
-				// expected
-			}
-			openParseSize(file, 1);
-			openParseSize(file, 2);
-			openParseSize(file, 13);
-			openParseSize(file, 1000);
-			openParseSize(file, 1000000);
-			openParseSize(file, Integer.MAX_VALUE);
+	void openParseRejectsANegativeBufferSize() throws IOException {
+		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
+
+		assertThatThrownBy(() -> new ACBFileIO(-1).openParse(path, segment -> {
+		})).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void openParseEndsTheStreamWithOneNullMarker() throws IOException {
+		Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
+		List<Boolean> endMarkers = new ArrayList<>();
+
+		new ACBFileIO(7).openParse(path, segment -> endMarkers.add(segment == null));
+
+		assertThat(endMarkers).containsOnlyOnce(true).last().isEqualTo(true);
+	}
+
+	@Test
+	void aSavedObjectListReadsBackEqual() {
+		Path path = this.dir.resolve("object");
+		for (int[] sizes : new int[][]{{0}, {1, 1, 1}, {10, 20}, randomSizes(50), {Short.MAX_VALUE}}) {
+			List<byte[]> saved = randomArrays(sizes);
+			AtomicReference<List<byte[]>> read = new AtomicReference<>();
+
+			ACBFileIO io = new ACBFileIO();
+			io.saveObject(saved, path);
+			io.openObject(path, read::set);
+
+			assertThat(read.get()).containsExactlyElementsOf(saved);
 		}
 	}
-	
-	private void openParseSize(File file, int bufferSize) throws Exception {
-		assertTrue(file.exists());
-		Path path = file.toPath();
-		final boolean[] last = {true};
-		ACBFileIO io = new ACBFileIO(bufferSize);
-		io.openParse(path, byteBuffer -> {
-			if (byteBuffer == null) return;
-			if (byteBuffer.array().length < bufferSize) {
-				assertTrue(last[0]);
-				last[0] = false;
-			} else {
-				assertEquals(bufferSize, byteBuffer.array().length);
-			}
-		});
-	}
-	
+
 	@Test
-	public void openSaveObject() throws Exception {
-		Path path = Paths.get("src/test/resources/in");
-		if (!path.toFile().exists()) {
-			Files.createDirectory(path);
+	void aSavedArrayListReadsBackEqual() {
+		Path path = this.dir.resolve("array");
+		for (int[] sizes : new int[][]{{0}, {1, 1, 1}, {10, 20}, randomSizes(50), {Short.MAX_VALUE}}) {
+			List<byte[]> saved = randomArrays(sizes);
+			AtomicReference<List<byte[]>> read = new AtomicReference<>();
+
+			ACBFileIO io = new ACBFileIO();
+			io.saveArray(saved, path);
+			io.openArray(path, read::set);
+
+			assertThat(read.get()).containsExactlyElementsOf(saved);
 		}
-		openSaveObject(path, 0);
-		openSaveObject(path, 1, 1, 1);
-		openSaveObject(path, 10, 20);
-		openSaveObject(path, (new Random()).ints(50, 0, 1024).toArray());
-		openSaveObject(path, Short.MAX_VALUE);
 	}
-	
-	private void openSaveObject(Path path, int... sizes) throws IOException {
-		ACBFileIO io = new ACBFileIO();
-		Path path1 = path.resolve("openSaveObject" + Integer.toHexString(io.hashCode()));
-		List<byte[]> list = createList(sizes);
-		io.saveObject(list, path1);
-		io.openObject(path1, bytes -> assertTrue(Arrays.deepEquals(list.toArray(), bytes.toArray())));
-		Files.deleteIfExists(path1);
-	}
-	
-	private List<byte[]> createList(int... sizes) {
-		List<byte[]> list = new ArrayList<>();
-		Random t = new Random();
-		for (int i : sizes) {
-			byte[] b = new byte[i];
-			t.nextBytes(b);
-			list.add(b);
-		}
-		return list;
-	}
-	
+
 	@Test
-	public void openSaveArray() throws Exception {
-		Path path = Paths.get("src/test/resources/in");
-		openSaveArray(path, 0);
-		openSaveArray(path, 1, 1, 1);
-		openSaveArray(path, 10, 20);
-		openSaveArray(path, (new Random()).ints(50, 0, 1024).toArray());
-		openSaveArray(path, Short.MAX_VALUE);
+	void aParsedWriterWritesSegmentsInOrderAndClosesOnTheEndMarker() throws IOException {
+		Path path = this.dir.resolve("parsed");
+		Consumer<ByteBuffer> writer = new ACBFileIO().parsedWriter(path);
+
+		writer.accept(ByteBuffer.wrap(new byte[]{1, 2}));
+		writer.accept(ByteBuffer.wrap(new byte[]{3}));
+		writer.accept(null);
+
+		assertThat(Files.readAllBytes(path)).containsExactly(1, 2, 3);
 	}
-	
-	private void openSaveArray(Path path, int... sizes) throws IOException {
-		ACBFileIO io = new ACBFileIO();
-		Path path1 = path.resolve("openSaveObject" + Integer.toHexString(io.hashCode()));
-		List<byte[]> list = createList(sizes);
-		io.saveArray(list, path1);
-		io.openArray(path1, bytes -> assertTrue(Arrays.deepEquals(list.toArray(), bytes.toArray())));
-		Files.deleteIfExists(path1);
+
+	private Path write(CorpusFile file) throws IOException {
+		return Files.write(this.dir.resolve(file.name()), file.bytes());
+	}
+
+	private static List<Integer> expectedSegmentSizes(int length, int bufferSize) {
+		List<Integer> sizes = new ArrayList<>();
+		for (long from = 0; from < length; from += bufferSize) {
+			sizes.add((int) Math.min(bufferSize, length - from));
+		}
+		return sizes;
+	}
+
+	private static int[] randomSizes(int count) {
+		return new Random(count).ints(count, 0, 1024).toArray();
+	}
+
+	private static List<byte[]> randomArrays(int... sizes) {
+		Random random = new Random(sizes.length);
+		List<byte[]> arrays = new ArrayList<>();
+		for (int size : sizes) {
+			byte[] array = new byte[size];
+			random.nextBytes(array);
+			arrays.add(array);
+		}
+		return arrays;
 	}
 }

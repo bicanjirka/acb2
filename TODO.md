@@ -3,6 +3,59 @@
 The single place for outstanding design gaps and planned work; the source carries no inline
 `TODO` notes. Closing an item deletes its entry in the same commit.
 
+## Known defects
+
+Found by `RoundTripTest` and `RoundTripPropertiesTest`. The affected combinations are skipped
+with a reason (`SettingsCombination.knownRoundTripDefect`/`knownDictionaryDefect`) or kept out of
+the generated inputs, never silently passed; closing an item removes its exclusion.
+
+### Bit-array entropy coding never round-trips
+
+With `-bs`, every triplet coder decodes extra triplets after the encoder's last one: the decoder
+reads the zero padding of the final byte as more fields.
+
+- **Where:** `coding.BitArrayComposer`, `coding.BitArrayDecomposer`.
+- **Approach:** record the number of triplets (or of meaningful bits) so the decomposer stops
+  at the real end rather than at the byte boundary.
+
+### Valach coding loses sync at some segment sizes
+
+Whole-file round trips pass; splitting the same input into segments makes the decoder read a
+different triplet shape than the encoder wrote (distance field where a length was expected).
+
+- **Where:** `triplets.coder.ValachTripletCoder`, the partition handling in `BaseTripletCoder`.
+- **Approach:** reproduce with the smallest failing corpus file and segment size, then compare
+  how `encodeStep` and `decodeStep` treat a match that ends exactly at a segment boundary.
+
+### LCP dictionary diverges between encoder and decoder
+
+The decoder's dictionary differs from the encoder's after a few updates, and segmented
+decoding calls `select` with a negative rank.
+
+- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`.
+- **Approach:** the decoder recomputes the LCP from its own partial dictionary; either encode
+  the LCP explicitly or restrict the search to state both sides share, then finish or remove the
+  coder.
+
+### Bytes 0x80 and above cannot be compressed
+
+Literal bytes are written as signed values, so the arithmetic coder receives a negative symbol
+and throws; any binary or non-ASCII input fails. The decoders also use `-1` as the
+end-of-stream marker, which collides with byte 0xFF once literals are unsigned.
+
+- **Where:** every `encodeStep`/`decodeStep` in `triplets.coder`, `coding.AdaptiveArithmeticCompress`.
+- **Approach:** write literals as `b & 0xFF`, and signal end-of-stream out of band instead of
+  with a value a field can legitimately hold.
+
+### Empty input cannot be compressed
+
+`ACB.compress` writes the size header only when it sees the first segment, so an empty input
+produces no output at all and decompressing it throws.
+
+- **Where:** `ACB.compress`, `ACB.decompress`.
+- **Approach:** announce the size unconditionally at the start of a stream; this falls out of
+  making `ACB` stateless per stream.
+
 ## Architecture in the house style
 
 The codebase predates the style in `CLAUDE.md`. These items move the compressor to a headless,
