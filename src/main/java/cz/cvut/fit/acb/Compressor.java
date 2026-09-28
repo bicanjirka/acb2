@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -46,8 +47,19 @@ public final class Compressor {
      * and the decoder splits by it.
      */
     public CompressedStream compress(Iterator<byte[]> segments) {
+        return this.compressWithStats(segments).stream();
+    }
+
+    public CompressionResult compressWithStats(byte[] input) {
+        return this.compressWithStats(segmentsOf(input, this.settings.segmentSize()));
+    }
+
+    public CompressionResult compressWithStats(Iterator<byte[]> segments) {
         ACBProvider provider = this.components.apply(this.settings);
         TripletWriter writer = provider.getTripletWriter();
+        LongAdder triplets = new LongAdder();
+        long inputBytes = 0;
+        long segmentCount = 0;
         boolean sizeAnnounced = false;
         while (segments.hasNext()) {
             byte[] segment = segments.next();
@@ -55,13 +67,20 @@ public final class Compressor {
                 writer.setSize(segment.length);
                 sizeAnnounced = true;
             }
+            inputBytes += segment.length;
+            segmentCount++;
             ByteArray sequence = new ByteArray(segment);
-            provider.getCoder(sequence, provider.getDictionary(sequence)).encode(triplet -> triplet.visit(writer));
+            provider.getCoder(sequence, provider.getDictionary(sequence)).encode(triplet -> {
+                triplets.increment();
+                triplet.visit(writer);
+            });
         }
         if (!sizeAnnounced) {
             writer.setSize(0);
         }
-        return new CompressedStream(StreamHeader.of(this.settings), writer.finish());
+        CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings), writer.finish());
+        return new CompressionResult(stream,
+                new CompressionStats(inputBytes, segmentCount, triplets.sum(), writer.costs()));
     }
 
     public byte[] decompress(CompressedStream stream) throws MalformedStreamException {

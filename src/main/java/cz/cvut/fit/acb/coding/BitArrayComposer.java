@@ -16,6 +16,11 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
     private long bitsWritten;
 
     @Override
+    protected long bitsOf(BitArrayComposerInner object) {
+        return object.bits;
+    }
+
+    @Override
     protected byte[] getArray(BitArrayComposerInner object) {
         byte[] bytes = null;
         if (doReturn) {
@@ -55,6 +60,7 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
     public static class BitArrayComposerInner {
         private final BitStreamOutputStream outputStream;
         private final int bitSize;
+        private long bits;
 
         public BitArrayComposerInner(BitStreamOutputStream outputStream, int bitSize) {
             this.outputStream = outputStream;
@@ -63,6 +69,7 @@ public class BitArrayComposer extends TripletToByteConverter<BitArrayComposer.Bi
 
         public void write(int value) throws IOException {
             outputStream.write(value, bitSize);
+            bits += bitSize;
         }
     }
 }

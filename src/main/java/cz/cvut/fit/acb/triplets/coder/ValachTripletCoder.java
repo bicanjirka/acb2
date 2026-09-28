@@ -5,6 +5,7 @@ import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
@@ -23,9 +24,9 @@ public final class ValachTripletCoder extends BaseTripletCoder {
 
     public ValachTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
         super(sequence, dictionary, distanceBits);
-        this.lengField = new TripletFieldId(0, lengthBits, true);
-        this.distField = new TripletFieldId(1, distanceBits);
-        this.byteField = new TripletFieldId(2, Byte.SIZE);
+        this.lengField = new TripletFieldId(0, lengthBits, TripletFieldKind.LENGTH);
+        this.distField = new TripletFieldId(1, distanceBits, TripletFieldKind.DISTANCE);
+        this.byteField = new TripletFieldId(2, Byte.SIZE, TripletFieldKind.LITERAL);
     }
 
     @Override

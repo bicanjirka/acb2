@@ -16,6 +16,11 @@ public class AdaptiveArithmeticEncoder extends TripletToByteConverter<AdaptiveAr
     }
 
     @Override
+    protected long bitsOf(AdaptiveArithmeticCompress object) {
+        return (long) object.array().length * Byte.SIZE;
+    }
+
+    @Override
     protected byte[] getArray(AdaptiveArithmeticCompress object) {
         return object.array();
     }

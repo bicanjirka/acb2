@@ -9,4 +9,7 @@ public interface TripletWriter extends TripletProcessor {
 
     /** The size announcement first, then one array per field index. */
     List<byte[]> finish();
+
+    /** What each kind of field cost in the finished payload; only meaningful after {@link #finish()}. */
+    List<FieldCost> costs();
 }

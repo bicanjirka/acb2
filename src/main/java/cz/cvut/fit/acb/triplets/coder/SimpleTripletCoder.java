@@ -5,6 +5,7 @@ import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
@@ -23,9 +24,9 @@ public final class SimpleTripletCoder extends BaseTripletCoder {
 
     public SimpleTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
         super(sequence, dictionary, distanceBits);
-        this.distField = new TripletFieldId(0, distanceBits);
-        this.lengField = new TripletFieldId(1, lengthBits, true);
-        this.byteField = new TripletFieldId(2, Byte.SIZE);
+        this.distField = new TripletFieldId(0, distanceBits, TripletFieldKind.DISTANCE);
+        this.lengField = new TripletFieldId(1, lengthBits, TripletFieldKind.LENGTH);
+        this.byteField = new TripletFieldId(2, Byte.SIZE, TripletFieldKind.LITERAL);
     }
 
     @Override

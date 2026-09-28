@@ -5,6 +5,7 @@ import cz.cvut.fit.acb.dictionary.ByteSequence;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryInfo;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
 import cz.cvut.fit.acb.triplets.TripletSupplier;
 import cz.cvut.fit.acb.utils.TripletUtils;
@@ -26,10 +27,10 @@ public abstract sealed class SalomonTripletCoder extends BaseTripletCoder
 
     protected SalomonTripletCoder(ByteSequence sequence, Dictionary dictionary, int distanceBits, int lengthBits) {
         super(sequence, dictionary, distanceBits);
-        this.flagField = new TripletFieldId(0, BIT_FLAG);
-        this.distField = new TripletFieldId(1, distanceBits);
-        this.lengField = new TripletFieldId(2, lengthBits, true);
-        this.byteField = new TripletFieldId(3, Byte.SIZE);
+        this.flagField = new TripletFieldId(0, BIT_FLAG, TripletFieldKind.FLAG);
+        this.distField = new TripletFieldId(1, distanceBits, TripletFieldKind.DISTANCE);
+        this.lengField = new TripletFieldId(2, lengthBits, TripletFieldKind.LENGTH);
+        this.byteField = new TripletFieldId(3, Byte.SIZE, TripletFieldKind.LITERAL);
     }
 
     @Override

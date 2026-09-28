@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.coding;
 
 import cz.cvut.fit.acb.triplets.TripletFieldId;
+import cz.cvut.fit.acb.triplets.TripletFieldKind;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Map;
 public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     private final Map<Integer, T> map = new HashMap<>();
+    private final Map<Integer, FieldTally> tallies = new HashMap<>();
     private int segmentSize;
 
     @Override
@@ -25,6 +27,7 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
 
     @Override
     public void write(TripletFieldId fieldId, int value) {
+        tallies.computeIfAbsent(fieldId.index(), k -> new FieldTally(fieldId.kind())).symbols++;
         T object = map.computeIfAbsent(fieldId.index(), k -> createNew(fieldId));
         compress(object, value);
     }
@@ -49,9 +52,29 @@ public abstract class TripletToByteConverter<T> implements TripletWriter {
         return ret;
     }
 
+    @Override
+    public List<FieldCost> costs() {
+        return tallies.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> new FieldCost(entry.getValue().kind, entry.getValue().symbols, bitsOf(map.get(entry.getKey()))))
+                .toList();
+    }
+
+    /** Bits the field's symbols took in the finished payload. */
+    protected abstract long bitsOf(T object);
+
     protected abstract byte[] getArray(T object);
 
     protected abstract T createNew(TripletFieldId index);
 
     protected abstract void compress(T object, int value);
+
+    private static final class FieldTally {
+        private final TripletFieldKind kind;
+        private long symbols;
+
+        private FieldTally(TripletFieldKind kind) {
+            this.kind = kind;
+        }
+    }
 }

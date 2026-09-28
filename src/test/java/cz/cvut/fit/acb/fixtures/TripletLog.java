@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.fixtures;
 
+import cz.cvut.fit.acb.coding.FieldCost;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
@@ -63,6 +64,11 @@ public final class TripletLog {
         @Override
         public List<byte[]> finish() {
             return this.delegate.finish();
+        }
+
+        @Override
+        public List<FieldCost> costs() {
+            return this.delegate.costs();
         }
     }
 
