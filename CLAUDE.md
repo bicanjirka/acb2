@@ -76,9 +76,17 @@ array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header
 - Values are immutable records with named factories; absence is `none()`/`Optional`, never
   `null`. Values that combine get an operation, identity and absorber.
 - Constructor injection into `final` fields; small classes, interfaces of 1-5 methods. Inherit
-  only for a closed set of variants, with `final` leaves.
-- Branch on type with a visitor or a `switch` over a sealed type, never `instanceof`.
-- Names put the role noun last (`ValachTripletCoder`). `this.` on every field access.
+  only for a closed set of variants, with `final` leaves; otherwise compose. A class past about
+  150 lines holds two ideas, and a nested public class is a file of its own.
+- Branch on type with a visitor or a `switch` over a sealed type, never `instanceof`. A variation
+  point is an enum constant or a strategy that carries its collaborators (`TripletCoding`,
+  `MatchRule`), never a `switch` on it inside the operation.
+- Names put the role noun last (`ValachTripletCoder`), a strategy is the prefix
+  (`ConfiguredACBProvider`). Packages are by feature, never `utils` or `impl`. `this.` on every
+  field access.
+- The hot paths (range coder, frequency model, context index, dictionary search) keep primitives,
+  arrays, in-place mutation and lazily filled `null` slots for speed; run both harnesses before
+  and after touching them, and keep the mutation inside the leaf class.
 - Catch `Exception`, never `Throwable`; log or rethrow, never swallow or `printStackTrace`.
 - Tests: behaviour-sentence method names, arrange/act/assert separated by blank lines,
   hand-written fakes, no Mockito.
