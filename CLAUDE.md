@@ -84,9 +84,10 @@ array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header
 - Names put the role noun last (`ValachTripletCoder`), a strategy is the prefix
   (`ConfiguredACBProvider`). Packages are by feature, never `utils` or `impl`. `this.` on every
   field access.
-- The hot paths (range coder, frequency model, context index, dictionary search) keep primitives,
-  arrays, in-place mutation and lazily filled `null` slots for speed; run both harnesses before
-  and after touching them, and keep the mutation inside the leaf class.
+- Where a harness run shows a cost, the hot paths (range coder, frequency model, context index,
+  dictionary search) keep primitive arrays, in-place mutation and lazily filled slots, and
+  `ChunkedContextIndex` stays past the size limit; the class Javadoc says what was measured. Run both
+  harnesses before and after touching them, and keep the mutation inside the leaf class.
 - Catch `Exception`, never `Throwable`; log or rethrow, never swallow or `printStackTrace`.
 - Tests: behaviour-sentence method names, arrange/act/assert separated by blank lines,
   hand-written fakes, no Mockito.

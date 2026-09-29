@@ -9,7 +9,8 @@ import java.util.List;
 /**
  * One adaptive model per triplet field, made when the field is first coded. The encoder and the
  * decoder ask for the same fields in the same order, so they make the same models. Length fields
- * start from the tuned frequencies, every other field flat.
+ * start from the tuned frequencies, every other field flat. The slots are filled in a plain list:
+ * a map measured a few percent slower.
  */
 final class FieldModels {
 

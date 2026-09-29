@@ -27,23 +27,23 @@ final class NearestMatcher implements Matcher {
         int bestLen = 0;
         if (first <= last) {
             ContextCursor above = index.cursorAt(Math.max(ctx, first));
-            ContextCursor below = ctx - 1 >= first ? index.cursorAt(ctx - 1) : null;
-            for (int offset = 0; bestLen < maxLength && (above != null || below != null); offset++) {
-                if (above != null && above.rank() == ctx + offset) {
+            ContextCursor below = ctx - 1 >= first ? index.cursorAt(ctx - 1) : ContextCursor.none();
+            for (int offset = 0; bestLen < maxLength && (above.isPresent() || below.isPresent()); offset++) {
+                if (above.isPresent() && above.rank() == ctx + offset) {
                     int len = segment.commonLength(idx, above.position(), maxLength);
                     if (len > bestLen) {
                         bestLen = len;
                         bestRank = above.rank();
                     }
-                    above = above.rank() < last && above.moveUp() ? above : null;
+                    above = above.rank() < last && above.moveUp() ? above : ContextCursor.none();
                 }
-                if (below != null && offset > 0) {
+                if (below.isPresent() && offset > 0) {
                     int len = segment.commonLength(idx, below.position(), maxLength);
                     if (len > bestLen) {
                         bestLen = len;
                         bestRank = below.rank();
                     }
-                    below = below.rank() > first && below.moveDown() ? below : null;
+                    below = below.rank() > first && below.moveDown() ? below : ContextCursor.none();
                 }
             }
         }

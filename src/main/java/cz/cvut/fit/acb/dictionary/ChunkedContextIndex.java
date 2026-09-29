@@ -8,7 +8,8 @@ import java.util.Objects;
 /**
  * A two-level sorted array: chunks of sorted positions, split when full, with a Fenwick tree over
  * the chunk sizes that turns a chunk into a rank and back. A position costs four bytes, a lookup
- * two binary searches, and a neighbour is one array step.
+ * two binary searches, and a neighbour is one array step. The storage and the search stay in one
+ * class: a split into a store and an index measured several percent slower in decoding.
  */
 public final class ChunkedContextIndex implements ContextIndex {
 
