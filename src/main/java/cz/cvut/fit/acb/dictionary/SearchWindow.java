@@ -7,15 +7,9 @@ package cz.cvut.fit.acb.dictionary;
  */
 public record SearchWindow(int contextDepth, int maxDistance, int maxLength, MatchRule rule) {
 
-    /** Candidates are matched up to this many times the longest length a triplet carries, for the LCP rule. */
-    private static final int LCP_MATCH_FACTOR = 4;
-
-    /** How long a match is measured; one that long may have been cut short, and one shorter ended on a mismatch or the segment's end. */
+    /** How long a match is measured; see {@link MatchRule#matchLimit}. */
     public int matchLimit() {
-        return switch (this.rule) {
-            case NEAREST -> this.maxLength;
-            case SMALLEST_WITH_LCP -> LCP_MATCH_FACTOR * this.maxLength;
-        };
+        return this.rule.matchLimit(this.maxLength);
     }
 
     /** The lowest rank of the window around {@code ctx}. */
