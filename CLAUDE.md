@@ -34,14 +34,16 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 
 ## Packages (`cz.cvut.fit.acb.*`)
 
-`Compressor` (the in-memory core) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and
-`ACBFileIO` with `SegmentReader` and `SegmentWriter` (its file side) · `ACBProvider` and
+`Compressor` (the in-memory core, with the `OrderedMapper` that codes segments on an executor it is
+given) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and `ACBFileIO` with `SegmentReader`,
+`SegmentWriter` and `CompressedWriter` (its file side) · `ACBProvider` and
 `ConfiguredACBProvider` (builds a segment's dictionaries, field writer and reader from a
 `CompressionSettings` record; a coder is one `TripletCoding` constant) · `dictionary` (+ the
 `ContextIndex` behind it, in an encoder and a decoder view; a `MatchRule` constant carries its
 matcher) · `triplets` (the `Triplet`, the segment encoder and decoder that share one update rule;
 `coder`: the layouts and parsers) · `coding` (field↔byte: range coder with adaptive models, bit
-array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header, blocks, CRC32).
+array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header, blocks, CRC32; `ContainerWriter` and
+`ContainerReader` do it a block at a time).
 
 ## Boundaries
 
@@ -49,12 +51,15 @@ array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header
   those plus a free choice of dictionary structure. Any change to the container layout, the coder
   codes, or how a coder lays out triplets bumps `ContainerFormat.VERSION`.
 - Every block decodes on its own: the dictionary and the entropy models start empty in each.
-- Untrusted input is read only through `ContainerFormat.decode`, which verifies the checksum and
-  bounds every count before allocating. Never deserialize with `ObjectInputStream`.
+- Untrusted input is read only through `ContainerReader` (`ContainerFormat.decode` is its in-memory
+  form), which verifies the checksum before trusting any of the stream and bounds every count before
+  allocating. Never deserialize with `ObjectInputStream`.
 - Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any
   input (`RoundTripPropertiesTest`).
 - `Compressor` holds no stream state and touches no files or console; `ACBClient` and
-  `ACBFileIO` only adapt it. Coding logic goes in the core, never in the CLI.
+  `ACBFileIO` only adapt it. Coding logic goes in the core, never in the CLI. The core starts no
+  threads: segments run on the executor of the `OrderedMapper` it is given, so everything a segment
+  is coded with is made per segment or is immutable.
 
 ## Tests
 

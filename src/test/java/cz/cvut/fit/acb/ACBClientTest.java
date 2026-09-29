@@ -42,6 +42,22 @@ class ACBClientTest {
     }
 
     @Test
+    void theNumberOfThreadsDoesNotChangeTheCompressedFileOrWhatItDecodesTo() throws IOException {
+        Path input = this.corpusFile("loremipsum");
+        Path single = this.dir.resolve("single.acb");
+        Path several = this.dir.resolve("several.acb");
+        Path restored = this.dir.resolve("lorem.out");
+
+        int compressedOnOne = run(input, single, "-j", "1");
+        int compressedOnSeveral = run(input, several, "-j", "3");
+        int decompressedOnSeveral = run(several, restored, "-de", "-j", "3");
+
+        assertThat(List.of(compressedOnOne, compressedOnSeveral, decompressedOnSeveral)).containsOnly(OK);
+        assertThat(several).hasSameBinaryContentAs(single);
+        assertThat(restored).hasSameBinaryContentAs(input);
+    }
+
+    @Test
     void decompressionReadsTheCodingSettingsFromTheFile() throws IOException {
         Path input = this.corpusFile("binary");
         Path compressed = this.dir.resolve("binary.acb");

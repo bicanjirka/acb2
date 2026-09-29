@@ -13,14 +13,13 @@ first so the big refactor (phase 7) lands on a tested, measured, fast base.
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
 | 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
-| 8 | Parallel segments and streaming I/O | medium | no |
 | 9 | Documentation pass and final measurements | small | no |
 
 ## Handoff for the next session
 
-State on 2026-09-29: research, planning and phases 0 to 6 are finished. The user asked for phase 6
-and then stopped there: phases 7 (large), 8 and 9 are open and none is started; do not begin one
-without being asked. Do not redo the research below; its numbers are final unless the code
+State on 2026-09-29: research, planning and phases 0 to 6 and 8 are finished (phase 8 ran before 7,
+so the coder of phase 7 is written against segments coded in parallel). Phases 7 (large) and 9 are
+open and neither is started; do not begin one without being asked. Do not redo the research below; its numbers are final unless the code
 changes. Measure ratio and speed with the harnesses; their Javadoc in
 `src/test/java/cz/cvut/fit/acb/harness` says how to run them.
 
@@ -184,28 +183,6 @@ supersedes the earlier "candidate set is a fixed window" entry.
   - Afterwards, as research: Buyanovsky's own difference-bit-and-extract coding of the paper, and
     modern modelling (mixing the funnel's literal predictions, secondary estimation) toward ACB
     2.00's 779 KB.
-
-## Phase 8: throughput and scale
-
-### Parallel segment compression
-
-Each segment already becomes a block of its own, with a dictionary and entropy models that start
-empty, but the blocks are compressed and decoded one after the other.
-
-- **Where:** `Compressor.compress`, `ACBFileIO.SegmentReader`.
-- **Approach:** compress segments on a bounded executor and write
-  the blocks in order; decode blocks in parallel the same way. The core stays free of threads it
-  does not own: the executor is passed in.
-
-### Streaming instead of whole files in memory
-
-`ContainerFormat.decode` reads the whole compressed file and `Compressor.decompress(byte[])`
-builds the whole output, so file size is bounded by the heap and by 2 GB arrays.
-
-- **Where:** `ACBFileIO`, `format.ContainerFormat`, `Compressor`.
-- **Approach:** read and write block by block through channels; keep the in-memory
-  `byte[]` API as a convenience over the streaming one. Test with a generated input above 2 GB
-  in the performance harness, not in the unit suite.
 
 ## Phase 9: documentation and final measurements
 

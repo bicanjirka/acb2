@@ -61,6 +61,13 @@ final class CliParser {
         if (cmd.hasOption("log")) {
             work = work.withLogLevel(parseLevel(cmd.getOptionValue("log")));
         }
+        if (cmd.hasOption("j")) {
+            int threads = parseInt(cmd.getOptionValue("j"), "threads");
+            if (threads < 1) {
+                throw new UsageException("threads must be at least one: " + threads);
+            }
+            work = work.withThreads(threads);
+        }
         try {
             return work.withSettings(this.settings(cmd));
         } catch (IllegalArgumentException e) {

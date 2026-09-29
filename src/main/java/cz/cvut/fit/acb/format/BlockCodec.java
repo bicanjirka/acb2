@@ -2,8 +2,6 @@ package cz.cvut.fit.acb.format;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /** The blocks of the container, as {@link ContainerFormat} lays them out: a count, then each block by its kind. */
 final class BlockCodec {
@@ -16,35 +14,27 @@ final class BlockCodec {
     private BlockCodec() {
     }
 
-    static void write(List<Block> blocks, DataOutputStream out) throws IOException {
-        out.writeInt(blocks.size());
-        for (Block block : blocks) {
-            switch (block) {
-                case Block.Stored stored -> {
-                    out.writeByte(STORED);
-                    out.writeInt(stored.rawLength());
-                    out.write(stored.bytes());
-                }
-                case Block.Coded coded -> {
-                    out.writeByte(CODED);
-                    out.writeInt(coded.rawLength());
-                    out.writeInt(coded.storedLength());
-                    out.write(coded.bytes());
-                }
+    static void write(Block block, DataOutputStream out) throws IOException {
+        switch (block) {
+            case Block.Stored stored -> {
+                out.writeByte(STORED);
+                out.writeInt(stored.rawLength());
+                out.write(stored.bytes());
+            }
+            case Block.Coded coded -> {
+                out.writeByte(CODED);
+                out.writeInt(coded.rawLength());
+                out.writeInt(coded.storedLength());
+                out.write(coded.bytes());
             }
         }
     }
 
-    static List<Block> read(WireReader in, int segmentSize) throws MalformedStreamException {
-        int blockCount = in.count(MIN_BLOCK_SIZE, "block");
-        List<Block> blocks = new ArrayList<>(blockCount);
-        for (int i = 0; i < blockCount; i++) {
-            blocks.add(readBlock(in, segmentSize));
-        }
-        return blocks;
+    static int readCount(WireReader in) throws MalformedStreamException {
+        return in.count(MIN_BLOCK_SIZE, "block");
     }
 
-    private static Block readBlock(WireReader in, int segmentSize) throws MalformedStreamException {
+    static Block read(WireReader in, int segmentSize) throws MalformedStreamException {
         int kind = in.unsignedByte();
         int rawLength = in.int32();
         if (rawLength < 1 || rawLength > segmentSize) {
@@ -53,8 +43,18 @@ final class BlockCodec {
         }
         return switch (kind) {
             case STORED -> Block.stored(in.bytes(rawLength));
-            case CODED -> Block.coded(rawLength, in.bytes(in.count(1, "coded byte")));
+            case CODED -> Block.coded(rawLength, in.bytes(codedLength(in, segmentSize)));
             default -> throw new MalformedStreamException("Unknown block kind " + kind);
         };
+    }
+
+    /** Coding keeps a segment only when it comes out shorter, so a coded block is never longer than a segment. */
+    private static int codedLength(WireReader in, int segmentSize) throws MalformedStreamException {
+        int length = in.count(1, "coded byte");
+        if (length > segmentSize) {
+            throw new MalformedStreamException("Invalid coded byte count " + length + " for segments of "
+                    + segmentSize);
+        }
+        return length;
     }
 }

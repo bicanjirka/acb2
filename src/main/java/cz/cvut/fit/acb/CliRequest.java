@@ -45,33 +45,47 @@ public sealed interface CliRequest permits CliRequest.Help, CliRequest.Work {
      * since they come from each file.
      */
     record Work(Path input, Path output, Mode mode, Measure measure, CompressionSettings settings,
-                Optional<Level> logLevel, boolean force) implements CliRequest {
+                Optional<Level> logLevel, boolean force, int threads) implements CliRequest {
+
+        /** Segments are coded on this many threads unless asked otherwise. */
+        public static final int DEFAULT_THREADS = Runtime.getRuntime().availableProcessors();
+
+        public Work {
+            if (threads < 1) {
+                throw new IllegalArgumentException("threads must be at least one: " + threads);
+            }
+        }
 
         public static Work of(Path input, Path output) {
             return new Work(input, output, Mode.COMPRESS, Measure.off(), CompressionSettings.defaults(),
-                    Optional.empty(), false);
+                    Optional.empty(), false, DEFAULT_THREADS);
         }
 
         public Work withMode(Mode newMode) {
-            return new Work(this.input, this.output, newMode, this.measure, this.settings, this.logLevel, this.force);
+            return new Work(this.input, this.output, newMode, this.measure, this.settings, this.logLevel, this.force, this.threads);
         }
 
         public Work withMeasure(Measure newMeasure) {
-            return new Work(this.input, this.output, this.mode, newMeasure, this.settings, this.logLevel, this.force);
+            return new Work(this.input, this.output, this.mode, newMeasure, this.settings, this.logLevel, this.force, this.threads);
         }
 
         public Work withSettings(CompressionSettings newSettings) {
-            return new Work(this.input, this.output, this.mode, this.measure, newSettings, this.logLevel, this.force);
+            return new Work(this.input, this.output, this.mode, this.measure, newSettings, this.logLevel, this.force, this.threads);
         }
 
         public Work withLogLevel(Level level) {
             return new Work(this.input, this.output, this.mode, this.measure, this.settings, Optional.of(level),
-                    this.force);
+                    this.force, this.threads);
         }
 
         public Work withForce(boolean overwrite) {
             return new Work(this.input, this.output, this.mode, this.measure, this.settings, this.logLevel,
-                    overwrite);
+                    overwrite, this.threads);
+        }
+
+        public Work withThreads(int count) {
+            return new Work(this.input, this.output, this.mode, this.measure, this.settings, this.logLevel,
+                    this.force, count);
         }
     }
 }

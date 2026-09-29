@@ -45,6 +45,21 @@ class HarnessTest {
     }
 
     @Test
+    void theStreamingHarnessRoundTripsAGeneratedFileOfSeveralBlocksAndCleansUp() throws Exception {
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+
+        StreamingHarness.Result result = StreamingHarness.run(55_000, 2, 10_000, this.corpus,
+                new PrintStream(captured, true, StandardCharsets.UTF_8));
+
+        assertThat(result.identical()).isTrue();
+        assertThat(result.inputBytes()).isEqualTo(55_000);
+        assertThat(result.blocks()).isEqualTo(6);
+        assertThat(result.compressedBytes()).isPositive().isLessThan(55_000);
+        assertThat(captured.toString(StandardCharsets.UTF_8)).contains("6 blocks", "identical");
+        assertThat(this.corpus).isEmptyDirectory();
+    }
+
+    @Test
     void thePerformanceHarnessPassesWhenNoCoderHasAFloor() {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
 

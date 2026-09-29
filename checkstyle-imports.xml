@@ -29,6 +29,9 @@
     <file name="ACBFileIO">
         <allow pkg="java.nio.file"/>
     </file>
+    <file name="CompressedWriter">
+        <allow pkg="java.nio.file"/>
+    </file>
     <file name="SegmentReader">
         <allow pkg="java.nio.file"/>
     </file>

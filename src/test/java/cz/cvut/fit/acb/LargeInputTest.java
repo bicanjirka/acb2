@@ -6,15 +6,37 @@ import cz.cvut.fit.acb.format.ContainerFormat;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Runs with {@code mvn verify -Pfull}: about a megabyte through three segments. */
+/** Runs with {@code mvn verify -Pfull}: about a megabyte through three segments, and a file of 2.5 MB through the CLI. */
 @Tag("slow")
 class LargeInputTest {
 
     private static final int SIZE = 1_000_000;
     private static final int SEGMENT_SIZE = 400_000;
+
+    @Test
+    void aFileOfSeveralSegmentsCompressedOnSeveralThreadsIsTheFileCompressedOnOne(@TempDir Path dir)
+            throws IOException {
+        Path input = Files.write(dir.resolve("text"), GeneratedInput.text(2_500_000).bytes());
+        Path single = dir.resolve("single.acb");
+        Path several = dir.resolve("several.acb");
+        Path restored = dir.resolve("restored");
+
+        int exitCodes = new ACBClient().run(new String[]{input.toString(), single.toString(), "-j", "1"})
+                + new ACBClient().run(new String[]{input.toString(), several.toString(), "-j", "3"})
+                + new ACBClient().run(new String[]{several.toString(), restored.toString(), "-de", "-j", "3"});
+
+        assertThat(exitCodes).isZero();
+        assertThat(several).hasSameBinaryContentAs(single);
+        assertThat(restored).hasSameBinaryContentAs(input);
+    }
 
     @Test
     void aMultiSegmentTextDecompressesToItselfAndIsSmallerThanItsInput() throws MalformedStreamException {

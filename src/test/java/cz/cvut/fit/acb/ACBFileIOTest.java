@@ -3,6 +3,7 @@ package cz.cvut.fit.acb;
 import cz.cvut.fit.acb.fixtures.CorpusFile;
 import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
+import cz.cvut.fit.acb.format.ContainerReader;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -130,6 +133,99 @@ class ACBFileIOTest {
         Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
 
         assertThatThrownBy(() -> this.io.openCompressed(path)).isInstanceOf(MalformedStreamException.class);
+    }
+
+    @Test
+    void aReaderCountsTheSegmentsItsFileMakes() throws IOException {
+        Path path = this.write(CorpusFile.all().findFirst().orElseThrow());
+        int length = (int) Files.size(path);
+
+        for (int segmentSize : SEGMENT_SIZES) {
+            try (SegmentReader reader = this.io.readSegments(path, segmentSize)) {
+                assertThat(reader.segmentCount()).as("segment size %d", segmentSize)
+                        .isEqualTo(expectedSegmentSizes(length, segmentSize).size());
+            }
+        }
+    }
+
+    @Test
+    void aFileThatGrowsAfterItIsOpenedIsReadOnlyToItsOldLength() throws IOException {
+        Path path = Files.write(this.dir.resolve("growing"), new byte[]{1, 2, 3});
+        List<byte[]> segments = new ArrayList<>();
+
+        try (SegmentReader reader = this.io.readSegments(path, 2)) {
+            Files.write(path, new byte[]{1, 2, 3, 4, 5}, StandardOpenOption.TRUNCATE_EXISTING);
+            reader.forEachRemaining(segments::add);
+        }
+
+        assertThat(concatenated(segments)).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void aFileThatShrinksAfterItIsOpenedFailsWhileReading() throws IOException {
+        Path path = Files.write(this.dir.resolve("shrinking"), new byte[]{1, 2, 3, 4});
+
+        try (SegmentReader reader = this.io.readSegments(path, 4)) {
+            Files.write(path, new byte[]{1}, StandardOpenOption.TRUNCATE_EXISTING);
+
+            assertThatThrownBy(reader::next).isInstanceOf(UncheckedIOException.class);
+        }
+    }
+
+    @Test
+    void aCompressedFileWrittenBlockByBlockReadsBackBlockByBlock() throws IOException {
+        Path path = this.dir.resolve("stream.acb");
+        StreamHeader header = StreamHeader.of(CompressionSettings.defaults());
+        List<Block> blocks = randomBlocks(5, 0, 40, Short.MAX_VALUE);
+
+        try (CompressedWriter writer = this.io.createCompressed(path, header, blocks.size())) {
+            blocks.forEach(writer);
+            writer.commit();
+        }
+
+        try (ContainerReader reader = this.io.readCompressed(path)) {
+            assertThat(reader.header()).isEqualTo(header);
+            assertThat(reader.blockCount()).isEqualTo(blocks.size());
+            assertThat(reader.drain()).containsExactlyElementsOf(blocks);
+        }
+    }
+
+    @Test
+    void aCompressedWriterThatIsNotCommittedLeavesNothingBehind() throws IOException {
+        Path path = this.dir.resolve("stream.acb");
+        StreamHeader header = StreamHeader.of(CompressionSettings.defaults());
+
+        try (CompressedWriter writer = this.io.createCompressed(path, header, 2)) {
+            writer.accept(randomBlocks(5).getFirst());
+        }
+
+        assertThat(this.dir).isEmptyDirectory();
+    }
+
+    @Test
+    void aCompressedWriterWithBlocksMissingRefusesToCommitAndLeavesNothingBehind() throws IOException {
+        Path path = this.dir.resolve("stream.acb");
+        StreamHeader header = StreamHeader.of(CompressionSettings.defaults());
+
+        try (CompressedWriter writer = this.io.createCompressed(path, header, 2)) {
+            writer.accept(randomBlocks(5).getFirst());
+
+            assertThatThrownBy(writer::commit).isInstanceOf(IllegalStateException.class);
+        }
+
+        assertThat(this.dir).isEmptyDirectory();
+    }
+
+    @Test
+    void aCompressedFileThatIsDamagedIsRefusedBeforeItsFirstBlockIsRead() throws IOException {
+        Path path = this.dir.resolve("stream.acb");
+        this.io.saveCompressed(new CompressedStream(StreamHeader.of(CompressionSettings.defaults()),
+                randomBlocks(50, 60)), path);
+        byte[] bytes = Files.readAllBytes(path);
+        bytes[bytes.length - Integer.BYTES - 1] ^= 1;
+        Files.write(path, bytes);
+
+        assertThatThrownBy(() -> this.io.readCompressed(path)).isInstanceOf(MalformedStreamException.class);
     }
 
     private Path write(CorpusFile file) throws IOException {

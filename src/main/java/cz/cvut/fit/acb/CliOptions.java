@@ -20,6 +20,13 @@ final class CliOptions {
         options.addOption("f", "force", false, "overwrite output files that already exist");
         options.addOption("bs", "bit-stream-array", false,
                 "no coding is used for triplets (default is adaptive range coding)");
+        options.addOption(Option.builder("j")
+                .longOpt("threads")
+                .hasArg()
+                .argName("N")
+                .desc("N threads code segments at the same time (default is the number of processors, "
+                        + CliRequest.Work.DEFAULT_THREADS + " here); the output does not depend on it")
+                .build());
         options.addOption(Option.builder("log")
                 .longOpt("log-level")
                 .hasArg()

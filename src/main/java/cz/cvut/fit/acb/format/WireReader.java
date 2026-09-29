@@ -1,53 +1,67 @@
 package cz.cvut.fit.acb.format;
 
-import java.nio.BufferUnderflowException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 
-/** Reads the big-endian body of a stream; running out of bytes is a malformed stream, never a stray exception. */
+/**
+ * Reads the big-endian body of a stream of a known length; running out of bytes is a malformed
+ * stream, never a stray exception, and no count or length allocates more than the body has left.
+ */
 final class WireReader {
 
-    private final ByteBuffer in;
+    private final InputStream in;
+    private long remaining;
 
-    WireReader(byte[] bytes, int from, int to) {
-        this.in = ByteBuffer.wrap(bytes, from, to - from);
+    WireReader(InputStream in, long length) {
+        this.in = in;
+        this.remaining = length;
     }
 
     int unsignedByte() throws MalformedStreamException {
-        try {
-            return Byte.toUnsignedInt(this.in.get());
-        } catch (BufferUnderflowException e) {
-            throw ends();
-        }
+        return Byte.toUnsignedInt(this.take(1)[0]);
     }
 
     int int32() throws MalformedStreamException {
-        try {
-            return this.in.getInt();
-        } catch (BufferUnderflowException e) {
-            throw ends();
-        }
+        return ByteBuffer.wrap(this.take(Integer.BYTES)).getInt();
     }
 
     /** A count read before its items, checked against what is left so a bad value cannot over-allocate. */
     int count(int itemSize, String what) throws MalformedStreamException {
         int count = this.int32();
-        if (count < 0 || (long) count * itemSize > this.in.remaining()) {
+        if (count < 0 || (long) count * itemSize > this.remaining) {
             throw new MalformedStreamException("Invalid " + what + " count " + count);
         }
         return count;
     }
 
     byte[] bytes(int length) throws MalformedStreamException {
-        if (length > this.in.remaining()) {
+        if (length > this.remaining) {
             throw new MalformedStreamException("A block of " + length + " bytes runs past the end of the stream");
         }
-        byte[] bytes = new byte[length];
-        this.in.get(bytes);
-        return bytes;
+        return this.take(length);
     }
 
-    int remaining() {
-        return this.in.remaining();
+    long remaining() {
+        return this.remaining;
+    }
+
+    private byte[] take(int length) throws MalformedStreamException {
+        if (length > this.remaining) {
+            throw ends();
+        }
+        byte[] bytes;
+        try {
+            bytes = this.in.readNBytes(length);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot read the stream", e);
+        }
+        if (bytes.length < length) {
+            throw ends();
+        }
+        this.remaining -= length;
+        return bytes;
     }
 
     private static MalformedStreamException ends() {

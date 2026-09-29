@@ -34,7 +34,11 @@ Diagnostics go to standard error; help and measurements go to standard output. T
 when the arguments were not understood.
 
 A compressed file records the coding settings it was written with, so decompression reads them
-from the file; only `-f`, `-m` and `-log` apply when decompressing.
+from the file; only `-f`, `-j`, `-m` and `-log` apply when decompressing.
+
+Files are read, coded and written one segment (1 MB) at a time, so a file's size is not bounded by
+the heap. Segments are independent, so `-j` codes several at once on both sides and the compressed
+file is the same for any number of threads.
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -47,6 +51,7 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
 | `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and is about 4% smaller | `ADAPTIVE_ARITHMETIC` |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
+| `-j N`, `--threads N` | Threads that code segments at the same time; the output does not depend on it | the number of processors |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
 | `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `WARN` |
 | `-h`, `--help` | Print help | |

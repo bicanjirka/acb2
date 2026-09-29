@@ -1,7 +1,8 @@
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.format.CompressedStream;
+import cz.cvut.fit.acb.format.ContainerReader;
 import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.format.StreamHeader;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * The command line. Exit code 0 means success (and {@code -h}), 1 a failure while working, 2 that
@@ -25,6 +28,8 @@ public final class ACBClient {
     private static final int EXIT_OK = 0;
     private static final int EXIT_FAILURE = 1;
     private static final int EXIT_USAGE = 2;
+    /** Segments in flight per thread: one being coded and one waiting for its turn to be written. */
+    private static final int WINDOW_PER_THREAD = 2;
     private static final Logger LOG = LogManager.getLogger();
 
     private final CliParser parser = new CliParser();
@@ -62,10 +67,12 @@ public final class ACBClient {
         work.logLevel().ifPresent(ACBClient::applyLogLevel);
         LOG.info("{} {}", work.mode() == CliRequest.Mode.COMPRESS ? "compressing" : "decompressing", work.input());
         LOG.debug("settings = {}", work.settings());
-        try {
+        try (ExecutorService threads = Executors.newFixedThreadPool(work.threads())) {
             ACBFileIO io = new ACBFileIO();
+            OrderedMapper mapper = work.threads() == 1 ? OrderedMapper.sequential()
+                    : OrderedMapper.on(threads, WINDOW_PER_THREAD * work.threads());
             FileAction action = work.mode() == CliRequest.Mode.COMPRESS
-                    ? compression(io, work.settings()) : decompression(io, work.settings());
+                    ? compression(io, work.settings(), mapper) : decompression(io, work.settings(), mapper);
             List<String> measurements = new ArrayList<>();
             for (FileJobs.Job job : FileJobs.plan(work)) {
                 long start = System.nanoTime();
@@ -109,24 +116,25 @@ public final class ACBClient {
                 sourceSize == 0 ? 0.0 : (double) targetSize / sourceSize);
     }
 
-    private static FileAction compression(ACBFileIO io, CompressionSettings settings) {
-        Compressor compressor = new Compressor(settings);
+    private static FileAction compression(ACBFileIO io, CompressionSettings settings, OrderedMapper mapper) {
+        Compressor compressor = new Compressor(settings, ConfiguredACBProvider::new, mapper);
         return (source, target) -> {
-            CompressedStream stream;
-            try (SegmentReader segments = io.readSegments(source, settings.segmentSize())) {
-                stream = compressor.compress(segments);
+            try (SegmentReader segments = io.readSegments(source, settings.segmentSize());
+                 CompressedWriter blocks = io.createCompressed(target, StreamHeader.of(settings),
+                         segments.segmentCount())) {
+                compressor.compressInto(segments, blocks);
+                blocks.commit();
             }
-            io.saveCompressed(stream, target);
         };
     }
 
     /** Coding settings come from each file's header; only the dictionary structure is chosen here. */
-    private static FileAction decompression(ACBFileIO io, CompressionSettings settings) {
-        Compressor compressor = new Compressor(settings);
+    private static FileAction decompression(ACBFileIO io, CompressionSettings settings, OrderedMapper mapper) {
+        Compressor compressor = new Compressor(settings, ConfiguredACBProvider::new, mapper);
         return (source, target) -> {
-            CompressedStream stream = io.openCompressed(source);
-            try (SegmentWriter segments = io.writeSegments(target)) {
-                compressor.decompress(stream, segments);
+            try (ContainerReader blocks = io.readCompressed(source);
+                 SegmentWriter segments = io.writeSegments(target)) {
+                compressor.decompress(blocks.header(), blocks, segments);
                 segments.commit();
             }
         };

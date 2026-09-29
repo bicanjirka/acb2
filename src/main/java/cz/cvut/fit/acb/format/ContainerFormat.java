@@ -4,12 +4,8 @@ import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.zip.CRC32;
 
 /**
  * The on-disk layout of one compressed stream, big-endian:
@@ -32,57 +28,33 @@ import java.util.zip.CRC32;
  * triplet names, so it is part of the format. Coder codes are fixed
  * by {@link TripletCoding#formatCode()} and {@link EntropyCoding#formatCode()}. Any change to this
  * layout, to those codes, to the order, or to how a coder lays out triplets bumps {@link #VERSION}.
+ * {@link ContainerWriter} and {@link ContainerReader} do the work a block at a time; the methods here
+ * are their in-memory form.
  */
 public final class ContainerFormat {
 
     static final int VERSION = 4;
 
-    private static final byte[] MAGIC = {'A', 'C', 'B'};
+    static final byte[] MAGIC = {'A', 'C', 'B'};
 
     private ContainerFormat() {
     }
 
     public static byte[] encode(CompressedStream stream) {
-        try {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            DataOutputStream out = new DataOutputStream(bytes);
-            out.write(MAGIC);
-            out.writeByte(VERSION);
-            HeaderCodec.write(stream.header(), out);
-            BlockCodec.write(stream.blocks(), out);
-            out.writeInt((int) checksum(bytes.toByteArray(), bytes.size()));
-            return bytes.toByteArray();
-        } catch (IOException e) {
-            throw new UncheckedIOException("In-memory write failed", e);
-        }
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ContainerWriter writer = ContainerWriter.begin(bytes::writeBytes, stream.header(), stream.blocks().size());
+        stream.blocks().forEach(writer);
+        writer.finish();
+        return bytes.toByteArray();
     }
 
     public static CompressedStream decode(byte[] bytes) throws MalformedStreamException {
-        if (bytes.length < MAGIC.length + 1 + Integer.BYTES
-                || bytes[0] != MAGIC[0] || bytes[1] != MAGIC[1] || bytes[2] != MAGIC[2]) {
-            throw new MalformedStreamException("Not an ACB stream");
+        try (ContainerReader reader = ContainerReader.open(ByteSource.of(bytes))) {
+            return new CompressedStream(reader.header(), reader.drain());
+        } catch (MalformedStreamException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new UncheckedIOException("In-memory read failed", e);
         }
-        int version = Byte.toUnsignedInt(bytes[MAGIC.length]);
-        if (version != VERSION) {
-            throw new MalformedStreamException("Unsupported ACB stream version " + version + ", expected " + VERSION);
-        }
-        int bodyLength = bytes.length - Integer.BYTES;
-        int storedChecksum = ByteBuffer.wrap(bytes, bodyLength, Integer.BYTES).getInt();
-        if (storedChecksum != (int) checksum(bytes, bodyLength)) {
-            throw new MalformedStreamException("ACB stream is corrupt or truncated (checksum mismatch)");
-        }
-        WireReader in = new WireReader(bytes, MAGIC.length + 1, bodyLength);
-        StreamHeader header = HeaderCodec.read(in);
-        List<Block> blocks = BlockCodec.read(in, header.segmentSize());
-        if (in.remaining() > 0) {
-            throw new MalformedStreamException(in.remaining() + " unexpected bytes after the last block");
-        }
-        return new CompressedStream(header, blocks);
-    }
-
-    private static long checksum(byte[] bytes, int length) {
-        CRC32 crc = new CRC32();
-        crc.update(bytes, 0, length);
-        return crc.getValue();
     }
 }

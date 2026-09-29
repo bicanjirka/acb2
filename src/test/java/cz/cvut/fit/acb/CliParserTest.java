@@ -42,6 +42,18 @@ class CliParserTest {
     }
 
     @Test
+    void theThreadsOptionSetsHowManyThreadsCodeSegments() throws CliParser.UsageException {
+        assertThat(this.work("in", "out", "-j", "3").threads()).isEqualTo(3);
+        assertThat(this.work("in", "out").threads()).isEqualTo(CliRequest.Work.DEFAULT_THREADS);
+    }
+
+    @Test
+    void fewerThanOneThreadIsAUsageError() {
+        assertThatThrownBy(() -> this.work("in", "out", "-j", "0")).isInstanceOf(CliParser.UsageException.class);
+        assertThatThrownBy(() -> this.work("in", "out", "-j", "many")).isInstanceOf(CliParser.UsageException.class);
+    }
+
+    @Test
     void theBitStreamOptionSelectsTheBitArray() throws CliParser.UsageException {
         assertThat(this.work("in", "out", "-bs").settings().entropyCoding()).isEqualTo(EntropyCoding.BIT_ARRAY);
     }
