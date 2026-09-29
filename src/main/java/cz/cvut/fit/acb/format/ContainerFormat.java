@@ -39,7 +39,7 @@ import java.util.zip.CRC32;
  */
 public final class ContainerFormat {
 
-    static final int VERSION = 3;
+    static final int VERSION = 4;
 
     private static final byte[] MAGIC = {'A', 'C', 'B'};
     private static final int STORED = 0;

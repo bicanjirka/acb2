@@ -143,17 +143,6 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
 
 ## Phase 6: thesis coders made faithful
 
-### The context reference is always the predecessor
-
-`searchContext` returns `rank - 1`, the context sorted just below the current one. The thesis
-example takes the greater index; ExCom and Buyanovsky's Lemma 3 take whichever neighbour agrees
-with the current context longer, which puts the best contents nearer the reference and shrinks
-distances. Decoding repeats the choice, so it changes the format.
-
-- **Where:** the context lookup in `dictionary`, `docs/ALGORITHM.md`.
-- **Approach:** take the neighbour with the longer backward match (ties to the predecessor),
-  measure on Calgary together with the nearest-tie walk. Bumps `VERSION`.
-
 ### The LCP coder is missing
 
 The coder was removed in phase 5: its decoder's dictionary differed from the encoder's after a few

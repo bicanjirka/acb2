@@ -7,9 +7,13 @@ public final class IndexedEncoderDictionary extends ContextIndexDictionary imple
     private final int maxDistance;
     private final int maxLength;
 
-    /** {@code index} must order the positions of {@code segment}, which the dictionary reads but never changes. */
-    public IndexedEncoderDictionary(ContextIndex index, SegmentBuffer segment, int maxDistance, int maxLength) {
-        super(index);
+    /**
+     * {@code index} must order the positions of {@code segment}, which the dictionary reads but never
+     * changes, by {@code contextDepth} bytes of context.
+     */
+    public IndexedEncoderDictionary(ContextIndex index, SegmentBuffer segment, int contextDepth, int maxDistance,
+                                    int maxLength) {
+        super(index, segment, contextDepth);
         this.segment = segment;
         this.maxDistance = maxDistance;
         this.maxLength = maxLength;

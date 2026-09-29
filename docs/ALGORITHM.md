@@ -46,10 +46,13 @@ dictionary from the bytes it has decoded.
 
 ## 3. Searching
 
-**3.1 The current context.** For the position `idx` about to be coded, `ctx` is the rank of the
-entry immediately below where `idx` would be inserted, the *predecessor*. With an empty
-dictionary, or when `idx`'s context sorts below every entry, `ctx = -1`. The decoder computes the
-same rank.
+**3.1 The current context.** For the position `idx` about to be coded, the two entries between
+which `idx` would be inserted are its neighbours, the *predecessor* below and the *successor*
+above. `ctx` is the rank of the neighbour whose context agrees longer with the context of `idx`,
+counting equal bytes going back from `idx`, at most `C` of them (2.2); on a tie it is the
+predecessor. With only one neighbour it is that one, and with an empty dictionary `ctx = -1`. The
+count reads only bytes before `idx`, so the decoder computes the same rank. This is ExCom's rule
+and Buyanovsky's Lemma 3.
 
 **3.2 The candidate window.** The candidates are the ranks `r` with `first <= r <= last`, where
 `first = max(0, ctx - D + 1)` and `last = min(size - 1, ctx + D)`. The distance of a candidate is
@@ -68,9 +71,8 @@ so among equal lengths the nearest wins; the scan stops at length `L`. ExCom wal
 No candidate with a match of at least one byte means *no match*: the step is a literal.
 
 **3.5 Deviations.**
-- The predecessor is always the context reference. The thesis (§1.2, Example 1.2.1) takes the
-  greater index of the two neighbours; ExCom and Buyanovsky's Lemma 3 take whichever neighbour
-  agrees with the current context longer.
+- The thesis (§1.2, Example 1.2.1) takes the greater index of the two neighbours as the context
+  reference, where 3.1 takes the one that agrees longer.
 - The distance is `ctx - r`; the thesis writes `r - ctx`.
 
 ## 4. Segments and their ends
@@ -179,8 +181,8 @@ comparison. The thesis's step 5 is printed `(1, 3, p)`, which its own formula tu
 | Thesis §1.2, converted | `(0,0,m) (0,0,i) (0,0,s) (1,1,i) (1,3,p) (2,1,i)` |
 | Current | `(0,0,m) (0,0,i) (0,0,s) (1,1,i) (0,3,p) (1,1,i)` |
 
-Steps 5 and 6 differ by the context rule (3.5): the thesis takes the successor, the code the
-predecessor. The same input under the other coders:
+Steps 5 and 6 differ by the context rule (3.5): the thesis takes the greater index, the code the
+neighbour that agrees longer. The same input under the other coders:
 
 | Coder | Triplets |
 |---|---|

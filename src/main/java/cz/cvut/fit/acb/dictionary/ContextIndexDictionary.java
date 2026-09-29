@@ -7,9 +7,14 @@ abstract sealed class ContextIndexDictionary implements Dictionary
         permits IndexedEncoderDictionary, IndexedDecoderDictionary {
 
     private final ContextIndex index;
+    private final SegmentBuffer segment;
+    private final int contextDepth;
 
-    ContextIndexDictionary(ContextIndex index) {
+    /** {@code index} must order the positions of {@code segment}, by at most {@code contextDepth} bytes of context. */
+    ContextIndexDictionary(ContextIndex index, SegmentBuffer segment, int contextDepth) {
         this.index = index;
+        this.segment = segment;
+        this.contextDepth = contextDepth;
     }
 
     protected final ContextIndex index() {
@@ -36,8 +41,24 @@ abstract sealed class ContextIndexDictionary implements Dictionary
         return this.index.cursorAt(rank).position();
     }
 
-    /** The rank of the entry just below {@code idx}: the context every distance is counted from. */
+    /**
+     * The rank every distance is counted from: of the two entries that {@code idx} would sort
+     * between, the one whose context agrees longer with the context of {@code idx}, the one below
+     * on a tie; -1 if the dictionary is empty. Reads only bytes before {@code idx}, so both sides
+     * choose alike.
+     */
     protected final int contextRankOf(int idx) {
-        return this.index.rank(idx) - 1;
+        int successor = this.index.rank(idx);
+        if (successor == this.index.size()) {
+            return successor - 1;
+        }
+        if (successor == 0) {
+            return 0;
+        }
+        ContextCursor cursor = this.index.cursorAt(successor - 1);
+        int predecessorAgreement = this.segment.commonSuffixLength(idx, cursor.position(), this.contextDepth);
+        cursor.moveUp();
+        int successorAgreement = this.segment.commonSuffixLength(idx, cursor.position(), this.contextDepth);
+        return successorAgreement > predecessorAgreement ? successor : successor - 1;
     }
 }

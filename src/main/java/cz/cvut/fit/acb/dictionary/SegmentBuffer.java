@@ -82,6 +82,19 @@ public final class SegmentBuffer {
         return mismatch < 0 ? count : mismatch;
     }
 
+    /**
+     * How many bytes, at most {@code limit}, are equal going backwards from just before {@code first}
+     * and from just before {@code second}, stopping at the start of the segment.
+     */
+    public int commonSuffixLength(int first, int second, int limit) {
+        int count = Math.min(limit, Math.min(first, second));
+        int k = 0;
+        while (k < count && this.bytes[first - 1 - k] == this.bytes[second - 1 - k]) {
+            k++;
+        }
+        return k;
+    }
+
     /** A copy of the known bytes. */
     public byte[] toArray() {
         return Arrays.copyOf(this.bytes, this.length);
