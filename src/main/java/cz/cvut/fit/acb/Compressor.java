@@ -15,10 +15,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Consumer;
@@ -48,7 +46,7 @@ public final class Compressor {
     }
 
     public CompressedStream compress(byte[] input) {
-        return this.compress(segmentsOf(input, this.settings.segmentSize()));
+        return this.compress(new ByteSegments(input, this.settings.segmentSize()));
     }
 
     /** @throws IllegalArgumentException if a segment is empty or longer than the segment size of the settings */
@@ -57,7 +55,7 @@ public final class Compressor {
     }
 
     public CompressionResult compressWithStats(byte[] input) {
-        return this.compressWithStats(segmentsOf(input, this.settings.segmentSize()));
+        return this.compressWithStats(new ByteSegments(input, this.settings.segmentSize()));
     }
 
     /** @throws IllegalArgumentException if a segment is empty or longer than the segment size of the settings */
@@ -123,28 +121,6 @@ public final class Compressor {
             throw new IllegalArgumentException("A segment holds 1 to " + segmentSize + " bytes, not " + segment.length);
         }
         return segment;
-    }
-
-    private static Iterator<byte[]> segmentsOf(byte[] input, int segmentSize) {
-        return new Iterator<>() {
-            private long from;
-
-            @Override
-            public boolean hasNext() {
-                return this.from < input.length;
-            }
-
-            @Override
-            public byte[] next() {
-                if (!this.hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                int to = (int) Math.min(input.length, this.from + segmentSize);
-                byte[] segment = Arrays.copyOfRange(input, (int) this.from, to);
-                this.from = to;
-                return segment;
-            }
-        };
     }
 
     /** One segment as coded, and what coding it did. */

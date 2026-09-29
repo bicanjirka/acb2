@@ -13,6 +13,7 @@ import java.io.Serial;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Optional;
 
 /** Turns command-line arguments into a {@link CliRequest}; touches neither files nor the console. */
 final class CliParser {
@@ -54,9 +55,8 @@ final class CliParser {
                 .withMode(cmd.hasOption("de") ? CliRequest.Mode.DECOMPRESS : CliRequest.Mode.COMPRESS)
                 .withForce(cmd.hasOption("f"));
         if (cmd.hasOption("m")) {
-            String file = cmd.getOptionValue("m");
-            work = work.withMeasure(file == null ? CliRequest.Measure.console()
-                    : CliRequest.Measure.toFile(Path.of(file)));
+            work = work.withMeasure(Optional.ofNullable(cmd.getOptionValue("m")).map(Path::of)
+                    .map(CliRequest.Measure::toFile).orElseGet(CliRequest.Measure::console));
         }
         if (cmd.hasOption("log")) {
             work = work.withLogLevel(parseLevel(cmd.getOptionValue("log")));

@@ -14,7 +14,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
 
 /**
  * The command line. Exit code 0 means success (and {@code -h}), 1 a failure while working, 2 that
@@ -68,7 +67,7 @@ public final class ACBClient {
             FileAction action = work.mode() == CliRequest.Mode.COMPRESS
                     ? compression(io, work.settings()) : decompression(io, work.settings());
             List<String> measurements = new ArrayList<>();
-            for (FileJob job : this.jobs(work)) {
+            for (FileJobs.Job job : FileJobs.plan(work)) {
                 long start = System.nanoTime();
                 action.apply(job.source(), job.target());
                 long millis = (System.nanoTime() - start) / 1_000_000;
@@ -102,48 +101,12 @@ public final class ACBClient {
         }
     }
 
-    private static String measurement(FileJob job, long millis) throws IOException {
+    private static String measurement(FileJobs.Job job, long millis) throws IOException {
         long sourceSize = Files.size(job.source());
         long targetSize = Files.size(job.target());
         return String.format(Locale.ROOT, "%s\ttime: %d ms\tin: %d B\tout: %d B\tratio: %.4f",
                 job.source().getFileName(), millis, sourceSize, targetSize,
                 sourceSize == 0 ? 0.0 : (double) targetSize / sourceSize);
-    }
-
-    /**
-     * A file input maps to the output path, or into it when it is a directory; a directory input
-     * maps each regular file inside it to the same name in the output directory. Nothing is
-     * written until every target has been checked.
-     */
-    private List<FileJob> jobs(CliRequest.Work work) throws IOException {
-        Path in = work.input();
-        Path out = work.output();
-        if (!Files.exists(in)) {
-            throw new IOException("Input file or directory does not exist: " + in);
-        }
-        List<FileJob> jobs = new ArrayList<>();
-        if (Files.isDirectory(in)) {
-            if (Files.exists(out) && !Files.isDirectory(out)) {
-                throw new IOException("Input is a directory, so the output must be one too: " + out);
-            }
-            try (Stream<Path> files = Files.list(in)) {
-                files.filter(Files::isRegularFile).sorted()
-                        .forEach(file -> jobs.add(new FileJob(file, out.resolve(file.getFileName()))));
-            }
-        } else {
-            jobs.add(new FileJob(in, Files.isDirectory(out) ? out.resolve(in.getFileName()) : out));
-        }
-        for (FileJob job : jobs) {
-            if (Files.exists(job.target())) {
-                if (Files.isSameFile(job.source(), job.target())) {
-                    throw new IOException("Output would overwrite its input: " + job.target());
-                }
-                if (!work.force()) {
-                    throw new IOException("Output already exists, use -f to overwrite it: " + job.target());
-                }
-            }
-        }
-        return jobs;
     }
 
     private static FileAction compression(ACBFileIO io, CompressionSettings settings) {
@@ -171,8 +134,5 @@ public final class ACBClient {
 
     private interface FileAction {
         void apply(Path source, Path target) throws IOException;
-    }
-
-    private record FileJob(Path source, Path target) {
     }
 }
