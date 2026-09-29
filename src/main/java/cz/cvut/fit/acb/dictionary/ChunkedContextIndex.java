@@ -1,5 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
+import cz.cvut.fit.acb.counts.FenwickTree;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -16,7 +18,7 @@ public final class ChunkedContextIndex implements ContextIndex {
     private final int chunkCapacity;
     private int[][] chunks = new int[4][];
     private int[] counts = new int[4];
-    private int[] fenwick = new int[5];
+    private final FenwickTree fenwick = new FenwickTree(4);
     private int chunkCount = 1;
     private int size;
     private int version;
@@ -36,6 +38,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.order = order;
         this.chunkCapacity = chunkCapacity;
         this.chunks[0] = new int[chunkCapacity];
+        this.fenwick.rebuild(this.counts, this.chunkCount);
     }
 
     @Override
@@ -46,7 +49,7 @@ public final class ChunkedContextIndex implements ContextIndex {
     @Override
     public int rank(int position) {
         this.locate(position);
-        return this.entriesBefore(this.foundChunk) + this.foundOffset;
+        return this.fenwick.sumBefore(this.foundChunk) + this.foundOffset;
     }
 
     @Override
@@ -68,7 +71,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         System.arraycopy(target, offset, target, offset + 1, this.counts[chunk] - offset);
         target[offset] = position;
         this.counts[chunk]++;
-        this.addToFenwick(chunk);
+        this.fenwick.add(chunk, 1);
         this.size++;
         this.version++;
     }
@@ -76,16 +79,8 @@ public final class ChunkedContextIndex implements ContextIndex {
     @Override
     public ContextCursor cursorAt(int rank) {
         Objects.checkIndex(rank, this.size);
-        int remaining = rank;
-        int chunk = 0;
-        for (int step = Integer.highestOneBit(this.chunkCount); step > 0; step >>= 1) {
-            int next = chunk + step;
-            if (next <= this.chunkCount && this.fenwick[next] <= remaining) {
-                chunk = next;
-                remaining -= this.fenwick[next];
-            }
-        }
-        return new Cursor(chunk, remaining, rank);
+        int chunk = this.fenwick.indexAt(rank);
+        return new Cursor(chunk, rank - this.fenwick.sumBefore(chunk), rank);
     }
 
     /** Finds where {@code position} belongs and remembers it for an {@link #insert} right after. */
@@ -135,36 +130,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.counts[chunk + 1] = moved;
         this.counts[chunk] = kept;
         this.chunkCount++;
-        this.rebuildFenwick();
-    }
-
-    private int entriesBefore(int chunk) {
-        int sum = 0;
-        for (int i = chunk; i > 0; i -= i & -i) {
-            sum += this.fenwick[i];
-        }
-        return sum;
-    }
-
-    private void addToFenwick(int chunk) {
-        for (int i = chunk + 1; i <= this.chunkCount; i += i & -i) {
-            this.fenwick[i]++;
-        }
-    }
-
-    private void rebuildFenwick() {
-        if (this.fenwick.length < this.chunkCount + 1) {
-            this.fenwick = new int[this.chunks.length + 1];
-        }
-        for (int i = 1; i <= this.chunkCount; i++) {
-            this.fenwick[i] = this.counts[i - 1];
-        }
-        for (int i = 1; i <= this.chunkCount; i++) {
-            int parent = i + (i & -i);
-            if (parent <= this.chunkCount) {
-                this.fenwick[parent] += this.fenwick[i];
-            }
-        }
+        this.fenwick.rebuild(this.counts, this.chunkCount);
     }
 
     private final class Cursor implements ContextCursor {

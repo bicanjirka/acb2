@@ -1,6 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
-import java.util.Arrays;
+import cz.cvut.fit.acb.counts.FenwickTree;
 
 /**
  * Symbol frequencies that grow as symbols are seen and are halved when their total would pass a
@@ -16,9 +16,8 @@ public final class AdaptiveFrequencyModel {
     static final int SYMBOL_ALLOWANCE = 256;
 
     private final int[] frequencies;
-    private final int[] tree;
+    private final FenwickTree tree;
     private final int limit;
-    private final int highestStep;
     private int total;
 
     /**
@@ -26,16 +25,15 @@ public final class AdaptiveFrequencyModel {
      */
     public AdaptiveFrequencyModel(int[] initial) {
         this.frequencies = initial.clone();
-        this.tree = new int[initial.length + 1];
+        this.tree = new FenwickTree(initial.length);
         this.limit = limitFor(initial.length);
-        this.highestStep = Integer.highestOneBit(initial.length);
         for (int frequency : this.frequencies) {
             this.total += frequency;
         }
         while (this.total > this.limit) {
             this.halve();
         }
-        this.rebuildTree();
+        this.tree.rebuild(this.frequencies, this.frequencies.length);
     }
 
     /** The most the frequencies of a model of {@code symbols} symbols may total. */
@@ -53,25 +51,12 @@ public final class AdaptiveFrequencyModel {
 
     /** The frequencies of all the symbols before {@code symbol}. */
     public int cumulative(int symbol) {
-        int sum = 0;
-        for (int i = symbol; i > 0; i -= i & -i) {
-            sum += this.tree[i];
-        }
-        return sum;
+        return this.tree.sumBefore(symbol);
     }
 
     /** The symbol whose cumulative range contains {@code target}, which is below {@link #total()}. */
     public int symbolAt(int target) {
-        int position = 0;
-        int remaining = target;
-        for (int step = this.highestStep; step > 0; step >>= 1) {
-            int next = position + step;
-            if (next < this.tree.length && this.tree[next] <= remaining) {
-                position = next;
-                remaining -= this.tree[next];
-            }
-        }
-        return position;
+        return this.tree.indexAt(target);
     }
 
     /** The total of the frequencies without symbol {@code excluded}; nothing is left out if it is -1. */
@@ -96,13 +81,11 @@ public final class AdaptiveFrequencyModel {
     public void increment(int symbol) {
         if (this.total + INCREMENT > this.limit) {
             this.halve();
-            this.rebuildTree();
+            this.tree.rebuild(this.frequencies, this.frequencies.length);
         }
         this.frequencies[symbol] += INCREMENT;
         this.total += INCREMENT;
-        for (int i = symbol + 1; i < this.tree.length; i += i & -i) {
-            this.tree[i] += INCREMENT;
-        }
+        this.tree.add(symbol, INCREMENT);
     }
 
     private void halve() {
@@ -110,17 +93,6 @@ public final class AdaptiveFrequencyModel {
         for (int i = 0; i < this.frequencies.length; i++) {
             this.frequencies[i] = (this.frequencies[i] + 1) >>> 1;
             this.total += this.frequencies[i];
-        }
-    }
-
-    private void rebuildTree() {
-        Arrays.fill(this.tree, 0);
-        for (int i = 1; i < this.tree.length; i++) {
-            this.tree[i] += this.frequencies[i - 1];
-            int parent = i + (i & -i);
-            if (parent < this.tree.length) {
-                this.tree[parent] += this.tree[i];
-            }
         }
     }
 }
