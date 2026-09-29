@@ -43,7 +43,7 @@ class ACBFileIOTest {
 
         for (int segmentSize : SEGMENT_SIZES) {
             List<byte[]> segments = new ArrayList<>();
-            try (ACBFileIO.SegmentReader reader = this.io.readSegments(path, segmentSize)) {
+            try (SegmentReader reader = this.io.readSegments(path, segmentSize)) {
                 reader.forEachRemaining(segments::add);
             }
 
@@ -64,7 +64,7 @@ class ACBFileIOTest {
     void writtenSegmentsLandInOrder() throws IOException {
         Path path = this.dir.resolve("segments");
 
-        try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+        try (SegmentWriter writer = this.io.writeSegments(path)) {
             writer.accept(new byte[]{1, 2});
             writer.accept(new byte[]{3});
             writer.commit();
@@ -77,7 +77,7 @@ class ACBFileIOTest {
     void segmentsThatAreNotCommittedLeaveNothingBehind() throws IOException {
         Path path = this.dir.resolve("segments");
 
-        try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+        try (SegmentWriter writer = this.io.writeSegments(path)) {
             writer.accept(new byte[]{1, 2});
         }
 
@@ -88,7 +88,7 @@ class ACBFileIOTest {
     void aCommitReplacesTheFileThatWasThereAndLeavesNoTemporaryFile() throws IOException {
         Path path = Files.write(this.dir.resolve("segments"), new byte[]{9, 9, 9, 9});
 
-        try (ACBFileIO.SegmentWriter writer = this.io.writeSegments(path)) {
+        try (SegmentWriter writer = this.io.writeSegments(path)) {
             writer.accept(new byte[]{1});
             assertThat(path).hasBinaryContent(new byte[]{9, 9, 9, 9});
             writer.commit();

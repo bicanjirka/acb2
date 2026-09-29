@@ -23,4 +23,10 @@
     <file name="ACBFileIO">
         <allow pkg="java.nio.file"/>
     </file>
+    <file name="SegmentReader">
+        <allow pkg="java.nio.file"/>
+    </file>
+    <file name="SegmentWriter">
+        <allow pkg="java.nio.file"/>
+    </file>
 </import-control>

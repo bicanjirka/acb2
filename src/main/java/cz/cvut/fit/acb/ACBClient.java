@@ -150,7 +150,7 @@ public final class ACBClient {
         Compressor compressor = new Compressor(settings);
         return (source, target) -> {
             CompressedStream stream;
-            try (ACBFileIO.SegmentReader segments = io.readSegments(source, settings.segmentSize())) {
+            try (SegmentReader segments = io.readSegments(source, settings.segmentSize())) {
                 stream = compressor.compress(segments);
             }
             io.saveCompressed(stream, target);
@@ -162,7 +162,7 @@ public final class ACBClient {
         Compressor compressor = new Compressor(settings);
         return (source, target) -> {
             CompressedStream stream = io.openCompressed(source);
-            try (ACBFileIO.SegmentWriter segments = io.writeSegments(target)) {
+            try (SegmentWriter segments = io.writeSegments(target)) {
                 compressor.decompress(stream, segments);
                 segments.commit();
             }

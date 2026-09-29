@@ -1,17 +1,13 @@
 package cz.cvut.fit.acb.format;
 
-import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
-import cz.cvut.fit.acb.coding.LengthFrequencies;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
@@ -42,10 +38,6 @@ public final class ContainerFormat {
     static final int VERSION = 4;
 
     private static final byte[] MAGIC = {'A', 'C', 'B'};
-    private static final int STORED = 0;
-    private static final int CODED = 1;
-    /** The least a block takes: its kind and its length. */
-    private static final int MIN_BLOCK_SIZE = 1 + Integer.BYTES;
 
     private ContainerFormat() {
     }
@@ -54,36 +46,10 @@ public final class ContainerFormat {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(bytes);
-            StreamHeader header = stream.header();
             out.write(MAGIC);
             out.writeByte(VERSION);
-            out.writeByte(header.distanceBits());
-            out.writeByte(header.lengthBits());
-            out.writeByte(header.tripletCoding().formatCode());
-            out.writeByte(header.entropyCoding().formatCode());
-            out.writeByte(header.contextDepth());
-            out.writeInt(header.segmentSize());
-            int[] frequencies = header.lengthFrequencies().toArray();
-            out.writeInt(frequencies.length);
-            for (int frequency : frequencies) {
-                out.writeInt(frequency);
-            }
-            out.writeInt(stream.blocks().size());
-            for (Block block : stream.blocks()) {
-                switch (block) {
-                    case Block.Stored stored -> {
-                        out.writeByte(STORED);
-                        out.writeInt(stored.rawLength());
-                        out.write(stored.bytes());
-                    }
-                    case Block.Coded coded -> {
-                        out.writeByte(CODED);
-                        out.writeInt(coded.rawLength());
-                        out.writeInt(coded.storedLength());
-                        out.write(coded.bytes());
-                    }
-                }
-            }
+            HeaderCodec.write(stream.header(), out);
+            BlockCodec.write(stream.blocks(), out);
             out.writeInt((int) checksum(bytes.toByteArray(), bytes.size()));
             return bytes.toByteArray();
         } catch (IOException e) {
@@ -105,98 +71,18 @@ public final class ContainerFormat {
         if (storedChecksum != (int) checksum(bytes, bodyLength)) {
             throw new MalformedStreamException("ACB stream is corrupt or truncated (checksum mismatch)");
         }
-        try {
-            ByteBuffer in = ByteBuffer.wrap(bytes, MAGIC.length + 1, bodyLength - MAGIC.length - 1);
-            int distanceBits = bits(in.get(), "distance");
-            int lengthBits = bits(in.get(), "length");
-            int tripletCode = Byte.toUnsignedInt(in.get());
-            int entropyCode = Byte.toUnsignedInt(in.get());
-            TripletCoding tripletCoding = TripletCoding.byFormatCode(tripletCode)
-                    .orElseThrow(() -> new MalformedStreamException("Unknown triplet coding code " + tripletCode));
-            EntropyCoding entropyCoding = EntropyCoding.byFormatCode(entropyCode)
-                    .orElseThrow(() -> new MalformedStreamException("Unknown entropy coding code " + entropyCode));
-            int contextDepth = Byte.toUnsignedInt(in.get());
-            if (contextDepth < 1) {
-                throw new MalformedStreamException("Invalid context depth " + contextDepth);
-            }
-            int segmentSize = in.getInt();
-            if (segmentSize < 1) {
-                throw new MalformedStreamException("Invalid segment size " + segmentSize);
-            }
-            int frequencyCount = count(in, Integer.BYTES, "frequency");
-            if (frequencyCount > CompressionSettings.lengthAlphabetSize(lengthBits)) {
-                throw new MalformedStreamException("Invalid frequency count " + frequencyCount);
-            }
-            int[] given = new int[frequencyCount];
-            for (int i = 0; i < given.length; i++) {
-                given[i] = in.getInt();
-            }
-            LengthFrequencies frequencies;
-            try {
-                frequencies = LengthFrequencies.of(given);
-                frequencies.requireFits(CompressionSettings.lengthAlphabetSize(lengthBits));
-            } catch (IllegalArgumentException e) {
-                throw new MalformedStreamException("Invalid length frequencies: " + e.getMessage());
-            }
-            int blockCount = count(in, MIN_BLOCK_SIZE, "block");
-            List<Block> blocks = new ArrayList<>(blockCount);
-            for (int i = 0; i < blockCount; i++) {
-                blocks.add(block(in, segmentSize));
-            }
-            if (in.hasRemaining()) {
-                throw new MalformedStreamException(in.remaining() + " unexpected bytes after the last block");
-            }
-            return new CompressedStream(
-                    new StreamHeader(distanceBits, lengthBits, tripletCoding, entropyCoding, frequencies,
-                            segmentSize, contextDepth), blocks);
-        } catch (BufferUnderflowException e) {
-            throw new MalformedStreamException("ACB stream ends inside its blocks");
+        WireReader in = new WireReader(bytes, MAGIC.length + 1, bodyLength);
+        StreamHeader header = HeaderCodec.read(in);
+        List<Block> blocks = BlockCodec.read(in, header.segmentSize());
+        if (in.remaining() > 0) {
+            throw new MalformedStreamException(in.remaining() + " unexpected bytes after the last block");
         }
-    }
-
-    private static Block block(ByteBuffer in, int segmentSize) throws MalformedStreamException {
-        int kind = Byte.toUnsignedInt(in.get());
-        int rawLength = in.getInt();
-        if (rawLength < 1 || rawLength > segmentSize) {
-            throw new MalformedStreamException("Invalid block length " + rawLength + " for segments of "
-                    + segmentSize);
-        }
-        return switch (kind) {
-            case STORED -> Block.stored(bytes(in, rawLength));
-            case CODED -> Block.coded(rawLength, bytes(in, count(in, 1, "coded byte")));
-            default -> throw new MalformedStreamException("Unknown block kind " + kind);
-        };
-    }
-
-    private static byte[] bytes(ByteBuffer in, int length) throws MalformedStreamException {
-        if (length > in.remaining()) {
-            throw new MalformedStreamException("A block of " + length + " bytes runs past the end of the stream");
-        }
-        byte[] bytes = new byte[length];
-        in.get(bytes);
-        return bytes;
+        return new CompressedStream(header, blocks);
     }
 
     private static long checksum(byte[] bytes, int length) {
         CRC32 crc = new CRC32();
         crc.update(bytes, 0, length);
         return crc.getValue();
-    }
-
-    private static int bits(byte stored, String what) throws MalformedStreamException {
-        int bits = Byte.toUnsignedInt(stored);
-        if (bits < 1 || bits > CompressionSettings.MAX_FIELD_BITS) {
-            throw new MalformedStreamException("Invalid " + what + " bit width " + bits);
-        }
-        return bits;
-    }
-
-    /** A count read before its items, checked against what is left so a bad value cannot over-allocate. */
-    private static int count(ByteBuffer in, int itemSize, String what) throws MalformedStreamException {
-        int count = in.getInt();
-        if (count < 0 || (long) count * itemSize > in.remaining()) {
-            throw new MalformedStreamException("Invalid " + what + " count " + count);
-        }
-        return count;
     }
 }
