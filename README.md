@@ -10,7 +10,7 @@ that does not shrink is stored as it is. Every block is independent of the other
 
 ## Build
 
-Needs Java 26 and Maven.
+Needs Java 25 and Maven.
 
 ```bash
 mvn package            # tests + shaded jar at target/acb.jar
