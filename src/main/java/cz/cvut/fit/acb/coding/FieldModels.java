@@ -13,12 +13,11 @@ import java.util.List;
  */
 final class FieldModels {
 
-    private final int[] lengthFrequencies;
+    private final LengthFrequencies lengthFrequencies;
     private final List<AdaptiveFrequencyModel> models = new ArrayList<>();
 
-    /** Symbols past {@code lengthFrequencies} start at 1. */
-    FieldModels(int[] lengthFrequencies) {
-        this.lengthFrequencies = lengthFrequencies.clone();
+    FieldModels(LengthFrequencies lengthFrequencies) {
+        this.lengthFrequencies = lengthFrequencies;
     }
 
     AdaptiveFrequencyModel of(TripletFieldId field) {
@@ -35,14 +34,11 @@ final class FieldModels {
 
     private int[] startingFrequencies(TripletFieldId field) {
         int symbols = 1 << field.bitSize();
-        int[] frequencies = new int[symbols];
         if (field.isLength()) {
-            int given = Math.min(symbols, this.lengthFrequencies.length);
-            System.arraycopy(this.lengthFrequencies, 0, frequencies, 0, given);
-            Arrays.fill(frequencies, given, symbols, 1);
-        } else {
-            Arrays.fill(frequencies, 1);
+            return this.lengthFrequencies.startingTable(symbols);
         }
-        return frequencies;
+        int[] flat = new int[symbols];
+        Arrays.fill(flat, 1);
+        return flat;
     }
 }

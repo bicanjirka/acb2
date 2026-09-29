@@ -3,6 +3,7 @@ package cz.cvut.fit.acb.format;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
+import cz.cvut.fit.acb.coding.LengthFrequencies;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -19,7 +20,7 @@ class ContainerFormatTest {
 
     private static final int SEGMENT_SIZE = 1000;
     private static final StreamHeader HEADER = new StreamHeader(6, 4, TripletCoding.VALACH, EntropyCoding.BIT_ARRAY,
-            new int[]{45, 13, 10}, SEGMENT_SIZE);
+            LengthFrequencies.of(45, 13, 10), SEGMENT_SIZE);
     private static final List<Block> BLOCKS = List.of(Block.coded(7, new byte[]{1, 2, 3}),
             Block.stored(new byte[]{-1, 1, -128}), Block.coded(3, new byte[0]));
 
@@ -34,7 +35,7 @@ class ContainerFormatTest {
     void aStreamDecodesToTheHeaderAndBlocksItWasEncodedFrom(TripletCoding tripletCoding)
             throws MalformedStreamException {
         StreamHeader header = new StreamHeader(9, 3, tripletCoding, EntropyCoding.ADAPTIVE_ARITHMETIC,
-                new int[]{2, 1}, SEGMENT_SIZE);
+                LengthFrequencies.of(2, 1), SEGMENT_SIZE);
 
         CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(header, BLOCKS)));
 
@@ -177,7 +178,7 @@ class ContainerFormatTest {
     @Test
     void moreLengthFrequenciesThanTheLengthAlphabetHasSymbolsAreRejected() {
         StreamHeader narrow = new StreamHeader(6, 1, TripletCoding.VALACH, EntropyCoding.ADAPTIVE_ARITHMETIC,
-                new int[]{1, 1, 1}, SEGMENT_SIZE);
+                LengthFrequencies.of(1, 1, 1), SEGMENT_SIZE);
         byte[] encoded = ContainerFormat.encode(new CompressedStream(narrow, BLOCKS));
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))

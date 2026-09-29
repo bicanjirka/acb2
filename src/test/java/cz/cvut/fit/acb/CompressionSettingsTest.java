@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
+import cz.cvut.fit.acb.coding.LengthFrequencies;
 import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -59,7 +60,7 @@ class CompressionSettingsTest {
         CompressionSettings settings = CompressionSettings.defaults().withLengthBits(1)
                 .withLengthFrequencies(45, 13, 10, 7, 5, 4);
 
-        assertThat(StreamHeader.of(settings).lengthFrequencies()).containsExactly(45, 13);
+        assertThat(StreamHeader.of(settings).lengthFrequencies()).isEqualTo(LengthFrequencies.of(45, 13));
     }
 
     @Test
@@ -68,9 +69,11 @@ class CompressionSettingsTest {
         CompressionSettings settings = CompressionSettings.defaults().withLengthFrequencies(frequencies);
 
         frequencies[0] = 99;
-        settings.lengthFrequencies()[1] = 99;
+        settings.lengthFrequencies().toArray()[1] = 99;
 
-        assertThat(settings.lengthFrequencies()).containsExactly(5, 4);
+        assertThat(settings.lengthFrequencies()).isEqualTo(LengthFrequencies.of(5, 4));
+        assertThatThrownBy(() -> settings.lengthFrequencies().values().add(1))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test

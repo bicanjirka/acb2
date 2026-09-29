@@ -16,7 +16,7 @@ class RangeTripletCodingTest {
 
     @Test
     void fieldsInterleavedInOneStreamComeBackInOrder() throws MalformedStreamException {
-        RangeTripletWriter writer = new RangeTripletWriter(new int[0]);
+        RangeTripletWriter writer = new RangeTripletWriter(LengthFrequencies.flat());
         writer.write(DISTANCE, 63);
         writer.write(LENGTH, 15);
         writer.write(LITERAL, 255);
@@ -24,7 +24,7 @@ class RangeTripletCodingTest {
         writer.write(LENGTH, 0);
         writer.write(LITERAL, 0);
 
-        RangeTripletReader reader = new RangeTripletReader(writer.finish(), new int[0]);
+        RangeTripletReader reader = new RangeTripletReader(writer.finish(), LengthFrequencies.flat());
 
         assertThat(new int[]{reader.read(DISTANCE), reader.read(LENGTH), reader.read(LITERAL),
                 reader.read(DISTANCE), reader.read(LENGTH), reader.read(LITERAL)})
@@ -33,7 +33,7 @@ class RangeTripletCodingTest {
 
     @Test
     void startingFrequenciesOfTheLengthFieldMustBeKnownToTheReaderToo() throws MalformedStreamException {
-        int[] frequencies = {45, 13, 10, 7, 5, 4};
+        LengthFrequencies frequencies = LengthFrequencies.of(45, 13, 10, 7, 5, 4);
         RangeTripletWriter writer = new RangeTripletWriter(frequencies);
         for (int length = 0; length < 16; length++) {
             writer.write(LENGTH, length);
@@ -48,7 +48,7 @@ class RangeTripletCodingTest {
 
     @Test
     void aSkewedFieldCostsFewerBitsThanItsWidth() {
-        RangeTripletWriter writer = new RangeTripletWriter(new int[0]);
+        RangeTripletWriter writer = new RangeTripletWriter(LengthFrequencies.flat());
         for (int i = 0; i < 1000; i++) {
             writer.write(LITERAL, 'a');
         }
@@ -63,7 +63,7 @@ class RangeTripletCodingTest {
 
     @Test
     void costsListOnlyTheKindsThatWereWritten() {
-        RangeTripletWriter writer = new RangeTripletWriter(new int[0]);
+        RangeTripletWriter writer = new RangeTripletWriter(LengthFrequencies.flat());
         writer.write(LENGTH, 1);
         writer.write(LITERAL, 1);
 
@@ -75,7 +75,7 @@ class RangeTripletCodingTest {
 
     @Test
     void aBlockThatRunsOutOfDataIsMalformedNotDecodedAsZeros() throws MalformedStreamException {
-        RangeTripletReader reader = new RangeTripletReader(new byte[0], new int[0]);
+        RangeTripletReader reader = new RangeTripletReader(new byte[0], LengthFrequencies.flat());
 
         assertThatThrownBy(() -> {
             for (int i = 0; i < 10_000; i++) {

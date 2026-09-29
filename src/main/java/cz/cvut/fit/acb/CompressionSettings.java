@@ -1,30 +1,30 @@
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
+import cz.cvut.fit.acb.coding.LengthFrequencies;
 
-import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Everything that shapes compression. Start from {@link #defaults()} and change what differs with
  * the {@code withX} copies; the constructor rejects values no stream can carry.
  */
 public record CompressionSettings(int distanceBits, int lengthBits, TripletCoding tripletCoding,
-                                  EntropyCoding entropyCoding, int[] lengthFrequencies, int segmentSize) {
+                                  EntropyCoding entropyCoding, LengthFrequencies lengthFrequencies,
+                                  int segmentSize) {
 
     /** Wider fields only inflate the range coder's model: 2^bits symbols each; 24 bits took 98% of a text. */
     public static final int MAX_FIELD_BITS = 16;
 
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
-            EntropyCoding.ADAPTIVE_ARITHMETIC, new int[0], 1_000_000);
+            EntropyCoding.ADAPTIVE_ARITHMETIC, LengthFrequencies.flat(), 1_000_000);
 
     public CompressionSettings {
         requireFieldBits("distance", distanceBits);
         requireFieldBits("length", lengthBits);
         Objects.requireNonNull(tripletCoding, "tripletCoding");
         Objects.requireNonNull(entropyCoding, "entropyCoding");
-        lengthFrequencies = lengthFrequencies.clone();
-        requireLengthFrequencies(lengthBits, lengthFrequencies);
+        Objects.requireNonNull(lengthFrequencies, "lengthFrequencies").requireFits(lengthAlphabetSize(lengthBits));
         if (segmentSize < 1) {
             throw new IllegalArgumentException("segment size must be greater than zero: " + segmentSize);
         }
@@ -35,64 +35,36 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         return 1 << lengthBits;
     }
 
-    /**
-     * Frequencies past the alphabet are ignored by the coder and every symbol they leave out starts
-     * at 1; this checks that the model's starting total, counted that way, is small enough.
-     *
-     * @throws IllegalArgumentException if a frequency is not positive or the starting total is too large
-     */
-    public static void requireLengthFrequencies(int lengthBits, int[] frequencies) {
-        if (Arrays.stream(frequencies).anyMatch(f -> f <= 0)) {
-            throw new IllegalArgumentException("length frequencies must be greater than zero: "
-                    + Arrays.toString(frequencies));
-        }
-        int alphabet = lengthAlphabetSize(lengthBits);
-        long total = Arrays.stream(frequencies).limit(alphabet).asLongStream().sum()
-                + Math.max(0, alphabet - frequencies.length);
-        long limit = AdaptiveFrequencyModel.limitFor(alphabet);
-        if (total > limit) {
-            throw new IllegalArgumentException("length frequencies total " + total + ", more than " + limit
-                    + ", the total their model is halved from");
-        }
-    }
-
     public static CompressionSettings defaults() {
         return DEFAULTS;
     }
 
     public CompressionSettings withDistanceBits(int bits) {
-        return new CompressionSettings(bits, this.lengthBits, this.tripletCoding,
-                this.entropyCoding, this.lengthFrequencies, this.segmentSize);
+        return this.copy(draft -> draft.distanceBits = bits);
     }
 
     public CompressionSettings withLengthBits(int bits) {
-        return new CompressionSettings(this.distanceBits, bits, this.tripletCoding,
-                this.entropyCoding, this.lengthFrequencies, this.segmentSize);
+        return this.copy(draft -> draft.lengthBits = bits);
     }
 
     public CompressionSettings withTripletCoding(TripletCoding coding) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, coding,
-                this.entropyCoding, this.lengthFrequencies, this.segmentSize);
+        return this.copy(draft -> draft.tripletCoding = coding);
     }
 
     public CompressionSettings withEntropyCoding(EntropyCoding coding) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                coding, this.lengthFrequencies, this.segmentSize);
+        return this.copy(draft -> draft.entropyCoding = coding);
+    }
+
+    public CompressionSettings withLengthFrequencies(LengthFrequencies frequencies) {
+        return this.copy(draft -> draft.lengthFrequencies = frequencies);
     }
 
     public CompressionSettings withLengthFrequencies(int... frequencies) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.entropyCoding, frequencies, this.segmentSize);
+        return this.withLengthFrequencies(LengthFrequencies.of(frequencies));
     }
 
     public CompressionSettings withSegmentSize(int size) {
-        return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.entropyCoding, this.lengthFrequencies, size);
-    }
-
-    @Override
-    public int[] lengthFrequencies() {
-        return this.lengthFrequencies.clone();
+        return this.copy(draft -> draft.segmentSize = size);
     }
 
     /** Furthest a content may lie from its context, in dictionary ranks. */
@@ -105,35 +77,41 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         return (1 << this.lengthBits) - 1;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        return o instanceof CompressionSettings that
-                && this.distanceBits == that.distanceBits
-                && this.lengthBits == that.lengthBits
-                && this.tripletCoding == that.tripletCoding
-                && this.entropyCoding == that.entropyCoding
-                && Arrays.equals(this.lengthFrequencies, that.lengthFrequencies)
-                && this.segmentSize == that.segmentSize;
-    }
-
-    @Override
-    public int hashCode() {
-        return 31 * Objects.hash(this.distanceBits, this.lengthBits, this.tripletCoding,
-                this.entropyCoding, this.segmentSize) + Arrays.hashCode(this.lengthFrequencies);
-    }
-
-    @Override
-    public String toString() {
-        return "CompressionSettings[distanceBits=" + this.distanceBits + ", lengthBits=" + this.lengthBits
-                + ", tripletCoding=" + this.tripletCoding
-                + ", entropyCoding=" + this.entropyCoding
-                + ", lengthFrequencies=" + Arrays.toString(this.lengthFrequencies)
-                + ", segmentSize=" + this.segmentSize + "]";
-    }
-
     private static void requireFieldBits(String field, int bits) {
         if (bits < 1 || bits > MAX_FIELD_BITS) {
             throw new IllegalArgumentException(field + " bits must be between 1 and " + MAX_FIELD_BITS + ": " + bits);
+        }
+    }
+
+    /** Adding a component means adding it here and to the record, and nowhere else. */
+    private CompressionSettings copy(Consumer<Draft> change) {
+        Draft draft = new Draft(this);
+        change.accept(draft);
+        return draft.build();
+    }
+
+    /** The components of a copy while it is being changed. */
+    private static final class Draft {
+
+        private int distanceBits;
+        private int lengthBits;
+        private TripletCoding tripletCoding;
+        private EntropyCoding entropyCoding;
+        private LengthFrequencies lengthFrequencies;
+        private int segmentSize;
+
+        private Draft(CompressionSettings from) {
+            this.distanceBits = from.distanceBits;
+            this.lengthBits = from.lengthBits;
+            this.tripletCoding = from.tripletCoding;
+            this.entropyCoding = from.entropyCoding;
+            this.lengthFrequencies = from.lengthFrequencies;
+            this.segmentSize = from.segmentSize;
+        }
+
+        private CompressionSettings build() {
+            return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
+                    this.entropyCoding, this.lengthFrequencies, this.segmentSize);
         }
     }
 }

@@ -161,15 +161,6 @@ the header nor tied to `ContainerFormat.VERSION`.
   specification means). Measure what a longer depth does to ratio and speed; ACB treats it as the
   main control.
 
-### CompressionSettings restates its components
-
-Every `withX` of `CompressionSettings` restates all the components, and `lengthFrequencies` is a
-defensively copied `int[]` with a hand-written `equals`, `hashCode` and `toString`.
-
-- **Where:** `CompressionSettings`, `StreamHeader`, `EntropyCoding`, `coding.FieldModels`.
-- **Approach:** a narrow factory and fluent copies that do not restate the components;
-  `lengthFrequencies` becomes an immutable value.
-
 ## Phase 6: thesis coders made faithful
 
 ### The context reference is always the predecessor

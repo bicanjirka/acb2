@@ -2,6 +2,7 @@ package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.BitArrayReader;
 import cz.cvut.fit.acb.coding.BitArrayWriter;
+import cz.cvut.fit.acb.coding.LengthFrequencies;
 import cz.cvut.fit.acb.coding.RangeTripletReader;
 import cz.cvut.fit.acb.coding.RangeTripletWriter;
 import cz.cvut.fit.acb.coding.TripletWriter;
@@ -23,12 +24,12 @@ public enum EntropyCoding {
     /** Makes the writer of one block; only length fields use the starting frequencies. */
     @FunctionalInterface
     private interface WriterFactory {
-        TripletWriter create(int[] lengthFrequencies);
+        TripletWriter create(LengthFrequencies lengthFrequencies);
     }
 
     @FunctionalInterface
     private interface ReaderFactory {
-        FieldSource create(byte[] block, int[] lengthFrequencies) throws MalformedStreamException;
+        FieldSource create(byte[] block, LengthFrequencies lengthFrequencies) throws MalformedStreamException;
     }
 
     private final int formatCode;
@@ -50,12 +51,12 @@ public enum EntropyCoding {
         return Arrays.stream(values()).filter(coding -> coding.formatCode == code).findFirst();
     }
 
-    public TripletWriter writer(int[] lengthFrequencies) {
+    public TripletWriter writer(LengthFrequencies lengthFrequencies) {
         return this.writers.create(lengthFrequencies);
     }
 
     /** @throws MalformedStreamException if the block is too short to start reading */
-    public FieldSource reader(byte[] block, int[] lengthFrequencies) throws MalformedStreamException {
+    public FieldSource reader(byte[] block, LengthFrequencies lengthFrequencies) throws MalformedStreamException {
         return this.readers.create(block, lengthFrequencies);
     }
 }

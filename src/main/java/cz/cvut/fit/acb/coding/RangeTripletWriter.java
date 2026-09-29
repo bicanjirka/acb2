@@ -19,8 +19,8 @@ public final class RangeTripletWriter implements TripletWriter {
     private final long[] symbols = new long[TripletFieldKind.values().length];
     private final double[] bits = new double[TripletFieldKind.values().length];
 
-    /** Length fields start from {@code lengthFrequencies}; symbols past it start at 1. */
-    public RangeTripletWriter(int[] lengthFrequencies) {
+    /** Length fields start from {@code lengthFrequencies}. */
+    public RangeTripletWriter(LengthFrequencies lengthFrequencies) {
         this.models = new FieldModels(lengthFrequencies);
     }
 

@@ -3,6 +3,7 @@ package cz.cvut.fit.acb.format;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
+import cz.cvut.fit.acb.coding.LengthFrequencies;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -58,7 +59,7 @@ public final class ContainerFormat {
             out.writeByte(header.tripletCoding().formatCode());
             out.writeByte(header.entropyCoding().formatCode());
             out.writeInt(header.segmentSize());
-            int[] frequencies = header.lengthFrequencies();
+            int[] frequencies = header.lengthFrequencies().toArray();
             out.writeInt(frequencies.length);
             for (int frequency : frequencies) {
                 out.writeInt(frequency);
@@ -118,12 +119,14 @@ public final class ContainerFormat {
             if (frequencyCount > CompressionSettings.lengthAlphabetSize(lengthBits)) {
                 throw new MalformedStreamException("Invalid frequency count " + frequencyCount);
             }
-            int[] frequencies = new int[frequencyCount];
-            for (int i = 0; i < frequencies.length; i++) {
-                frequencies[i] = in.getInt();
+            int[] given = new int[frequencyCount];
+            for (int i = 0; i < given.length; i++) {
+                given[i] = in.getInt();
             }
+            LengthFrequencies frequencies;
             try {
-                CompressionSettings.requireLengthFrequencies(lengthBits, frequencies);
+                frequencies = LengthFrequencies.of(given);
+                frequencies.requireFits(CompressionSettings.lengthAlphabetSize(lengthBits));
             } catch (IllegalArgumentException e) {
                 throw new MalformedStreamException("Invalid length frequencies: " + e.getMessage());
             }

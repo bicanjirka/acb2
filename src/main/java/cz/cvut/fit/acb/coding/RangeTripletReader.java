@@ -10,7 +10,7 @@ public final class RangeTripletReader implements FieldSource {
     private final RangeDecoder decoder;
     private final FieldModels models;
 
-    public RangeTripletReader(byte[] block, int[] lengthFrequencies) throws MalformedStreamException {
+    public RangeTripletReader(byte[] block, LengthFrequencies lengthFrequencies) throws MalformedStreamException {
         this.decoder = new RangeDecoder(block);
         this.models = new FieldModels(lengthFrequencies);
     }
