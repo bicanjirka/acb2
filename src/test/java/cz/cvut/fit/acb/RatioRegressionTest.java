@@ -36,22 +36,22 @@ class RatioRegressionTest {
         EntropyCoding arith = EntropyCoding.ADAPTIVE_ARITHMETIC;
         EntropyCoding bits = EntropyCoding.BIT_ARRAY;
         return Stream.of(
-                new Pin("text", text, TripletCoding.SALOMON, arith, 17_199),
-                new Pin("text", text, TripletCoding.SALOMON, bits, 26_190),
-                new Pin("text", text, TripletCoding.SALOMON2, arith, 15_463),
-                new Pin("text", text, TripletCoding.SALOMON2, bits, 25_154),
-                new Pin("text", text, TripletCoding.SIMPLE, arith, 15_569),
-                new Pin("text", text, TripletCoding.SIMPLE, bits, 24_638),
-                new Pin("text", text, TripletCoding.VALACH, arith, 15_451),
-                new Pin("text", text, TripletCoding.VALACH, bits, 24_335),
-                new Pin("binary", binary, TripletCoding.SALOMON, arith, 26_075),
-                new Pin("binary", binary, TripletCoding.SALOMON, bits, 30_029),
-                new Pin("binary", binary, TripletCoding.SALOMON2, arith, 25_972),
-                new Pin("binary", binary, TripletCoding.SALOMON2, bits, 30_029),
-                new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_689),
-                new Pin("binary", binary, TripletCoding.SIMPLE, bits, 30_029),
-                new Pin("binary", binary, TripletCoding.VALACH, arith, 25_975),
-                new Pin("binary", binary, TripletCoding.VALACH, bits, 30_029));
+                new Pin("text", text, TripletCoding.SALOMON, arith, 17_200),
+                new Pin("text", text, TripletCoding.SALOMON, bits, 26_191),
+                new Pin("text", text, TripletCoding.SALOMON2, arith, 15_464),
+                new Pin("text", text, TripletCoding.SALOMON2, bits, 25_155),
+                new Pin("text", text, TripletCoding.SIMPLE, arith, 15_570),
+                new Pin("text", text, TripletCoding.SIMPLE, bits, 24_639),
+                new Pin("text", text, TripletCoding.VALACH, arith, 15_452),
+                new Pin("text", text, TripletCoding.VALACH, bits, 24_336),
+                new Pin("binary", binary, TripletCoding.SALOMON, arith, 26_056),
+                new Pin("binary", binary, TripletCoding.SALOMON, bits, 30_030),
+                new Pin("binary", binary, TripletCoding.SALOMON2, arith, 25_965),
+                new Pin("binary", binary, TripletCoding.SALOMON2, bits, 30_030),
+                new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_670),
+                new Pin("binary", binary, TripletCoding.SIMPLE, bits, 30_030),
+                new Pin("binary", binary, TripletCoding.VALACH, arith, 25_968),
+                new Pin("binary", binary, TripletCoding.VALACH, bits, 30_030));
     }
 
     @ParameterizedTest(name = "{0}")

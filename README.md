@@ -43,6 +43,7 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
 | `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
 | `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `valach` |
+| `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |

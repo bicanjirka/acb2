@@ -6,17 +6,18 @@ import cz.cvut.fit.acb.TripletCoding;
 import cz.cvut.fit.acb.coding.LengthFrequencies;
 
 /**
- * The settings a stream was coded with: everything decoding depends on, and the segment size that
- * bounds every block. Frequencies beyond the length alphabet are dropped, since the coder ignores
- * them.
+ * The settings a stream was coded with: everything decoding depends on. The segment size bounds
+ * every block, and the context depth is how many bytes of context order the dictionary. Frequencies
+ * beyond the length alphabet are dropped, since the coder ignores them.
  */
 public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripletCoding, EntropyCoding entropyCoding,
-                           LengthFrequencies lengthFrequencies, int segmentSize) {
+                           LengthFrequencies lengthFrequencies, int segmentSize, int contextDepth) {
 
     public static StreamHeader of(CompressionSettings settings) {
         int alphabet = CompressionSettings.lengthAlphabetSize(settings.lengthBits());
         return new StreamHeader(settings.distanceBits(), settings.lengthBits(), settings.tripletCoding(),
-                settings.entropyCoding(), settings.lengthFrequencies().limitedTo(alphabet), settings.segmentSize());
+                settings.entropyCoding(), settings.lengthFrequencies().limitedTo(alphabet), settings.segmentSize(),
+                settings.contextDepth());
     }
 
     /**
@@ -29,6 +30,7 @@ public record StreamHeader(int distanceBits, int lengthBits, TripletCoding tripl
                 .withTripletCoding(this.tripletCoding)
                 .withEntropyCoding(this.entropyCoding)
                 .withLengthFrequencies(this.lengthFrequencies)
-                .withSegmentSize(this.segmentSize);
+                .withSegmentSize(this.segmentSize)
+                .withContextDepth(this.contextDepth);
     }
 }

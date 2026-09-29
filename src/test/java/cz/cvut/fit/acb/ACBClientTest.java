@@ -124,6 +124,19 @@ class ACBClientTest {
     }
 
     @Test
+    void aCustomContextDepthTravelsWithTheFile() throws IOException {
+        Path input = this.corpusFile("loremipsum");
+        Path compressed = this.dir.resolve("lorem.acb");
+        Path restored = this.dir.resolve("lorem.out");
+        run(input, compressed, "-cd", "3");
+
+        int exitCode = run(compressed, restored, "-de");
+
+        assertThat(exitCode).isEqualTo(OK);
+        assertThat(restored).hasSameBinaryContentAs(input);
+    }
+
+    @Test
     void decompressingAFileThatIsNotAnAcbStreamFailsAndWritesNothing() throws IOException {
         Path input = this.corpusFile("loremipsum");
         Path output = this.dir.resolve("lorem.out");

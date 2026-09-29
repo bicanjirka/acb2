@@ -29,7 +29,7 @@ class CliParserTest {
     @Test
     void everyOptionLandsInTheRequest() throws CliParser.UsageException {
         CliRequest.Work work = this.work("in", "out", "-de", "-f", "-d", "9", "-l", "3", "-bs", "-tc", "valach",
-                "-af", "5,4", "-log", "debug", "-m");
+                "-af", "5,4", "-cd", "16", "-log", "debug", "-m");
 
         assertThat(work.mode()).isEqualTo(CliRequest.Mode.DECOMPRESS);
         assertThat(work.force()).isTrue();
@@ -38,7 +38,7 @@ class CliParserTest {
         assertThat(work.settings()).isEqualTo(CompressionSettings.defaults()
                 .withDistanceBits(9).withLengthBits(3).withEntropyCoding(EntropyCoding.BIT_ARRAY)
                 .withTripletCoding(TripletCoding.VALACH)
-                .withLengthFrequencies(5, 4));
+                .withLengthFrequencies(5, 4).withContextDepth(16));
     }
 
     @Test
@@ -56,6 +56,8 @@ class CliParserTest {
     void valuesNoStreamCanCarryAreUsageErrors() {
         assertThatThrownBy(() -> this.work("in", "out", "-d", "17")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-l", "x")).isInstanceOf(CliParser.UsageException.class);
+        assertThatThrownBy(() -> this.work("in", "out", "-cd", "256")).isInstanceOf(CliParser.UsageException.class);
+        assertThatThrownBy(() -> this.work("in", "out", "-cd", "0")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-af", "3,0")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-tc", "nonsense"))
                 .isInstanceOf(CliParser.UsageException.class);

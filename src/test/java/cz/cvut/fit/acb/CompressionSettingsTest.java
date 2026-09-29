@@ -31,6 +31,14 @@ class CompressionSettingsTest {
         assertThatThrownBy(() -> defaults.withLengthBits(bits)).isInstanceOf(IllegalArgumentException.class);
     }
 
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1, CompressionSettings.MAX_CONTEXT_DEPTH + 1})
+    void aContextDepthOutsideWhatTheHeaderStoresIsRejected(int depth) {
+        assertThatThrownBy(() -> CompressionSettings.defaults().withContextDepth(depth))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {1, 7, 12, CompressionSettings.MAX_FIELD_BITS})
     void everyLengthWidthAcceptsTheFlatStartOfItsModel(int bits) {

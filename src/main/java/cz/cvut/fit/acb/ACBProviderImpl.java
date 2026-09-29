@@ -22,13 +22,17 @@ public final class ACBProviderImpl implements ACBProvider {
 
     @Override
     public EncoderDictionary encoderDictionary(SegmentBuffer segment) {
-        return new IndexedEncoderDictionary(new ChunkedContextIndex(ContextOrder.byLastBytes(segment)), segment,
-                this.settings.maxDistance(), this.settings.maxLength());
+        return new IndexedEncoderDictionary(this.indexOver(segment), segment, this.settings.maxDistance(),
+                this.settings.maxLength());
     }
 
     @Override
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
-        return new IndexedDecoderDictionary(new ChunkedContextIndex(ContextOrder.byLastBytes(segment)));
+        return new IndexedDecoderDictionary(this.indexOver(segment));
+    }
+
+    private ChunkedContextIndex indexOver(SegmentBuffer segment) {
+        return new ChunkedContextIndex(ContextOrder.byLastBytes(segment, this.settings.contextDepth()));
     }
 
     @Override

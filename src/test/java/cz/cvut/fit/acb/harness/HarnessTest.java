@@ -31,9 +31,9 @@ class HarnessTest {
                 new PrintStream(captured, true, StandardCharsets.UTF_8));
 
         assertThat(rows).extracting(RatioHarness.Row::label).containsExactly(
-                "simple d=6 l=4 arith", "simple d=6 l=7 arith", "valach d=6 l=4 arith", "valach d=6 l=7 arith");
+                "simple d=6 l=4 c=10 arith", "simple d=6 l=7 c=10 arith", "valach d=6 l=4 c=10 arith", "valach d=6 l=7 c=10 arith");
         assertThat(rows).allSatisfy(row -> assertThat(row.inputBytes()).isEqualTo(44));
-        assertThat(captured.toString(StandardCharsets.UTF_8)).contains("2 files, 44 bytes", "valach d=6 l=7 arith");
+        assertThat(captured.toString(StandardCharsets.UTF_8)).contains("2 files, 44 bytes", "valach d=6 l=7 c=10 arith");
     }
 
     @Test

@@ -20,13 +20,14 @@ class ContainerFormatTest {
 
     private static final int SEGMENT_SIZE = 1000;
     private static final StreamHeader HEADER = new StreamHeader(6, 4, TripletCoding.VALACH, EntropyCoding.BIT_ARRAY,
-            LengthFrequencies.of(45, 13, 10), SEGMENT_SIZE);
+            LengthFrequencies.of(45, 13, 10), SEGMENT_SIZE, 10);
     private static final List<Block> BLOCKS = List.of(Block.coded(7, new byte[]{1, 2, 3}),
             Block.stored(new byte[]{-1, 1, -128}), Block.coded(3, new byte[0]));
 
     /** Where the fields of {@link #HEADER} and the first block sit in an encoded stream. */
-    private static final int SEGMENT_SIZE_OFFSET = 8;
-    private static final int FIRST_FREQUENCY_OFFSET = 16;
+    private static final int CONTEXT_DEPTH_OFFSET = 8;
+    private static final int SEGMENT_SIZE_OFFSET = 9;
+    private static final int FIRST_FREQUENCY_OFFSET = 17;
     private static final int BLOCK_COUNT_OFFSET = FIRST_FREQUENCY_OFFSET + 3 * Integer.BYTES;
     private static final int FIRST_BLOCK_OFFSET = BLOCK_COUNT_OFFSET + Integer.BYTES;
 
@@ -35,7 +36,7 @@ class ContainerFormatTest {
     void aStreamDecodesToTheHeaderAndBlocksItWasEncodedFrom(TripletCoding tripletCoding)
             throws MalformedStreamException {
         StreamHeader header = new StreamHeader(9, 3, tripletCoding, EntropyCoding.ADAPTIVE_ARITHMETIC,
-                LengthFrequencies.of(2, 1), SEGMENT_SIZE);
+                LengthFrequencies.of(2, 1), SEGMENT_SIZE, 200);
 
         CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(header, BLOCKS)));
 
@@ -158,6 +159,15 @@ class ContainerFormatTest {
     }
 
     @Test
+    void aContextDepthOfZeroIsRejected() {
+        byte[] encoded = encoded();
+        encoded[CONTEXT_DEPTH_OFFSET] = 0;
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("context depth");
+    }
+
+    @Test
     void aSegmentSizeOfZeroIsRejected() {
         byte[] encoded = encoded();
         ByteBuffer.wrap(encoded).putInt(SEGMENT_SIZE_OFFSET, 0);
@@ -178,7 +188,7 @@ class ContainerFormatTest {
     @Test
     void moreLengthFrequenciesThanTheLengthAlphabetHasSymbolsAreRejected() {
         StreamHeader narrow = new StreamHeader(6, 1, TripletCoding.VALACH, EntropyCoding.ADAPTIVE_ARITHMETIC,
-                LengthFrequencies.of(1, 1, 1), SEGMENT_SIZE);
+                LengthFrequencies.of(1, 1, 1), SEGMENT_SIZE, 10);
         byte[] encoded = ContainerFormat.encode(new CompressedStream(narrow, BLOCKS));
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))

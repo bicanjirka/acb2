@@ -19,7 +19,7 @@ import java.util.zip.CRC32;
  * The on-disk layout of one compressed stream, big-endian:
  * <pre>
  * "ACB"  version:u8
- * distanceBits:u8  lengthBits:u8  tripletCoding:u8  entropyCoding:u8  segmentSize:i32
+ * distanceBits:u8  lengthBits:u8  tripletCoding:u8  entropyCoding:u8  contextDepth:u8  segmentSize:i32
  * frequencyCount:i32  frequency:i32 * frequencyCount
  * blockCount:i32  block * blockCount
  * crc32 of everything above:i32
@@ -30,9 +30,12 @@ import java.util.zip.CRC32;
  * 1  rawLength:i32  codedLength:i32  bytes    the segment coded
  * </pre>
  * with a length of 1 to {@code segmentSize}. Every block is coded on its own: the dictionary and the
- * entropy models start empty in each, so blocks depend on nothing before them. Coder codes are fixed
+ * entropy models start empty in each, so blocks depend on nothing before them. The dictionary orders
+ * its entries by the last {@code contextDepth} bytes before each position, as unsigned bytes read
+ * from the nearest back, and by position when those are equal; that order decides every rank a
+ * triplet names, so it is part of the format. Coder codes are fixed
  * by {@link TripletCoding#formatCode()} and {@link EntropyCoding#formatCode()}. Any change to this
- * layout, to those codes, or to how a coder lays out triplets bumps {@link #VERSION}.
+ * layout, to those codes, to the order, or to how a coder lays out triplets bumps {@link #VERSION}.
  */
 public final class ContainerFormat {
 
@@ -58,6 +61,7 @@ public final class ContainerFormat {
             out.writeByte(header.lengthBits());
             out.writeByte(header.tripletCoding().formatCode());
             out.writeByte(header.entropyCoding().formatCode());
+            out.writeByte(header.contextDepth());
             out.writeInt(header.segmentSize());
             int[] frequencies = header.lengthFrequencies().toArray();
             out.writeInt(frequencies.length);
@@ -111,6 +115,10 @@ public final class ContainerFormat {
                     .orElseThrow(() -> new MalformedStreamException("Unknown triplet coding code " + tripletCode));
             EntropyCoding entropyCoding = EntropyCoding.byFormatCode(entropyCode)
                     .orElseThrow(() -> new MalformedStreamException("Unknown entropy coding code " + entropyCode));
+            int contextDepth = Byte.toUnsignedInt(in.get());
+            if (contextDepth < 1) {
+                throw new MalformedStreamException("Invalid context depth " + contextDepth);
+            }
             int segmentSize = in.getInt();
             if (segmentSize < 1) {
                 throw new MalformedStreamException("Invalid segment size " + segmentSize);
@@ -140,7 +148,7 @@ public final class ContainerFormat {
             }
             return new CompressedStream(
                     new StreamHeader(distanceBits, lengthBits, tripletCoding, entropyCoding, frequencies,
-                            segmentSize), blocks);
+                            segmentSize, contextDepth), blocks);
         } catch (BufferUnderflowException e) {
             throw new MalformedStreamException("ACB stream ends inside its blocks");
         }

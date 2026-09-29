@@ -28,18 +28,21 @@ segment, where `idx` is the position coding continues from. A step that codes `n
 positions `idx .. idx+n-1`, whether or not it carries a literal. Each segment starts with an
 empty dictionary.
 
-**2.2 Order.** Entries are ordered by context, compared right to left over at most the last 10
-bytes. Entries `p` and `q` compare `s[p-k]` with `s[q-k]` for `k = 1 .. min(p, q, 10)`; the first
-difference decides, as **signed** bytes. If none differs, the smaller position sorts first. So a
-context that runs out of bytes sorts before every longer one it is a prefix of, and among equal
-contexts the latest position has the highest rank.
+**2.2 Order.** Entries are ordered by context, compared right to left over at most the last `C`
+bytes, where `C` is the context depth (`CompressionSettings.contextDepth`, default 10, stored in
+the stream header). Entries `p` and `q` compare `s[p-k]` with `s[q-k]` for `k = 1 .. min(p, q, C)`;
+the first difference decides, as **unsigned** bytes. If none differs, the smaller position sorts
+first. So a context that runs out of bytes sorts before every longer one it is a prefix of, and
+among equal contexts the latest position has the highest rank.
 
 Everything in this order reads only bytes before the position, so the decoder rebuilds the same
 dictionary from the bytes it has decoded.
 
 **2.3 Deviations.**
-- The depth of 10 bytes and the signed comparison are fixed constants, not part of the stream.
-  The thesis compares the whole context, and every source assumes unsigned bytes.
+- The order looks at `C` bytes of context where the thesis compares the whole context. Over
+  Calgary (`valach`, `d = 6`, `l = 7`) a depth beyond 8 changes the size by under 0.1%: 976,600
+  bytes at 8, 976,751 at 10, 976,364 at 255, while decompression slows by a third. With a wider
+  window (`d = 10`, `l = 6`) it is 960,171 at 8 and 959,289 at 255. The default stays at 10.
 
 ## 3. Searching
 

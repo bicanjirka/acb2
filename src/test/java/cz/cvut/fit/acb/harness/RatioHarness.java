@@ -15,6 +15,7 @@ import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -32,7 +33,7 @@ import java.util.stream.Stream;
  * </pre>
  *
  * (Use {@code :} instead of {@code ;} outside Windows.) Keys: {@code coders} (default all
- * coders), {@code d} (default 6), {@code l} (default 4,7), {@code entropy} ({@code arith}, {@code bits};
+ * coders), {@code d} (default 6), {@code l} (default 4,7), {@code depth} (default 10), {@code entropy} ({@code arith}, {@code bits};
  * default arith).
  */
 public final class RatioHarness {
@@ -59,7 +60,7 @@ public final class RatioHarness {
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            System.err.println("usage: RatioHarness DIR [coders=a,b] [d=6,10] [l=4,7] [entropy=arith,bits]");
+            System.err.println("usage: RatioHarness DIR [coders=a,b] [d=6,10] [l=4,7] [depth=10] [entropy=arith,bits]");
             System.exit(2);
         }
         run(Path.of(args[0]), Arrays.copyOfRange(args, 1, args.length), System.out);
@@ -73,7 +74,7 @@ public final class RatioHarness {
             measure(combinations.getFirst(), List.of(smallest(files)));
         }
         out.printf(Locale.ROOT, "%s: %d files, %,d bytes%n%n", corpus, files.size(), total);
-        out.printf(Locale.ROOT, "%-30s %11s %6s %9s %8s %10s %10s %10s %10s%n", "settings", "bytes", "bpc",
+        out.printf(Locale.ROOT, "%-36s %11s %6s %9s %8s %10s %10s %10s %10s%n", "settings", "bytes", "bpc",
                 "comp MB/s", "dec MB/s", "flag B", "distance B", "length B", "literal B");
         List<Row> rows = combinations.stream().map(settings -> {
             Row row = measure(settings, files);
@@ -116,8 +117,9 @@ public final class RatioHarness {
     }
 
     static String describe(CompressionSettings settings) {
-        return String.format(Locale.ROOT, "%s d=%d l=%d %s", settings.tripletCoding().name().toLowerCase(Locale.ROOT),
-                settings.distanceBits(), settings.lengthBits(),
+        return String.format(Locale.ROOT, "%s d=%d l=%d c=%d %s",
+                settings.tripletCoding().name().toLowerCase(Locale.ROOT),
+                settings.distanceBits(), settings.lengthBits(), settings.contextDepth(),
                 settings.entropyCoding() == EntropyCoding.BIT_ARRAY ? "bits" : "arith");
     }
 
@@ -134,7 +136,7 @@ public final class RatioHarness {
     }
 
     private static String format(Row row) {
-        return String.format(Locale.ROOT, "%-30s %,11d %6.2f %9.2f %8.2f %,10d %,10d %,10d %,10d", row.label(),
+        return String.format(Locale.ROOT, "%-36s %,11d %6.2f %9.2f %8.2f %,10d %,10d %,10d %,10d", row.label(),
                 row.outputBytes(), row.bitsPerCharacter(), row.compressMegabytesPerSecond(),
                 row.decompressMegabytesPerSecond(), bytesOf(row, TripletFieldKind.FLAG),
                 bytesOf(row, TripletFieldKind.DISTANCE), bytesOf(row, TripletFieldKind.LENGTH),
@@ -153,6 +155,7 @@ public final class RatioHarness {
         List<TripletCoding> coders = Arrays.asList(TripletCoding.values());
         int[] distances = {6};
         int[] lengths = {4, 7};
+        int[] depths = {CompressionSettings.defaults().contextDepth()};
         List<EntropyCoding> entropies = List.of(EntropyCoding.ADAPTIVE_ARITHMETIC);
         for (String option : options) {
             String[] keyValue = option.split("=", 2);
@@ -165,6 +168,7 @@ public final class RatioHarness {
                         .map(value -> TripletCoding.valueOf(value.toUpperCase(Locale.ROOT))).toList();
                 case "d" -> distances = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
                 case "l" -> lengths = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
+                case "depth" -> depths = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
                 case "entropy" -> entropies = Arrays.stream(values)
                         .map(value -> value.equals("bits") ? EntropyCoding.BIT_ARRAY
                                 : EntropyCoding.ADAPTIVE_ARITHMETIC)
@@ -172,14 +176,21 @@ public final class RatioHarness {
                 default -> throw new IllegalArgumentException("Unknown key " + keyValue[0]);
             }
         }
-        List<TripletCoding> selected = coders;
-        int[] selectedDistances = distances;
-        int[] selectedLengths = lengths;
-        return entropies.stream().flatMap(entropy -> selected.stream()
-                .flatMap(coder -> Arrays.stream(selectedDistances).boxed()
-                        .flatMap(d -> Arrays.stream(selectedLengths).mapToObj(l -> CompressionSettings.defaults()
-                                .withTripletCoding(coder).withEntropyCoding(entropy)
-                                .withDistanceBits(d).withLengthBits(l)))));
+        List<CompressionSettings> combinations = new ArrayList<>();
+        for (EntropyCoding entropy : entropies) {
+            for (TripletCoding coder : coders) {
+                for (int distance : distances) {
+                    for (int length : lengths) {
+                        for (int depth : depths) {
+                            combinations.add(CompressionSettings.defaults().withTripletCoding(coder)
+                                    .withEntropyCoding(entropy).withDistanceBits(distance).withLengthBits(length)
+                                    .withContextDepth(depth));
+                        }
+                    }
+                }
+            }
+        }
+        return combinations.stream();
     }
 
     private static List<byte[]> read(Path corpus) throws IOException {

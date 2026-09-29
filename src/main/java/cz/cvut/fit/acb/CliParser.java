@@ -63,6 +63,13 @@ final class CliParser {
                         + ", used for length triplet element (default is 7)\n"
                         + "maximal length is 2^(N)-1")
                 .build());
+        this.options.addOption(Option.builder("cd")
+                .longOpt("context-depth")
+                .hasArg()
+                .argName("N")
+                .desc("N bytes, 1 to " + CompressionSettings.MAX_CONTEXT_DEPTH
+                        + ", of the context before a position decide where it sorts in the dictionary (default is 10)")
+                .build());
         this.options.addOption(Option.builder("m")
                 .longOpt("measure")
                 .optionalArg(true)
@@ -131,6 +138,9 @@ final class CliParser {
         }
         if (cmd.hasOption("l")) {
             settings = settings.withLengthBits(parseInt(cmd.getOptionValue("l"), "length"));
+        }
+        if (cmd.hasOption("cd")) {
+            settings = settings.withContextDepth(parseInt(cmd.getOptionValue("cd"), "context depth"));
         }
         if (cmd.hasOption("bs")) {
             settings = settings.withEntropyCoding(EntropyCoding.BIT_ARRAY);

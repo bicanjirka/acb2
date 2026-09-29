@@ -8,11 +8,10 @@ The goal: a clean, fast, well-tested ACB compressor whose every coder is exactly
 it is named after, plus a faithful implementation of Buyanovsky's own associative coder, which
 is where the compression ratio is. Phases run in order; each is committed on its own, stays
 green, and is measured with the ratio and performance harnesses before and after. The cheap phases come
-first so the big refactors (phases 5 and 7) land on a tested, measured, fast base.
+first so the big refactor (phase 7) lands on a tested, measured, fast base.
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 5 | Encoder/decoder symmetry refactor and container v2 | large | `VERSION` 3 |
 | 6 | Thesis coders made faithful: context reference, LCP, literal model | medium | `VERSION` 4 |
 | 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
 | 8 | Parallel segments and streaming I/O | medium | no |
@@ -20,12 +19,11 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-29: research, planning and phases 0 to 4 are finished, and phase 5 is under way:
-the shared update rule, the split dictionary and field interfaces, the block format and the
-stored fallback are done, and the two entries left in phase 5 are below. The user asked for phases
-5, 6, 7 and 9 in that order, phase 8 left for later. Do not redo the research below; its numbers
-are final unless the code changes. Measure ratio and speed with the harnesses; their Javadoc in
-`src/test/java/cz/cvut/fit/acb/harness` says how to run them.
+State on 2026-09-29: research, planning and phases 0 to 5 are finished. The user's order for the
+rest is phases 6, 7 and 9, with phase 8 (large) left for later. Start with phase 6, first entry.
+Do not redo the research below; its numbers are final unless the code changes. Measure ratio and
+speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness` says how to run
+them.
 
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD). Coders follow their
   source on what defines the algorithm (fields, layout, context and content rules);
@@ -141,25 +139,7 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
 
 - **Throughput.** Before phase 3: about 0.45 MB/s compressing and 0.8 MB/s decompressing at the
   defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s;
-  after the block format of phase 5: 1.8 and 4.1.
-
-## Phase 5: encoder/decoder symmetry and container v2
-
-The big refactor, on a tested and measured base. Container changes are batched into one
-`VERSION` bump.
-
-### Constants the decoder depends on are not part of the format
-
-`ContextOrder.DEPTH = 10` sorts contexts by their last 10 bytes only, compared as signed bytes.
-That decides the ranks, so changing it silently breaks every existing file, yet it is neither in
-the header nor tied to `ContainerFormat.VERSION`.
-
-- **Where:** `dictionary.ContextOrder`, `ACBProviderImpl`, `format.ContainerFormat`,
-  `format.StreamHeader`, `CompressionSettings`.
-- **Approach:** make the context depth a setting stored in the header and compare unsigned (the
-  byte order every source assumes, and the one "lexicographically smaller" in the LCP
-  specification means). Measure what a longer depth does to ratio and speed; ACB treats it as the
-  main control.
+  after the block format of phase 5: 1.7 and 3.5.
 
 ## Phase 6: thesis coders made faithful
 

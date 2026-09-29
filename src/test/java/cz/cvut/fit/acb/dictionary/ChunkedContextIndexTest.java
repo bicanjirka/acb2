@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ChunkedContextIndexTest {
 
+    private static final int DEPTH = 10;
+
     private static byte[] textOfTwoLetters(int length) {
         byte[] text = new byte[length];
         Random random = new Random(20260928L);
@@ -20,13 +22,13 @@ class ChunkedContextIndexTest {
     }
 
     private static ChunkedContextIndex indexOver(int length) {
-        return new ChunkedContextIndex(ContextOrder.byLastBytes(SegmentBuffer.of(new byte[length])));
+        return new ChunkedContextIndex(ContextOrder.byLastBytes(SegmentBuffer.of(new byte[length]), DEPTH));
     }
 
     @Test
     void aTextThatFillsManyDefaultChunksInPositionOrderAgreesWithASortedList() {
         byte[] text = textOfTwoLetters(3_000);
-        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text));
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
         ChunkedContextIndex actual = new ChunkedContextIndex(order);
         SortedListContextIndex expected = new SortedListContextIndex(order);
 

@@ -11,13 +11,16 @@ import java.util.function.Consumer;
  */
 public record CompressionSettings(int distanceBits, int lengthBits, TripletCoding tripletCoding,
                                   EntropyCoding entropyCoding, LengthFrequencies lengthFrequencies,
-                                  int segmentSize) {
+                                  int segmentSize, int contextDepth) {
 
     /** Wider fields only inflate the range coder's model: 2^bits symbols each; 24 bits took 98% of a text. */
     public static final int MAX_FIELD_BITS = 16;
 
+    /** Bytes of context that decide the order of the dictionary; the header stores it as one byte. */
+    public static final int MAX_CONTEXT_DEPTH = 255;
+
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
-            EntropyCoding.ADAPTIVE_ARITHMETIC, LengthFrequencies.flat(), 1_000_000);
+            EntropyCoding.ADAPTIVE_ARITHMETIC, LengthFrequencies.flat(), 1_000_000, 10);
 
     public CompressionSettings {
         requireFieldBits("distance", distanceBits);
@@ -27,6 +30,10 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         Objects.requireNonNull(lengthFrequencies, "lengthFrequencies").requireFits(lengthAlphabetSize(lengthBits));
         if (segmentSize < 1) {
             throw new IllegalArgumentException("segment size must be greater than zero: " + segmentSize);
+        }
+        if (contextDepth < 1 || contextDepth > MAX_CONTEXT_DEPTH) {
+            throw new IllegalArgumentException("context depth must be between 1 and " + MAX_CONTEXT_DEPTH + ": "
+                    + contextDepth);
         }
     }
 
@@ -61,6 +68,10 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
 
     public CompressionSettings withLengthFrequencies(int... frequencies) {
         return this.withLengthFrequencies(LengthFrequencies.of(frequencies));
+    }
+
+    public CompressionSettings withContextDepth(int depth) {
+        return this.copy(draft -> draft.contextDepth = depth);
     }
 
     public CompressionSettings withSegmentSize(int size) {
@@ -99,6 +110,7 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         private EntropyCoding entropyCoding;
         private LengthFrequencies lengthFrequencies;
         private int segmentSize;
+        private int contextDepth;
 
         private Draft(CompressionSettings from) {
             this.distanceBits = from.distanceBits;
@@ -107,11 +119,12 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
             this.entropyCoding = from.entropyCoding;
             this.lengthFrequencies = from.lengthFrequencies;
             this.segmentSize = from.segmentSize;
+            this.contextDepth = from.contextDepth;
         }
 
         private CompressionSettings build() {
             return new CompressionSettings(this.distanceBits, this.lengthBits, this.tripletCoding,
-                    this.entropyCoding, this.lengthFrequencies, this.segmentSize);
+                    this.entropyCoding, this.lengthFrequencies, this.segmentSize, this.contextDepth);
         }
     }
 }
