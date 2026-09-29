@@ -12,18 +12,17 @@ first so the big refactor (phase 7) lands on a tested, measured, fast base.
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 6 | Thesis coders made faithful: context reference, LCP, literal model | medium | `VERSION` 4 |
 | 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
 | 8 | Parallel segments and streaming I/O | medium | no |
 | 9 | Documentation pass and final measurements | small | no |
 
 ## Handoff for the next session
 
-State on 2026-09-29: research, planning and phases 0 to 5 are finished. The user's order for the
-rest is phases 6, 7 and 9, with phase 8 (large) left for later. Start with phase 6, first entry.
-Do not redo the research below; its numbers are final unless the code changes. Measure ratio and
-speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness` says how to run
-them.
+State on 2026-09-29: research, planning and phases 0 to 6 are finished. The user asked for phase 6
+and then stopped there: phases 7 (large), 8 and 9 are open and none is started; do not begin one
+without being asked. Do not redo the research below; its numbers are final unless the code
+changes. Measure ratio and speed with the harnesses; their Javadoc in
+`src/test/java/cz/cvut/fit/acb/harness` says how to run them.
 
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD). Coders follow their
   source on what defines the algorithm (fields, layout, context and content rules);
@@ -141,7 +140,7 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
   defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s;
   after the block format of phase 5: 1.7 and 3.5.
 
-## Phase 6: thesis coders made faithful
+## Phase 7: Buyanovsky's associative coder
 
 ### Literals after a miss exclude nothing
 
@@ -156,23 +155,6 @@ for the order-0 model.
 - **Approach:** let the context carry a set of excluded bytes instead of one, filled from the
   window's candidates by both sides, and measure what it gains against what it costs in speed. The
   funnel forecast belongs to phase 7.
-
-### Fixed segments instead of an adaptive dictionary lifetime
-
-Each 1 MB segment starts from an empty dictionary, however well the old one was doing. ExCom
-keeps one dictionary up to 2^20 contexts, stops inserting when full, and clears it when the
-compression ratio degrades by 0.1% (checked every 512 bytes once 2^18 contexts are in).
-ExCom bases that decision on `bitsWritten()` in the encoder and `bitsRead()` in the decoder,
-which differ for an arithmetic coder (the decoder reads ahead), so its encoder and decoder can
-clear at different points. Do not copy that. `AC.C` instead replaces the weaker neighbour once
-its frame is full.
-
-- **Where:** `Compressor`, `CompressionSettings.segmentSize`, `dictionary`.
-- **Approach:** measure against a policy both sides compute from shared model state only (for
-  example the summed code length of coded symbols, not I/O bit counts), or keep fixed segments
-  if the gain is small: fixed segments are what make parallel compression possible.
-
-## Phase 7: Buyanovsky's associative coder
 
 ### Real ACB as a coder of its own
 

@@ -95,6 +95,14 @@ bytes against 990,403 with a shared model), 0.07% at 300 KB and 0.27% at 100 KB.
 itself. Random input therefore grows only by the few bytes of the container, where it grew by
 10.8% when every segment had to be coded.
 
+**4.5** Segments have a fixed size; the dictionary does not live on across them. Coding the whole
+of Calgary (3,141,622 bytes as one input, `valach`, `d = 6`, `l = 7`) as one segment takes
+985,709 bytes, against 988,224 at 1 MB segments (0.25% more) and 1,011,758 at 300 KB (2.6%). A
+dictionary lifetime that adapts, as ExCom's does, could therefore win back at most 0.25% at the
+default size, and would make blocks depend on each other, which the block format and parallel
+compression rule out. ExCom's own policy is not an option to copy either: it decides from the
+encoder's and the decoder's differing counts of bits, so the two sides can clear at different points.
+
 ## 5. The coders
 
 A triplet's fields are written in the order listed. `dist` is the stored distance: two's
