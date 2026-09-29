@@ -114,6 +114,11 @@ public final class DictionarySnapshots {
         }
 
         @Override
+        public int impliedLength(int idx, int distance) {
+            return this.delegate.impliedLength(idx, distance);
+        }
+
+        @Override
         public void update(int idx, int count) {
             this.delegate.update(idx, count);
             this.afterUpdate.accept(this.delegate);
@@ -143,6 +148,11 @@ public final class DictionarySnapshots {
         @Override
         public int contextRank(int idx) {
             return this.delegate.contextRank(idx);
+        }
+
+        @Override
+        public int impliedLength(int idx, int distance) throws MalformedStreamException {
+            return this.delegate.impliedLength(idx, distance);
         }
 
         @Override

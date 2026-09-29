@@ -152,20 +152,30 @@ which 3.5 lists.
 
 Source: thesis §3.3.1.
 
-The **best** content is the lexicographically smallest one among those with the maximal match
-length `M`. The **second** content is one that sorts below the best. `lcp` is the length of the
-common prefix of the best and the second content, and the triplet sends `M - lcp` instead of
-`M`, which is never zero for `M > 0` and lets `M` exceed `L`.
+Laid out as `simple`, with a different rule for the best content. The **best** content is the
+lexicographically smallest one among those with the maximal match length `M`, where a match is
+measured up to `4L` bytes (an implementation limit). The **second** content is one that sorts below
+the best. `lcp` is the length of the common prefix of the best and the second content, and the
+triplet sends `M' - lcp` instead of the match length, which is never zero for a match and lets a
+match exceed `L`: `M' = min(M, lcp + L)`, so the field is capped at `L` after subtracting, not before.
 
 Both sides must be able to compute `lcp` from what the decoder has. So contents are compared, and
-`lcp` is measured, only over bytes before the position being coded; a content cut short there
-sorts as smaller. The decoder knows only the best content: it takes the largest common prefix
-with it among the contents that sort below it, and does this only when `len > 0`. The `len`
-field is capped at `L` after subtracting, not before.
+`lcp` is measured, only over the bytes before the position being coded, as unsigned bytes; a
+content cut short there sorts before every longer content it is a prefix of. The decoder knows only
+the best content, so `lcp` is defined from it: the largest common prefix with the best content
+among all the candidates of the window that sort below it (none: 0). The encoder computes the same
+number, and does so for the best content whatever the text goes on to say, which the thesis's
+"second best by match length" would not allow. The decoder works `lcp` out only for a match, when
+`len > 0`. The step codes `M' + 1` bytes; 4.2 applies to `M'`, and a match that 4.2 would leave with
+no more than `lcp` bytes is written as a literal.
 
-Status: **not implemented.** The first version picked the second content by comparing against
-text the decoder does not have, so the two sides diverged; it was removed, and there is no
-`-tc lcp` until `TODO.md` closes the gap.
+Why `lcp < M`: a candidate below the best that shared `M` bytes with it would match the text for
+`M` bytes too, and so would have been chosen over the best.
+
+Deviations: all of 2.3 and 3.5, except that the nearest match no longer wins ties. Over Calgary the
+sizes are close to `simple`'s (`d = 6`: 994,471 against 991,407 at `l = 7`, 1,014,180 against
+1,016,907 at `l = 4`; `d = 10`, `l = 6`: 961,928 against 962,098), because the smallest content is
+often further from the context than the nearest one, and it costs about half the speed.
 
 ## 6. Worked examples
 

@@ -24,7 +24,8 @@ public final class SegmentDecoder {
     public void decode(SegmentBuffer segment, int length, FieldSource source) throws MalformedStreamException {
         SegmentState state = new SegmentState(this.dictionary);
         while (state.position() < length) {
-            Triplet triplet = this.layout.read(source);
+            int idx = state.position();
+            Triplet triplet = this.layout.read(source).with(distance -> this.dictionary.impliedLength(idx, distance));
             int overrun = state.position() + triplet.consumed() - length;
             if (overrun > 0) {
                 throw new MalformedStreamException("A triplet runs " + overrun + " bytes past the end of its segment");

@@ -7,6 +7,7 @@ import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.IndexedDecoderDictionary;
 import cz.cvut.fit.acb.dictionary.IndexedEncoderDictionary;
+import cz.cvut.fit.acb.dictionary.SearchWindow;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.MalformedStreamException;
@@ -22,14 +23,17 @@ public final class ACBProviderImpl implements ACBProvider {
 
     @Override
     public EncoderDictionary encoderDictionary(SegmentBuffer segment) {
-        return new IndexedEncoderDictionary(this.indexOver(segment), segment, this.settings.contextDepth(),
-                this.settings.maxDistance(),
-                this.settings.maxLength());
+        return new IndexedEncoderDictionary(this.indexOver(segment), segment, this.window());
     }
 
     @Override
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
-        return new IndexedDecoderDictionary(this.indexOver(segment), segment, this.settings.contextDepth());
+        return new IndexedDecoderDictionary(this.indexOver(segment), segment, this.window());
+    }
+
+    private SearchWindow window() {
+        return new SearchWindow(this.settings.contextDepth(), this.settings.maxDistance(), this.settings.maxLength(),
+                this.settings.tripletCoding().matchRule());
     }
 
     private ChunkedContextIndex indexOver(SegmentBuffer segment) {

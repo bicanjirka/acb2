@@ -44,6 +44,8 @@ class RatioRegressionTest {
                 new Pin("text", text, TripletCoding.SIMPLE, bits, 24_628),
                 new Pin("text", text, TripletCoding.VALACH, arith, 15_426),
                 new Pin("text", text, TripletCoding.VALACH, bits, 24_328),
+                new Pin("text", text, TripletCoding.LCP, arith, 16_198),
+                new Pin("text", text, TripletCoding.LCP, bits, 24_628),
                 new Pin("binary", binary, TripletCoding.SALOMON, arith, 26_063),
                 new Pin("binary", binary, TripletCoding.SALOMON, bits, 30_030),
                 new Pin("binary", binary, TripletCoding.SALOMON2, arith, 25_971),
@@ -51,6 +53,8 @@ class RatioRegressionTest {
                 new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_692),
                 new Pin("binary", binary, TripletCoding.SIMPLE, bits, 30_030),
                 new Pin("binary", binary, TripletCoding.VALACH, arith, 25_973),
+                new Pin("binary", binary, TripletCoding.LCP, arith, 27_689),
+                new Pin("binary", binary, TripletCoding.LCP, bits, 30_030),
                 new Pin("binary", binary, TripletCoding.VALACH, bits, 30_030));
     }
 

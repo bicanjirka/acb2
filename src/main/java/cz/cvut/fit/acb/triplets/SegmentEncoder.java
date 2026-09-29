@@ -23,7 +23,7 @@ public final class SegmentEncoder {
         while (state.position() < segment.length()) {
             int idx = state.position();
             Triplet triplet = this.parser.parse(segment, idx, this.dictionary.search(idx));
-            this.layout.write(triplet, sink);
+            this.layout.write(triplet.without(distance -> this.dictionary.impliedLength(idx, distance)), sink);
             state.apply(triplet);
             triplets++;
         }

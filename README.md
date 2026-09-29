@@ -42,7 +42,7 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
 | `-f`, `--force` | Overwrite output files that already exist | refuse |
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
 | `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
-| `-tc C`, `--triplet-coder C` | Triplet layout: `simple`, `salomon`, `salomon2`, `valach` | `valach` |
+| `-tc C`, `--triplet-coder C` | Triplet coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp` | `valach` |
 | `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
@@ -58,6 +58,7 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
   `(distance, length, next byte)`.
 - **valach**: no flag. Length 0 means `(literal)`; otherwise it writes
   `(length, distance, next byte)`.
+- **lcp**: laid out as `simple`, but the best match is the lexicographically smallest of the longest ones, and the length sent is the match length less the prefix it shares with the contents below it, which the decoder works out itself.
 
 ## Development
 

@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.dictionary.MatchRule;
 import cz.cvut.fit.acb.triplets.TripletLayout;
 import cz.cvut.fit.acb.triplets.TripletParser;
 import cz.cvut.fit.acb.triplets.coder.BareMatchParser;
@@ -19,10 +20,11 @@ import java.util.Optional;
  */
 public enum TripletCoding {
 
-    SIMPLE(0, SimpleTripletLayout::new, new LiteralAfterMatchParser()),
-    SALOMON(1, SalomonTripletLayout::bare, new BareMatchParser()),
-    SALOMON2(2, SalomonTripletLayout::withLiteral, new LiteralAfterMatchParser()),
-    VALACH(3, ValachTripletLayout::new, new LiteralAfterMatchParser());
+    SIMPLE(0, SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST),
+    SALOMON(1, SalomonTripletLayout::bare, new BareMatchParser(), MatchRule.NEAREST),
+    SALOMON2(2, SalomonTripletLayout::withLiteral, new LiteralAfterMatchParser(), MatchRule.NEAREST),
+    VALACH(3, ValachTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST),
+    LCP(4, SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.SMALLEST_WITH_LCP);
 
     /** Makes the layout of a coder for the given field widths. */
     @FunctionalInterface
@@ -33,11 +35,13 @@ public enum TripletCoding {
     private final int formatCode;
     private final LayoutFactory layouts;
     private final TripletParser parser;
+    private final MatchRule matchRule;
 
-    TripletCoding(int formatCode, LayoutFactory layouts, TripletParser parser) {
+    TripletCoding(int formatCode, LayoutFactory layouts, TripletParser parser, MatchRule matchRule) {
         this.formatCode = formatCode;
         this.layouts = layouts;
         this.parser = parser;
+        this.matchRule = matchRule;
     }
 
     /** The code the container format stores for this coder. */
@@ -56,5 +60,10 @@ public enum TripletCoding {
     /** The parser of the encoder; it holds no state, so one serves every stream. */
     public TripletParser parser() {
         return this.parser;
+    }
+
+    /** Which candidate of the search window is the best match, and what of its length the decoder works out. */
+    public MatchRule matchRule() {
+        return this.matchRule;
     }
 }
