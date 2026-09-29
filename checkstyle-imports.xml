@@ -17,6 +17,9 @@
         <allow pkg="org.apache.commons.cli"/>
         <allow pkg="java.nio.file"/>
     </file>
+    <file name="CliOptions">
+        <allow pkg="org.apache.commons.cli"/>
+    </file>
     <file name="CliRequest">
         <allow pkg="java.nio.file"/>
     </file>

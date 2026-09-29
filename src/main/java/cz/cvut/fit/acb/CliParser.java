@@ -3,7 +3,6 @@ package cz.cvut.fit.acb;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.Level;
@@ -31,73 +30,10 @@ final class CliParser {
         }
     }
 
-    private final Options options = new Options();
+    private final Options options;
 
     CliParser() {
-        this.options.addOption("de", "decompress", false,
-                "decompress input (default is to compress); coding settings are read from the file, so the coding options do not apply");
-        this.options.addOption("h", "help", false, "print this help");
-        this.options.addOption("f", "force", false, "overwrite output files that already exist");
-        this.options.addOption("bs", "bit-stream-array", false,
-                "no coding is used for triplets (default is adaptive range coding)");
-        this.options.addOption(Option.builder("log")
-                .longOpt("log-level")
-                .hasArg()
-                .argName("level")
-                .desc("sets logging level of the application (default is warn)\n"
-                        + "values = " + Arrays.toString(Level.values()))
-                .build());
-        this.options.addOption(Option.builder("d")
-                .longOpt("distance")
-                .hasArg()
-                .argName("N")
-                .desc("N bits, 1 to " + CompressionSettings.MAX_FIELD_BITS
-                        + ", used for distance triplet element (default is 6)\n"
-                        + "maximal context-content distance is 2^(N - 1)")
-                .build());
-        this.options.addOption(Option.builder("l")
-                .longOpt("length")
-                .hasArg()
-                .argName("N")
-                .desc("N bits, 1 to " + CompressionSettings.MAX_FIELD_BITS
-                        + ", used for length triplet element (default is 7)\n"
-                        + "maximal length is 2^(N)-1")
-                .build());
-        this.options.addOption(Option.builder("cd")
-                .longOpt("context-depth")
-                .hasArg()
-                .argName("N")
-                .desc("N bytes, 1 to " + CompressionSettings.MAX_CONTEXT_DEPTH
-                        + ", of the context before a position decide where it sorts in the dictionary (default is 10)")
-                .build());
-        this.options.addOption(Option.builder("ec")
-                .longOpt("entropy-coder")
-                .hasArg()
-                .argName("coder")
-                .desc("<coder> turns triplet fields into bytes (default is ADAPTIVE_ARITHMETIC)\n"
-                        + "CONTEXT_ARITHMETIC codes literals better than the coders define them\n"
-                        + "values = " + Arrays.toString(EntropyCoding.values()))
-                .build());
-        this.options.addOption(Option.builder("m")
-                .longOpt("measure")
-                .optionalArg(true)
-                .argName("out")
-                .desc("measured program process data printed to file <out> or to standard output if no file specified")
-                .build());
-        this.options.addOption(Option.builder("af")
-                .longOpt("arith-freq")
-                .hasArg()
-                .argName("freq")
-                .desc("<freq> is comma separated array of positive integers defining init values of the range "
-                        + "coding frequency table for lengths (default is all 1; symbols past the list start at 1; each coded length adds 32)")
-                .build());
-        this.options.addOption(Option.builder("tc")
-                .longOpt("triplet-coder")
-                .hasArg()
-                .argName("coder")
-                .desc("<coder> represents triplet coding strategy (default is valach)\n"
-                        + "values = " + Arrays.toString(TripletCoding.values()))
-                .build());
+        this.options = CliOptions.all();
     }
 
     CliRequest parse(String[] args) throws UsageException {
