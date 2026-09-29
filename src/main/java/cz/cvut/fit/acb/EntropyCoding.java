@@ -2,6 +2,8 @@ package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.BitArrayReader;
 import cz.cvut.fit.acb.coding.BitArrayWriter;
+import cz.cvut.fit.acb.coding.ContextRangeTripletReader;
+import cz.cvut.fit.acb.coding.ContextRangeTripletWriter;
 import cz.cvut.fit.acb.coding.LengthFrequencies;
 import cz.cvut.fit.acb.coding.RangeTripletReader;
 import cz.cvut.fit.acb.coding.RangeTripletWriter;
@@ -19,7 +21,8 @@ import java.util.Optional;
 public enum EntropyCoding {
 
     ADAPTIVE_ARITHMETIC(0, RangeTripletWriter::new, RangeTripletReader::new),
-    BIT_ARRAY(1, frequencies -> new BitArrayWriter(), (block, frequencies) -> new BitArrayReader(block));
+    BIT_ARRAY(1, frequencies -> new BitArrayWriter(), (block, frequencies) -> new BitArrayReader(block)),
+    CONTEXT_ARITHMETIC(2, ContextRangeTripletWriter::new, ContextRangeTripletReader::new);
 
     /** Makes the writer of one block; only length fields use the starting frequencies. */
     @FunctionalInterface

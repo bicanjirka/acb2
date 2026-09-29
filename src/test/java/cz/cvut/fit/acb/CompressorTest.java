@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.fixtures.GeneratedInput;
 import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.ContainerFormat;
@@ -39,6 +40,19 @@ class CompressorTest {
 
         assertThat(stream.header()).isEqualTo(StreamHeader.of(settings));
     }
+
+    @Test
+    void modelledLiteralsMakeATextSmallerThanTheOrderZeroCoderDoes() {
+        byte[] text = GeneratedInput.text(60_000).bytes();
+        CompressionSettings orderZero = CompressionSettings.defaults();
+        CompressionSettings modelled = orderZero.withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC);
+
+        int plain = ContainerFormat.encode(new Compressor(orderZero).compress(text)).length;
+        int better = ContainerFormat.encode(new Compressor(modelled).compress(text)).length;
+
+        assertThat(better).isLessThan(plain);
+    }
+
 
     @Test
     void anEmptyInputHasNoBlocks() throws MalformedStreamException {

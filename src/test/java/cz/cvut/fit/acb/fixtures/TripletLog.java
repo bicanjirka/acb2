@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.coding.FieldCost;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.FieldSource;
+import cz.cvut.fit.acb.triplets.LiteralContext;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 
 import java.nio.ByteBuffer;
@@ -51,6 +52,17 @@ public final class TripletLog {
         }
 
         @Override
+        public boolean wantsLiteralContext() {
+            return this.delegate.wantsLiteralContext();
+        }
+
+        @Override
+        public void write(TripletFieldId field, int value, LiteralContext context) {
+            this.fields.add(RecordedField.of(field, value));
+            this.delegate.write(field, value, context);
+        }
+
+        @Override
         public byte[] finish() {
             byte[] block = this.delegate.finish();
             TripletLog.this.blocks.put(ByteBuffer.wrap(block.clone()), List.copyOf(this.fields));
@@ -76,7 +88,20 @@ public final class TripletLog {
 
         @Override
         public int read(TripletFieldId field) throws MalformedStreamException {
-            int value = this.delegate.read(field);
+            return this.check(field, this.delegate.read(field));
+        }
+
+        @Override
+        public boolean wantsLiteralContext() {
+            return this.delegate.wantsLiteralContext();
+        }
+
+        @Override
+        public int read(TripletFieldId field, LiteralContext context) throws MalformedStreamException {
+            return this.check(field, this.delegate.read(field, context));
+        }
+
+        private int check(TripletFieldId field, int value) {
             assertThat(this.next).as("the decoder reads no more fields than the encoder wrote")
                     .isLessThan(this.written.size());
             assertThat(RecordedField.of(field, value)).as("field %d of the block", this.next)

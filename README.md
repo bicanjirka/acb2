@@ -45,6 +45,7 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
 | `-tc C`, `--triplet-coder C` | Triplet coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp` | `valach` |
 | `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
+| `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and is about 4% smaller | `ADAPTIVE_ARITHMETIC` |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
 | `-log L`, `--log-level L` | Log4j level (`INFO`, `DEBUG`, `TRACE`, …) | `WARN` |

@@ -5,9 +5,6 @@ import cz.cvut.fit.acb.format.MalformedStreamException;
 /** An {@link EncoderDictionary} over a {@link ContextIndex}, searching a window of ranks around the context. */
 public final class IndexedEncoderDictionary extends ContextIndexDictionary implements EncoderDictionary {
 
-    /** Candidates are matched up to this many times the longest length a triplet carries. */
-    private static final int LCP_MATCH_FACTOR = 4;
-
     /**
      * {@code index} must order the positions of {@code segment}, which the dictionary reads but never
      * changes, by {@code window.contextDepth()} bytes of context.
@@ -22,6 +19,11 @@ public final class IndexedEncoderDictionary extends ContextIndexDictionary imple
             case NEAREST -> this.searchNearest(idx);
             case SMALLEST_WITH_LCP -> this.searchSmallest(idx);
         };
+    }
+
+    @Override
+    public int contextRank(int idx) {
+        return this.contextRankOf(idx);
     }
 
     @Override
@@ -83,7 +85,7 @@ public final class IndexedEncoderDictionary extends ContextIndexDictionary imple
         int bestLength = 0;
         int best = -1;
         for (int i = 0; i < positions.length; i++) {
-            int length = this.segment().commonLength(idx, positions[i], LCP_MATCH_FACTOR * maxLength);
+            int length = this.segment().commonLength(idx, positions[i], this.window().matchLimit());
             boolean longer = length > bestLength;
             boolean smaller = length == bestLength && length > 0
                     && this.lcp().compare(idx, positions[i], positions[best]) < 0;

@@ -248,3 +248,24 @@ arithmetic-coded; both are wrong.
 - **Symmetry.** `AC.C` at its default level (`Kc 2`) fails to decode some inputs, so its encoder
   and decoder disagree somewhere. Every model decision must be derived from state both sides
   share.
+
+## 8. Entropy coding of fields
+
+The fields of a block go through one range coder, in the order a layout writes them, and each
+field has an adaptive model of its own: every symbol counts 32 more each time it is coded, and the
+counts are halved when their total would pass a limit (`max(2^16, 256 * symbols)`, at most 2^20).
+The length field starts from the given `lengthFrequencies` and every other field flat. The models
+start empty in every block (4.3). The thesis and its sources fix none of this.
+
+`BIT_ARRAY` writes the fields at their full width instead, most significant bit first. It exists to
+measure what the range coder gains.
+
+`CONTEXT_ARITHMETIC` is a **variant**, not something a coder defines: a literal is coded against
+the model of the byte before it, and never as the byte the chosen content continues with when the
+match ended on a mismatch. A model for a byte is made when the byte is first seen, from the model of
+all literals with every count divided by 16 (8, 64 and 256 were all worse). The excluded byte is
+left out only when both sides can be sure the match ended on a mismatch: the length sent is below
+the longest a triplet carries, the match is below the longest one measured (`4L` for `lcp`), and
+the literal is not the last byte of the segment. Over Calgary (`valach`, `d = 6`, `l = 7`) it takes
+the literals from 408,864 to 368,471 bytes and the file from 974,670 to 934,267 (4.1%), and costs
+10% of the compression speed and 17% of the decompression speed.

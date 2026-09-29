@@ -109,6 +109,11 @@ public final class DictionarySnapshots {
         }
 
         @Override
+        public int contextRank(int idx) {
+            return this.delegate.contextRank(idx);
+        }
+
+        @Override
         public SearchResult search(int idx) {
             return this.delegate.search(idx);
         }

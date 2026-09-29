@@ -16,6 +16,11 @@ final class FieldQueue implements FieldSink, FieldSource {
     private final Deque<Field> fields = new ArrayDeque<>();
     private final List<Field> written = new ArrayList<>();
 
+    @Override
+    public boolean wantsLiteralContext() {
+        return false;
+    }
+
     /** Every field written so far, read or not. */
     List<Field> written() {
         return List.copyOf(this.written);

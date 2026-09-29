@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.dictionary.SearchWindow;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
@@ -69,7 +70,7 @@ public final class Compressor {
             SegmentBuffer buffer = SegmentBuffer.of(segment);
             TripletWriter writer = provider.writer();
             long triplets = new SegmentEncoder(provider.encoderDictionary(buffer),
-                    this.settings.tripletCoding().parser(), layout).encode(buffer, writer);
+                    this.settings.tripletCoding().parser(), layout, this.settings.searchWindow()).encode(buffer, writer);
             byte[] coded = writer.finish();
             blocks.add(provider.block(segment, coded));
             stats = stats.plus(new CompressionStats(segment.length, 1, triplets, writer.costs()));
@@ -95,18 +96,19 @@ public final class Compressor {
         for (Block block : stream.blocks()) {
             segments.accept(switch (block) {
                 case Block.Stored stored -> stored.bytes();
-                case Block.Coded coded -> decode(provider, layout, coded);
+                case Block.Coded coded -> decode(provider, layout, settings.searchWindow(), coded);
             });
             bytes += block.rawLength();
         }
         LOG.debug("Decompressed {} bytes", bytes);
     }
 
-    private static byte[] decode(ACBProvider provider, TripletLayout layout, Block.Coded block)
+    private static byte[] decode(ACBProvider provider, TripletLayout layout, SearchWindow window,
+                                 Block.Coded block)
             throws MalformedStreamException {
         SegmentBuffer segment = SegmentBuffer.empty();
         FieldSource source = provider.reader(block.bytes());
-        new SegmentDecoder(provider.decoderDictionary(segment), layout).decode(segment, block.rawLength(), source);
+        new SegmentDecoder(provider.decoderDictionary(segment), layout, window).decode(segment, block.rawLength(), source);
         return segment.toArray();
     }
 

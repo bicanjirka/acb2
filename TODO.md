@@ -143,19 +143,19 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
 
 ## Phase 6: thesis coders made faithful
 
-### Literals are coded order-0
+### Literals after a miss exclude nothing
 
-Every triplet ends in a literal coded by one order-0 model. On book1 an order-1 model would take
-the literals from 108 KB to about 94 KB, and order-2 to about 84 KB (a static, optimistic
-estimate). A literal after a match that stopped on a mismatch can never equal the byte the
-chosen content continues with, yet the model still reserves probability for it. `AC.C` codes
-book1's literals in 3.9 bits against 5.05 here, by exclusion and funnel forecast.
+`CONTEXT_ARITHMETIC` codes a literal against the model of the byte before it and leaves out the
+byte the chosen content continues with when the match ended on a mismatch. That took the Calgary
+literals from 408,864 to 368,471 bytes (`valach`, 4.1% of the file). A literal after no match at all
+can also never equal the first byte of any candidate of the window, and `AC.C` excludes every
+candidate that matched as long as the best one; it codes book1's literals in 3.9 bits against 5.05
+for the order-0 model.
 
-- **Where:** the literal field of each coder, `coding`.
-- **Approach:** exclude the byte the chosen content predicts (and, as in `AC.C`, the bytes of
-  every candidate that matched as long), and context the literal model on the previous byte
-  with a fallback while contexts are young. Named as a deviation for the thesis coders in
-  `docs/ALGORITHM.md` if kept on by default. Bumps `VERSION`.
+- **Where:** `triplets.LiteralTracker`, `triplets.LiteralContext`, `coding.LiteralModel`.
+- **Approach:** let the context carry a set of excluded bytes instead of one, filled from the
+  window's candidates by both sides, and measure what it gains against what it costs in speed. The
+  funnel forecast belongs to phase 7.
 
 ### Fixed segments instead of an adaptive dictionary lifetime
 

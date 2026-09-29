@@ -35,6 +35,7 @@ class RatioRegressionTest {
         Supplier<GeneratedInput> binary = () -> GeneratedInput.binary(30_000);
         EntropyCoding arith = EntropyCoding.ADAPTIVE_ARITHMETIC;
         EntropyCoding bits = EntropyCoding.BIT_ARRAY;
+        EntropyCoding context = EntropyCoding.CONTEXT_ARITHMETIC;
         return Stream.of(
                 new Pin("text", text, TripletCoding.SALOMON, arith, 17_192),
                 new Pin("text", text, TripletCoding.SALOMON, bits, 26_187),
@@ -44,6 +45,8 @@ class RatioRegressionTest {
                 new Pin("text", text, TripletCoding.SIMPLE, bits, 24_628),
                 new Pin("text", text, TripletCoding.VALACH, arith, 15_426),
                 new Pin("text", text, TripletCoding.VALACH, bits, 24_328),
+                new Pin("text", text, TripletCoding.VALACH, context, 15_349),
+                new Pin("text", text, TripletCoding.LCP, context, 16_110),
                 new Pin("text", text, TripletCoding.LCP, arith, 16_198),
                 new Pin("text", text, TripletCoding.LCP, bits, 24_628),
                 new Pin("binary", binary, TripletCoding.SALOMON, arith, 26_063),
@@ -53,6 +56,7 @@ class RatioRegressionTest {
                 new Pin("binary", binary, TripletCoding.SIMPLE, arith, 27_692),
                 new Pin("binary", binary, TripletCoding.SIMPLE, bits, 30_030),
                 new Pin("binary", binary, TripletCoding.VALACH, arith, 25_973),
+                new Pin("binary", binary, TripletCoding.VALACH, context, 27_659),
                 new Pin("binary", binary, TripletCoding.LCP, arith, 27_689),
                 new Pin("binary", binary, TripletCoding.LCP, bits, 30_030),
                 new Pin("binary", binary, TripletCoding.VALACH, bits, 30_030));

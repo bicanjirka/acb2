@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.triplets;
 
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
+import cz.cvut.fit.acb.dictionary.SearchWindow;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 
@@ -9,10 +10,12 @@ public final class SegmentDecoder {
 
     private final DecoderDictionary dictionary;
     private final TripletLayout layout;
+    private final SearchWindow window;
 
-    public SegmentDecoder(DecoderDictionary dictionary, TripletLayout layout) {
+    public SegmentDecoder(DecoderDictionary dictionary, TripletLayout layout, SearchWindow window) {
         this.dictionary = dictionary;
         this.layout = layout;
+        this.window = window;
     }
 
     /**
@@ -22,15 +25,19 @@ public final class SegmentDecoder {
      *                                  runs past the end of the segment
      */
     public void decode(SegmentBuffer segment, int length, FieldSource source) throws MalformedStreamException {
+        LiteralTracker tracker = new LiteralTracker(this.dictionary, segment, length, this.window.maxLength(),
+                this.window.matchLimit());
+        FieldSource fields = source.wantsLiteralContext() ? new LiteralContextSource(source, tracker) : source;
         SegmentState state = new SegmentState(this.dictionary);
         while (state.position() < length) {
             int idx = state.position();
-            Triplet triplet = this.layout.read(source).with(distance -> this.dictionary.impliedLength(idx, distance));
-            int overrun = state.position() + triplet.consumed() - length;
+            tracker.at(idx);
+            Triplet triplet = this.layout.read(fields).with(distance -> this.dictionary.impliedLength(idx, distance));
+            int overrun = idx + triplet.consumed() - length;
             if (overrun > 0) {
                 throw new MalformedStreamException("A triplet runs " + overrun + " bytes past the end of its segment");
             }
-            this.materialize(triplet, state.position(), segment);
+            this.materialize(triplet, idx, segment);
             state.apply(triplet);
         }
     }

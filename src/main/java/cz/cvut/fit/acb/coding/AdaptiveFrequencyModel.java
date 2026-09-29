@@ -74,6 +74,25 @@ public final class AdaptiveFrequencyModel {
         return position;
     }
 
+    /** The total of the frequencies without symbol {@code excluded}; nothing is left out if it is -1. */
+    public int totalWithout(int excluded) {
+        return excluded < 0 ? this.total : this.total - this.frequencies[excluded];
+    }
+
+    /** {@link #cumulative} in a model that leaves symbol {@code excluded} out; {@code symbol} is not that symbol. */
+    public int cumulativeWithout(int symbol, int excluded) {
+        int sum = this.cumulative(symbol);
+        return excluded >= 0 && symbol > excluded ? sum - this.frequencies[excluded] : sum;
+    }
+
+    /** {@link #symbolAt} in a model that leaves symbol {@code excluded} out. */
+    public int symbolAtWithout(int target, int excluded) {
+        if (excluded >= 0 && target >= this.cumulative(excluded)) {
+            return this.symbolAt(target + this.frequencies[excluded]);
+        }
+        return this.symbolAt(target);
+    }
+
     public void increment(int symbol) {
         if (this.total + INCREMENT > this.limit) {
             this.halve();

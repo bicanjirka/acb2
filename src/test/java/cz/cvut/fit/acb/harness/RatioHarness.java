@@ -33,7 +33,7 @@ import java.util.stream.Stream;
  * </pre>
  *
  * (Use {@code :} instead of {@code ;} outside Windows.) Keys: {@code coders} (default all
- * coders), {@code d} (default 6), {@code l} (default 4,7), {@code depth} (default 10), {@code entropy} ({@code arith}, {@code bits};
+ * coders), {@code d} (default 6), {@code l} (default 4,7), {@code depth} (default 10), {@code entropy} ({@code arith}, {@code bits}, {@code context};
  * default arith).
  */
 public final class RatioHarness {
@@ -60,7 +60,7 @@ public final class RatioHarness {
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            System.err.println("usage: RatioHarness DIR [coders=a,b] [d=6,10] [l=4,7] [depth=10] [entropy=arith,bits]");
+            System.err.println("usage: RatioHarness DIR [coders=a,b] [d=6,10] [l=4,7] [depth=10] [entropy=arith,bits,context]");
             System.exit(2);
         }
         run(Path.of(args[0]), Arrays.copyOfRange(args, 1, args.length), System.out);
@@ -120,7 +120,20 @@ public final class RatioHarness {
         return String.format(Locale.ROOT, "%s d=%d l=%d c=%d %s",
                 settings.tripletCoding().name().toLowerCase(Locale.ROOT),
                 settings.distanceBits(), settings.lengthBits(), settings.contextDepth(),
-                settings.entropyCoding() == EntropyCoding.BIT_ARRAY ? "bits" : "arith");
+                entropyName(settings.entropyCoding()));
+    }
+
+    private static String entropyName(EntropyCoding entropy) {
+        return switch (entropy) {
+            case ADAPTIVE_ARITHMETIC -> "arith";
+            case BIT_ARRAY -> "bits";
+            case CONTEXT_ARITHMETIC -> "context";
+        };
+    }
+
+    private static EntropyCoding entropyOf(String name) {
+        return Arrays.stream(EntropyCoding.values()).filter(entropy -> entropyName(entropy).equals(name))
+                .findFirst().orElseThrow(() -> new IllegalArgumentException("Unknown entropy " + name));
     }
 
     static double megabytesPerSecond(long bytes, long nanos) {
@@ -169,10 +182,7 @@ public final class RatioHarness {
                 case "d" -> distances = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
                 case "l" -> lengths = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
                 case "depth" -> depths = Arrays.stream(values).mapToInt(Integer::parseInt).toArray();
-                case "entropy" -> entropies = Arrays.stream(values)
-                        .map(value -> value.equals("bits") ? EntropyCoding.BIT_ARRAY
-                                : EntropyCoding.ADAPTIVE_ARITHMETIC)
-                        .toList();
+                case "entropy" -> entropies = Arrays.stream(values).map(RatioHarness::entropyOf).toList();
                 default -> throw new IllegalArgumentException("Unknown key " + keyValue[0]);
             }
         }

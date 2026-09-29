@@ -70,6 +70,14 @@ final class CliParser {
                 .desc("N bytes, 1 to " + CompressionSettings.MAX_CONTEXT_DEPTH
                         + ", of the context before a position decide where it sorts in the dictionary (default is 10)")
                 .build());
+        this.options.addOption(Option.builder("ec")
+                .longOpt("entropy-coder")
+                .hasArg()
+                .argName("coder")
+                .desc("<coder> turns triplet fields into bytes (default is ADAPTIVE_ARITHMETIC)\n"
+                        + "CONTEXT_ARITHMETIC codes literals better than the coders define them\n"
+                        + "values = " + Arrays.toString(EntropyCoding.values()))
+                .build());
         this.options.addOption(Option.builder("m")
                 .longOpt("measure")
                 .optionalArg(true)
@@ -141,6 +149,10 @@ final class CliParser {
         }
         if (cmd.hasOption("cd")) {
             settings = settings.withContextDepth(parseInt(cmd.getOptionValue("cd"), "context depth"));
+        }
+        if (cmd.hasOption("ec")) {
+            settings = settings.withEntropyCoding(
+                    parseEnum(EntropyCoding.class, cmd.getOptionValue("ec"), "entropy-coder"));
         }
         if (cmd.hasOption("bs")) {
             settings = settings.withEntropyCoding(EntropyCoding.BIT_ARRAY);

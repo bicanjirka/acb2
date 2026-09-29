@@ -16,4 +16,18 @@ public interface Dictionary {
      * @throws MalformedStreamException if the rank is not in the dictionary
      */
     int select(int rank) throws MalformedStreamException;
+
+    /**
+     * The rank of the neighbour of {@code idx} whose context agrees longer with it, or -1 if there
+     * is none; distances are counted from it.
+     */
+    int contextRank(int idx);
+
+    /**
+     * How many bytes of the length of the match {@code distance} ranks from the context of {@code idx}
+     * need not be sent, because both sides can work them out.
+     *
+     * @throws MalformedStreamException if the distance does not name an entry
+     */
+    int impliedLength(int idx, int distance) throws MalformedStreamException;
 }

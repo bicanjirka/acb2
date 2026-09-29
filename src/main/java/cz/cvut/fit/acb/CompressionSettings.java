@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.LengthFrequencies;
+import cz.cvut.fit.acb.dictionary.SearchWindow;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -86,6 +87,12 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
     /** Longest match a triplet can carry. */
     public int maxLength() {
         return (1 << this.lengthBits) - 1;
+    }
+
+    /** What the dictionaries and the literal contexts need of these settings. */
+    public SearchWindow searchWindow() {
+        return new SearchWindow(this.contextDepth, this.maxDistance(), this.maxLength(),
+                this.tripletCoding.matchRule());
     }
 
     private static void requireFieldBits(String field, int bits) {

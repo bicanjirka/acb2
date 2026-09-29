@@ -28,18 +28,24 @@ class CliParserTest {
 
     @Test
     void everyOptionLandsInTheRequest() throws CliParser.UsageException {
-        CliRequest.Work work = this.work("in", "out", "-de", "-f", "-d", "9", "-l", "3", "-bs", "-tc", "valach",
-                "-af", "5,4", "-cd", "16", "-log", "debug", "-m");
+        CliRequest.Work work = this.work("in", "out", "-de", "-f", "-d", "9", "-l", "3", "-tc", "valach",
+                "-af", "5,4", "-cd", "16", "-ec", "context_arithmetic", "-log", "debug", "-m");
 
         assertThat(work.mode()).isEqualTo(CliRequest.Mode.DECOMPRESS);
         assertThat(work.force()).isTrue();
         assertThat(work.logLevel()).isEqualTo(Optional.of(Level.DEBUG));
         assertThat(work.measure()).isEqualTo(CliRequest.Measure.console());
         assertThat(work.settings()).isEqualTo(CompressionSettings.defaults()
-                .withDistanceBits(9).withLengthBits(3).withEntropyCoding(EntropyCoding.BIT_ARRAY)
+                .withDistanceBits(9).withLengthBits(3).withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC)
                 .withTripletCoding(TripletCoding.VALACH)
                 .withLengthFrequencies(5, 4).withContextDepth(16));
     }
+
+    @Test
+    void theBitStreamOptionSelectsTheBitArray() throws CliParser.UsageException {
+        assertThat(this.work("in", "out", "-bs").settings().entropyCoding()).isEqualTo(EntropyCoding.BIT_ARRAY);
+    }
+
 
     @Test
     void measuringIntoAFileNamesTheFile() throws CliParser.UsageException {
@@ -58,6 +64,7 @@ class CliParserTest {
         assertThatThrownBy(() -> this.work("in", "out", "-l", "x")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-cd", "256")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-cd", "0")).isInstanceOf(CliParser.UsageException.class);
+        assertThatThrownBy(() -> this.work("in", "out", "-ec", "nonsense")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-af", "3,0")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-tc", "nonsense"))
                 .isInstanceOf(CliParser.UsageException.class);
