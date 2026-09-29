@@ -35,17 +35,19 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 ## Packages (`cz.cvut.fit.acb.*`)
 
 `Compressor` (the in-memory core) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and
-`ACBFileIO` (its file side) · `ACBProvider*` (wires the strategies below from a
-`CompressionSettings` record) · `dictionary`
-(+ the `ContextIndex` behind it) · `triplets` (+ `coder`: Simple, Salomon, Valach) ·
-`coding` (triplet↔byte: range coder with adaptive models, bit array) · `format` (the on-disk container:
-header, payload, CRC32) · `utils` (bit helpers).
+`ACBFileIO` (its file side) · `ACBProvider*` (builds a segment's dictionaries, field writer and
+reader from a `CompressionSettings` record; a coder is one `TripletCoding` constant) · `dictionary`
+(+ the `ContextIndex` behind it, in an encoder and a decoder view) · `triplets` (the `Triplet`, the
+segment encoder and decoder that share one update rule; `coder`: the layouts and parsers) ·
+`coding` (field↔byte: range coder with adaptive models, bit array) · `format` (the on-disk container:
+header, blocks, CRC32) · `utils` (bit helpers).
 
 ## Boundaries
 
 - A compressed file carries its coding settings in a `format.StreamHeader`; decoding uses only
   those plus a free choice of dictionary structure. Any change to the container layout, the coder
   codes, or how a coder lays out triplets bumps `ContainerFormat.VERSION`.
+- Every block decodes on its own: the dictionary and the entropy models start empty in each.
 - Untrusted input is read only through `ContainerFormat.decode`, which verifies the checksum and
   bounds every count before allocating. Never deserialize with `ObjectInputStream`.
 - Every settings combination must round-trip at any segment size (`RoundTripTest`) and for any

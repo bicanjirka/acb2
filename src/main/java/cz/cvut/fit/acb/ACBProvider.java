@@ -1,25 +1,28 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.Dictionary;
+import cz.cvut.fit.acb.dictionary.DecoderDictionary;
+import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.coder.TripletCoder;
-
-import java.util.List;
+import cz.cvut.fit.acb.format.Block;
+import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.triplets.FieldSource;
 
 /**
- * Builds the components one stream is coded with. {@link Compressor} asks for fresh ones per
- * stream and segment, so implementations hold no stream state.
- *
+ * Builds the stateful components one segment is coded with, so tests can observe them.
+ * {@link Compressor} asks for fresh ones per segment; implementations hold no state of their own.
  */
 public interface ACBProvider {
-    Dictionary getDictionary(SegmentBuffer segment);
 
-    TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary);
+    EncoderDictionary encoderDictionary(SegmentBuffer segment);
 
-    TripletWriter getTripletWriter();
+    DecoderDictionary decoderDictionary(SegmentBuffer segment);
 
-    TripletProcessor getTripletReader(List<byte[]> payload);
+    TripletWriter writer();
 
+    /** @throws MalformedStreamException if the block is too short to start reading */
+    FieldSource reader(byte[] block) throws MalformedStreamException;
+
+    /** Chooses how a segment is stored, given the bytes coding it took. */
+    Block block(byte[] segment, byte[] coded);
 }

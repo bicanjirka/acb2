@@ -12,7 +12,7 @@ import java.util.Objects;
 public record CompressionSettings(int distanceBits, int lengthBits, TripletCoding tripletCoding,
                                   EntropyCoding entropyCoding, int[] lengthFrequencies, int segmentSize) {
 
-    /** Wider fields only inflate the arithmetic model: 2^bits symbols each; 24 bits took 98% of a text. */
+    /** Wider fields only inflate the range coder's model: 2^bits symbols each; 24 bits took 98% of a text. */
     public static final int MAX_FIELD_BITS = 16;
 
     private static final CompressionSettings DEFAULTS = new CompressionSettings(6, 7, TripletCoding.VALACH,
@@ -30,9 +30,9 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         }
     }
 
-    /** Symbols of a length field's model: every length, then the end of the stream. */
+    /** Symbols of a length field's model: every length its width can hold. */
     public static int lengthAlphabetSize(int lengthBits) {
-        return (1 << lengthBits) + 1;
+        return 1 << lengthBits;
     }
 
     /**

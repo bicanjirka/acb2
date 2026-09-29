@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.ContainerFormat;
 import org.apache.logging.log4j.LogManager;
@@ -62,8 +63,8 @@ public final class ACBFileIO {
             discard(temp, e);
             throw e;
         }
-        int payloadSize = stream.payload().stream().mapToInt(array -> array.length).sum();
-        LOG.debug("Compressed into '{}' [size = {}, overhead = {}]", output, bytes.length, bytes.length - payloadSize);
+        int blockBytes = stream.blocks().stream().mapToInt(Block::storedLength).sum();
+        LOG.debug("Compressed into '{}' [size = {}, overhead = {}]", output, bytes.length, bytes.length - blockBytes);
     }
 
     /** @throws cz.cvut.fit.acb.format.MalformedStreamException if the file is not an intact ACB stream */

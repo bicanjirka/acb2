@@ -1,9 +1,10 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.fixtures.CorpusFile;
+import cz.cvut.fit.acb.fixtures.CraftedStreams;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.ContainerFormat;
-import cz.cvut.fit.acb.format.StreamHeader;
+import cz.cvut.fit.acb.triplets.Triplet;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -197,9 +197,8 @@ class ACBClientTest {
 
     @Test
     void aDecompressionThatFailsHalfWayLeavesNothingBehind() throws IOException {
-        CompressionSettings settings = CompressionSettings.defaults();
-        CompressedStream corrupt = new CompressedStream(StreamHeader.of(settings),
-                List.of(ByteBuffer.allocate(Integer.BYTES).putInt(10).array()));
+        CompressedStream corrupt = CraftedStreams.oneBlock(CompressionSettings.defaults(), 10,
+                Triplet.matchWithLiteral(5, 3, (byte) 'a'));
         Path input = Files.write(this.dir.resolve("corrupt.acb"), ContainerFormat.encode(corrupt));
         Path output = this.dir.resolve("corrupt.out");
 

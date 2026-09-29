@@ -40,9 +40,9 @@ public final class RoundTripChecks {
         DictionarySnapshots snapshots = new DictionarySnapshots();
         TripletLog log = new TripletLog();
         CompressedStream compressed = new Compressor(settings.settings(),
-                InterceptingProvider.components(snapshots::recording, log)).compress(file.bytes());
+                InterceptingProvider.components(snapshots.recording(), log)).compress(file.bytes());
 
-        new Compressor(settings.settings(), InterceptingProvider.components(snapshots::verifying, log))
+        new Compressor(settings.settings(), InterceptingProvider.components(snapshots.verifying(), log))
                 .decompress(compressed);
 
         assertThat(snapshots.verified()).isEqualTo(snapshots.recorded()).isPositive();

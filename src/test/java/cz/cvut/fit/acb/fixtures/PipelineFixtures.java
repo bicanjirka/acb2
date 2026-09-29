@@ -4,7 +4,6 @@ import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.Compressor;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 
-import java.util.function.UnaryOperator;
 
 public final class PipelineFixtures {
 
@@ -14,7 +13,7 @@ public final class PipelineFixtures {
     /** Compresses and decompresses in memory, checking every triplet field on the way back. */
     public static byte[] roundTrip(CompressionSettings settings, byte[] input) {
         Compressor compressor = new Compressor(settings,
-                InterceptingProvider.components(UnaryOperator.identity(), new TripletLog()));
+                InterceptingProvider.logging(new TripletLog()));
         try {
             return compressor.decompress(compressor.compress(input));
         } catch (MalformedStreamException e) {

@@ -1,15 +1,15 @@
 package cz.cvut.fit.acb.coding;
 
-import cz.cvut.fit.acb.triplets.TripletProcessor;
+import cz.cvut.fit.acb.triplets.FieldSink;
 
 import java.util.List;
 
-/** Takes one stream's triplet fields and turns them into payload arrays; used once per stream. */
-public interface TripletWriter extends TripletProcessor {
+/** Takes the fields of one block and turns them into the bytes the block is stored as; used once. */
+public interface TripletWriter extends FieldSink {
 
-    /** The size announcement first, then one array per field index. */
-    List<byte[]> finish();
+    /** Ends the block and returns its bytes; no field may be written afterwards. */
+    byte[] finish();
 
-    /** What each kind of field cost in the finished payload; only meaningful after {@link #finish()}. */
+    /** What each kind of field cost in the block; only meaningful after {@link #finish()}. */
     List<FieldCost> costs();
 }

@@ -72,15 +72,23 @@ No candidate with a match of at least one byte means *no match*: the step is a l
 
 ## 4. Segments and their ends
 
-**4.1** A step never crosses the end of a segment. The decoder decodes until it has produced the
-segment size announced in the stream.
+**4.1** A step never crosses the end of a segment. Every segment is stored as a block that records
+the number of bytes it decodes to, and the decoder decodes until it has produced that many.
 
 **4.2** A coder whose triplet ends in a literal (`simple`, `salomon2`, `valach`) needs a byte
 left for it. A match that reaches the last byte of the segment therefore gives up its last byte:
 the length is reduced by one, and that byte becomes the literal. A match of length 1 reaching the
-end becomes a length of 0 and a literal. The thesis does not say what happens here.
+end has nothing left to copy and becomes a literal. The thesis does not say what happens here.
 
-**4.3** The entropy model is shared by all segments of a stream; only the dictionary restarts.
+**4.3** Every block is coded on its own: the dictionary and the entropy models start empty in each,
+so no block depends on another. The models could carry over instead, but then a block could not be
+stored raw without the decoder learning from bytes it never decodes, and blocks could not be
+decoded in parallel. Starting the models afresh costs 0.03% on Calgary at 1 MB segments (990,715
+bytes against 990,403 with a shared model), 0.07% at 300 KB and 0.27% at 100 KB.
+
+**4.4** A block whose coded bytes are not fewer than its segment's own is stored as the segment
+itself. Random input therefore grows only by the few bytes of the container, where it grew by
+10.8% when every segment had to be coded.
 
 ## 5. The coders
 
@@ -95,8 +103,8 @@ Source: thesis §1.2 (Algorithm 1 and 2), with §1.3.2.
 
 Every step is a triplet. With a match, `dist = ctx - r` and `len` is its length (after 4.2), and
 the literal is the byte after it; the step codes `len + 1` bytes. Without a match, `dist = 0`,
-`len = 0` and the literal is the byte at `idx`. The distance is written even when a match was
-shortened to `len = 0` by 4.2; the decoder ignores it then.
+`len = 0` and the literal is the byte at `idx`; a match that 4.2 shortened to nothing is such a
+literal too.
 
 Deviations: all of 2.3 and 3.5.
 
@@ -116,7 +124,8 @@ Deviations: all of 2.3 and 3.5. The thesis is inconsistent about the field order
 Source: thesis §3.2.1 ("the improvement to the triplet by Salomon", called Salomon2 in Table 5.8),
 which is the form ExCom uses: the flagged form, with the literal kept on matches.
 
-*No match:* as `salomon`. *Match:* `flag = 1`, `dist`, `len` (after 4.2), the literal; `len + 1`
+*No match* (or a match that 4.2 shortened to nothing): as `salomon`. *Match:* `flag = 1`, `dist`,
+`len` (after 4.2), the literal; `len + 1`
 bytes.
 
 Deviations: all of 2.3 and 3.5. The thesis and ExCom order the fields `(1, l, d, c)`; the code
@@ -128,7 +137,7 @@ Source: thesis §3.2.1, after Valach's thesis, which found this form and `salomo
 compression ratio; ExCom's default coder.
 
 The length comes first, so that the distance can be left out of a literal: `len = 0` is followed
-by the literal alone, 1 byte (also when 4.2 shortened a match to 0). `len > 0` is followed by
+by the literal alone, 1 byte. `len > 0` is followed by
 `dist` and the literal; `len + 1` bytes.
 
 Deviations: all of 2.3 and 3.5. ExCom also takes the better-agreeing context neighbour,

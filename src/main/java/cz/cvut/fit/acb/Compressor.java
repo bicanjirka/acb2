@@ -2,28 +2,31 @@ package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
+import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.coder.TripletCoder;
+import cz.cvut.fit.acb.triplets.FieldSource;
+import cz.cvut.fit.acb.triplets.SegmentDecoder;
+import cz.cvut.fit.acb.triplets.SegmentEncoder;
+import cz.cvut.fit.acb.triplets.TripletLayout;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
  * Compresses bytes into a {@link CompressedStream} and back, in memory. Holds no state between
- * calls, so one instance serves any number of streams. Each segment is coded with a dictionary of
- * its own; decompression takes the coding settings from the stream's header.
+ * calls, so one instance serves any number of streams. Every segment becomes a block of its own,
+ * coded with a dictionary and entropy models that start empty, and stored as it is when coding
+ * would not shrink it; decompression takes the coding settings from the stream's header.
  */
 public final class Compressor {
 
@@ -45,10 +48,7 @@ public final class Compressor {
         return this.compress(segmentsOf(input, this.settings.segmentSize()));
     }
 
-    /**
-     * Every segment but the last must have the first one's size: the stream records only that size,
-     * and the decoder splits by it.
-     */
+    /** @throws IllegalArgumentException if a segment is empty or longer than the segment size of the settings */
     public CompressedStream compress(Iterator<byte[]> segments) {
         return this.compressWithStats(segments).stream();
     }
@@ -57,32 +57,24 @@ public final class Compressor {
         return this.compressWithStats(segmentsOf(input, this.settings.segmentSize()));
     }
 
+    /** @throws IllegalArgumentException if a segment is empty or longer than the segment size of the settings */
     public CompressionResult compressWithStats(Iterator<byte[]> segments) {
         ACBProvider provider = this.components.apply(this.settings);
-        TripletWriter writer = provider.getTripletWriter();
-        LongAdder triplets = new LongAdder();
-        long inputBytes = 0;
-        long segmentCount = 0;
-        boolean sizeAnnounced = false;
+        TripletLayout layout = this.settings.tripletCoding().layout(this.settings.distanceBits(),
+                this.settings.lengthBits());
+        List<Block> blocks = new ArrayList<>();
+        CompressionStats stats = CompressionStats.none();
         while (segments.hasNext()) {
-            byte[] segment = segments.next();
-            if (!sizeAnnounced) {
-                writer.setSize(segment.length);
-                sizeAnnounced = true;
-            }
-            inputBytes += segment.length;
-            segmentCount++;
+            byte[] segment = requireSegmentSize(segments.next(), this.settings.segmentSize());
             SegmentBuffer buffer = SegmentBuffer.of(segment);
-            provider.getCoder(buffer, provider.getDictionary(buffer)).encode(triplet -> {
-                triplets.increment();
-                triplet.visit(writer);
-            });
+            TripletWriter writer = provider.writer();
+            long triplets = new SegmentEncoder(provider.encoderDictionary(buffer),
+                    this.settings.tripletCoding().parser(), layout).encode(buffer, writer);
+            byte[] coded = writer.finish();
+            blocks.add(provider.block(segment, coded));
+            stats = stats.plus(new CompressionStats(segment.length, 1, triplets, writer.costs()));
         }
-        if (!sizeAnnounced) {
-            writer.setSize(0);
-        }
-        CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings), writer.finish());
-        CompressionStats stats = new CompressionStats(inputBytes, segmentCount, triplets.sum(), writer.costs());
+        CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings), blocks);
         LOG.debug("Compressed {} bytes in {} segments into {} triplets, {} bits of fields", stats.inputBytes(),
                 stats.segments(), stats.triplets(), stats.fieldBits());
         return new CompressionResult(stream, stats);
@@ -96,24 +88,33 @@ public final class Compressor {
 
     /** Hands each decoded segment to {@code segments} as soon as it is complete. */
     public void decompress(CompressedStream stream, Consumer<byte[]> segments) throws MalformedStreamException {
-        List<byte[]> payload = stream.payload();
-        if (payload.isEmpty() || payload.getFirst().length != Integer.BYTES
-                || ByteBuffer.wrap(payload.getFirst()).getInt() < 0) {
-            throw new MalformedStreamException("ACB payload does not start with a segment size");
-        }
-        ACBProvider provider = this.components.apply(stream.header().toSettings());
-        TripletProcessor reader = provider.getTripletReader(payload);
-        TripletCoder.DecodeFlag flag;
+        CompressionSettings settings = stream.header().toSettings();
+        ACBProvider provider = this.components.apply(settings);
+        TripletLayout layout = settings.tripletCoding().layout(settings.distanceBits(), settings.lengthBits());
         long bytes = 0;
-        do {
-            SegmentBuffer segment = SegmentBuffer.empty();
-            flag = provider.getCoder(segment, provider.getDictionary(segment)).decode(reader);
-            if (segment.length() > 0) {
-                segments.accept(segment.toArray());
-                bytes += segment.length();
-            }
-        } while (flag != TripletCoder.DecodeFlag.EOF);
+        for (Block block : stream.blocks()) {
+            segments.accept(switch (block) {
+                case Block.Stored stored -> stored.bytes();
+                case Block.Coded coded -> decode(provider, layout, coded);
+            });
+            bytes += block.rawLength();
+        }
         LOG.debug("Decompressed {} bytes", bytes);
+    }
+
+    private static byte[] decode(ACBProvider provider, TripletLayout layout, Block.Coded block)
+            throws MalformedStreamException {
+        SegmentBuffer segment = SegmentBuffer.empty();
+        FieldSource source = provider.reader(block.bytes());
+        new SegmentDecoder(provider.decoderDictionary(segment), layout).decode(segment, block.rawLength(), source);
+        return segment.toArray();
+    }
+
+    private static byte[] requireSegmentSize(byte[] segment, int segmentSize) {
+        if (segment.length < 1 || segment.length > segmentSize) {
+            throw new IllegalArgumentException("A segment holds 1 to " + segmentSize + " bytes, not " + segment.length);
+        }
+        return segment;
     }
 
     private static Iterator<byte[]> segmentsOf(byte[] input, int segmentSize) {

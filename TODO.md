@@ -20,10 +20,12 @@ first so the big refactors (phases 5 and 7) land on a tested, measured, fast bas
 
 ## Handoff for the next session
 
-State on 2026-09-28: research, planning and phases 0 to 4 are finished. Start with phase 5, first
-entry (the bit-array writer, then the shared update rule). Do not redo the research below; its numbers are final unless the code changes.
-Measure ratio and speed with the harnesses; their Javadoc in `src/test/java/cz/cvut/fit/acb/harness`
-says how to run them.
+State on 2026-09-29: research, planning and phases 0 to 4 are finished, and phase 5 is under way:
+the shared update rule, the split dictionary and field interfaces, the block format and the
+stored fallback are done, and the two entries left in phase 5 are below. The user asked for phases
+5, 6, 7 and 9 in that order, phase 8 left for later. Do not redo the research below; its numbers
+are final unless the code changes. Measure ratio and speed with the harnesses; their Javadoc in
+`src/test/java/cz/cvut/fit/acb/harness` says how to run them.
 
 - **Decided by the user:** stay on Log4j 2 (no SLF4J/Logback, unlike jTD). Coders follow their
   source on what defines the algorithm (fields, layout, context and content rules);
@@ -137,114 +139,36 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
 
 ### Other findings
 
-- **Incompressible input expands.** 2 MB of random bytes grow by 10.8% and take 13.9 s.
 - **Throughput.** Before phase 3: about 0.45 MB/s compressing and 0.8 MB/s decompressing at the
-  defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s.
+  defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s;
+  after the block format of phase 5: 1.8 and 4.1.
 
 ## Phase 5: encoder/decoder symmetry and container v2
 
 The big refactor, on a tested and measured base. Container changes are batched into one
 `VERSION` bump.
 
-### The bit-array writer does not fit the per-field template
-
-`BitArrayComposer.getArray` returns `null` for all fields but one, gated by a `doReturn` flag,
-and `TripletToByteConverter.finish` has to skip the nulls. The bit-array writer is not per-field
-at all.
-
-- **Where:** `coding.BitArrayComposer`, `coding.BitArrayDecomposer`, `coding.TripletToByteConverter`.
-- **Approach:** a separate implementation of the field sink that writes one bit stream.
-  Its only use is measuring the entropy coder's gain; keep it for that, as a small class.
-
-### One update rule, shared by both sides
-
-Each coder class is both encoder and decoder, and which it is depends on which half of its API
-is called. `encodeStep` and `decodeStep` each restate the dictionary update and the end-of-segment shortening of a match (for example
-`ValachTripletCoder` lines 41-53 against 85-90). That duplication is where the LCP defect lives,
-and where `AC.C`'s own decoder went wrong.
-
-- **Where:** `triplets.coder` (all coders), `triplets.TripletSupplier`, `utils.TripletUtils`,
-  `dictionary.DictionaryInfo`.
-- **Approach:** a sealed `Triplet` (`Literal`, `Match`, `MatchWithLiteral`); per coder a pure
-  layout (triplet to field symbols and back) and an encoder-only parser (search result to
-  `Triplet`); one `apply(Triplet, SegmentState)` that updates dictionary and position, used by
-  both sides. `DictionaryInfo` becomes a sealed `NoMatch | Match` record instead of a `-1`
-  content. Measure the allocation cost with the harness rather than assume it.
-
-### Split the two-way triplet processor
-
-`TripletProcessor` has `read`, `write`, `getSize` and `setSize`; the writer throws on the read
-half and the reader on the write half. The segment size travels through this field channel and
-lands in `payload[0]`, which `Compressor.decompress` then has to validate. `Compressor.compress`
-documents that every segment but the last has the first one's size, and never checks it.
-
-- **Where:** `triplets.TripletProcessor`, `coding.TripletWriter`,
-  `coding.TripletToByteConverter`, `coding.ByteToTripletConverter`, `Compressor`,
-  `format.StreamHeader`.
-- **Approach:** a field sink and a field source as separate interfaces; the segment size moves
-  into `StreamHeader`; a segment of the wrong size is rejected.
-
-### Split the dictionary by audience
-
-`Dictionary` mixes encoder methods (`search`, `searchContent`) and decoder methods (`copy`,
-`select`), and exposes rank arithmetic.
-
-- **Where:** `dictionary.Dictionary`, `dictionary.DictionaryBase`.
-- **Approach:** narrow encoder and decoder views over the `ContextIndex`.
-
-### Record the length; drop the end-of-stream sentinels
-
-The end of the stream is signalled three ways: `-1` from field reads, `Integer.MAX_VALUE` from
-`decodeStep`, and `TripletCoder.DecodeFlag`. Every arithmetic field stream also spends an EOF
-symbol, which is why its alphabet is `2^n + 1`.
-
-- **Where:** `format.ContainerFormat`, `format.StreamHeader`, `triplets.coder.BaseTripletCoder`,
-  `Compressor.decompress`, `coding`.
-- **Approach:** store the original length in the header and let the decoder loop by count. The
-  sentinels, `DecodeFlag` and the EOF symbols go away, and the 1-bit flag field of `salomon` becomes
-  a binary model. All fields of a segment go interleaved into
-  one range-coded stream, in the order the decoder reads them (as ExCom does), which drops the
-  per-field length prefixes and makes the payload streamable. The recorded length also bounds the
-  work and memory a crafted payload can demand: today a huge segment size in the payload decodes
-  as long as the fields can be read.
-
-### Per-segment blocks and a stored fallback
-
-Payload arrays are per field and span the whole file, the payload is held as one
-`List<byte[]>`, and `ContainerFormat` reads the whole file. Segmenting bounds the dictionary but
-not memory, and the entropy model shared across segments blocks parallel compression. Random
-input grows by 10.8%.
-
-- **Where:** `format.ContainerFormat`, `Compressor`, `ACBFileIO`.
-- **Approach:** one block per segment (raw length, coded length, then the coded bytes, or the raw
-  bytes when coding did not help), streamed in and out. Decide deliberately whether the entropy
-  model resets per segment and measure what the reset costs in ratio.
-
 ### Constants the decoder depends on are not part of the format
 
-`Dictionary.ReverseIndexComparator.MAGIC_CONST = 10` sorts contexts by their last 10 bytes
-only, compared as signed bytes. That decides the ranks, so changing it silently breaks every
-existing file, yet it is neither in the header nor tied to `ContainerFormat.VERSION`. The same
-holds for the policy that the dictionary resets per segment while the entropy model lives for the
-whole stream.
+`ContextOrder.DEPTH = 10` sorts contexts by their last 10 bytes only, compared as signed bytes.
+That decides the ranks, so changing it silently breaks every existing file, yet it is neither in
+the header nor tied to `ContainerFormat.VERSION`.
 
-- **Where:** `dictionary.Dictionary.ReverseIndexComparator`, `Compressor`, `format.ContainerFormat`.
-- **Approach:** make the context depth a setting stored in the header, compare unsigned (the
+- **Where:** `dictionary.ContextOrder`, `ACBProviderImpl`, `format.ContainerFormat`,
+  `format.StreamHeader`, `CompressionSettings`.
+- **Approach:** make the context depth a setting stored in the header and compare unsigned (the
   byte order every source assumes, and the one "lexicographically smaller" in the LCP
-  specification means), and name the remaining policies as format constants beside `VERSION`.
-  Measure what a longer depth does to ratio and speed; ACB treats it as the main control.
+  specification means). Measure what a longer depth does to ratio and speed; ACB treats it as the
+  main control.
 
-### Coder choice lives in several switches
+### CompressionSettings restates its components
 
-Choosing a triplet coding picks both the dictionary and the coder in two `switch`es in
-`ACBProviderImpl`, and a third table in `ContainerFormat` maps it to a code. The exhaustive
-switches do force every case to be handled, so this is low priority.
+Every `withX` of `CompressionSettings` restates all the components, and `lengthFrequencies` is a
+defensively copied `int[]` with a hand-written `equals`, `hashCode` and `toString`.
 
-- **Where:** `ACBProviderImpl`, `TripletCoding`, `format.ContainerFormat`.
-- **Approach:** a `CoderScheme` value carrying its parser, layout and format code, so a new coder
-  (phase 7) is added in one place. `CompressionSettings` gets a narrow factory and stops
-  restating seven components in every `withX`; `lengthFrequencies` becomes an immutable value
-  instead of a defensively copied `int[]` with a hand-written `equals`.
+- **Where:** `CompressionSettings`, `StreamHeader`, `EntropyCoding`, `coding.FieldModels`.
+- **Approach:** a narrow factory and fluent copies that do not restate the components;
+  `lengthFrequencies` becomes an immutable value.
 
 ## Phase 6: thesis coders made faithful
 
@@ -335,7 +259,7 @@ cannot get there: ACB admits only contexts that agree with the current one beyon
 level, weights them by that agreement, and codes the position by those weights. This
 supersedes the earlier "candidate set is a fixed window" entry.
 
-- **Where:** new `-tc acb` coder scheme (`CoderScheme` from phase 5), its parser and model in the
+- **Where:** new `-tc acb` constant of `TripletCoding` (phase 5 made a coder one constant), its parser and model in the
   core, `docs/ALGORITHM.md` (the specification), the harness.
 - **Approach:** implement the model from the specification, not from `AC.C` (which has no
   licence), on the phase 3-5 base:
@@ -359,12 +283,12 @@ supersedes the earlier "candidate set is a fixed window" entry.
 
 ### Parallel segment compression
 
-Each segment already gets its own dictionary, but segments are compressed sequentially, and the
-entropy model shared across the stream ties them together.
+Each segment already becomes a block of its own, with a dictionary and entropy models that start
+empty, but the blocks are compressed and decoded one after the other.
 
 - **Where:** `Compressor.compress`, `ACBFileIO.SegmentReader`.
-- **Approach:** after per-segment blocks, compress segments on a bounded executor and write
-  them in order; decode segments in parallel the same way. The core stays free of threads it
+- **Approach:** compress segments on a bounded executor and write
+  the blocks in order; decode blocks in parallel the same way. The core stays free of threads it
   does not own: the executor is passed in.
 
 ### Streaming instead of whole files in memory

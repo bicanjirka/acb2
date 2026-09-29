@@ -2,10 +2,16 @@ package cz.cvut.fit.acb.format;
 
 import java.util.List;
 
-/** A header and the coded payload arrays, in the order the triplet-to-byte converter produced them. */
-public record CompressedStream(StreamHeader header, List<byte[]> payload) {
+/** A header and one block per segment, in order; no block is longer than the header's segment size. */
+public record CompressedStream(StreamHeader header, List<Block> blocks) {
 
     public CompressedStream {
-        payload = List.copyOf(payload);
+        blocks = List.copyOf(blocks);
+        for (Block block : blocks) {
+            if (block.rawLength() > header.segmentSize()) {
+                throw new IllegalArgumentException("A block of " + block.rawLength() + " bytes exceeds the segment size "
+                        + header.segmentSize());
+            }
+        }
     }
 }

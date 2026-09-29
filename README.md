@@ -5,7 +5,8 @@ George Buyanovsky's associative coding. The input is split into segments, and ea
 segment is walked with a sorted dictionary of *contexts* (the bytes before a position) and
 *contents* (the bytes after it). Every step emits a triplet that names a content by its distance
 in the dictionary from the current context, together with a match length and, if needed, a literal
-byte. An entropy coder then turns the triplets into bytes.
+byte. An entropy coder then turns the triplets of a segment into a block of bytes, and a segment
+that does not shrink is stored as it is. Every block is independent of the others.
 
 ## Build
 

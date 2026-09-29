@@ -17,19 +17,37 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ContainerFormatTest {
 
-    private static final StreamHeader HEADER =
-            new StreamHeader(6, 4, TripletCoding.VALACH, EntropyCoding.BIT_ARRAY, new int[]{45, 13, 10});
-    private static final List<byte[]> PAYLOAD = List.of(new byte[]{0, 0, 0, 7}, new byte[0], new byte[]{-1, 1, -128});
+    private static final int SEGMENT_SIZE = 1000;
+    private static final StreamHeader HEADER = new StreamHeader(6, 4, TripletCoding.VALACH, EntropyCoding.BIT_ARRAY,
+            new int[]{45, 13, 10}, SEGMENT_SIZE);
+    private static final List<Block> BLOCKS = List.of(Block.coded(7, new byte[]{1, 2, 3}),
+            Block.stored(new byte[]{-1, 1, -128}), Block.coded(3, new byte[0]));
+
+    /** Where the fields of {@link #HEADER} and the first block sit in an encoded stream. */
+    private static final int SEGMENT_SIZE_OFFSET = 8;
+    private static final int FIRST_FREQUENCY_OFFSET = 16;
+    private static final int BLOCK_COUNT_OFFSET = FIRST_FREQUENCY_OFFSET + 3 * Integer.BYTES;
+    private static final int FIRST_BLOCK_OFFSET = BLOCK_COUNT_OFFSET + Integer.BYTES;
 
     @ParameterizedTest
     @EnumSource(TripletCoding.class)
-    void aStreamDecodesToTheHeaderAndPayloadItWasEncodedFrom(TripletCoding tripletCoding) throws MalformedStreamException {
-        StreamHeader header = new StreamHeader(9, 3, tripletCoding, EntropyCoding.ADAPTIVE_ARITHMETIC, new int[]{2, 1});
+    void aStreamDecodesToTheHeaderAndBlocksItWasEncodedFrom(TripletCoding tripletCoding)
+            throws MalformedStreamException {
+        StreamHeader header = new StreamHeader(9, 3, tripletCoding, EntropyCoding.ADAPTIVE_ARITHMETIC,
+                new int[]{2, 1}, SEGMENT_SIZE);
 
-        CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(header, PAYLOAD)));
+        CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(header, BLOCKS)));
 
         assertThat(decoded.header()).isEqualTo(header);
-        assertThat(decoded.payload()).containsExactlyElementsOf(PAYLOAD);
+        assertThat(decoded.blocks()).containsExactlyElementsOf(BLOCKS);
+    }
+
+    @Test
+    void aStreamWithoutBlocksDecodesToOne() throws MalformedStreamException {
+        CompressedStream decoded = ContainerFormat.decode(ContainerFormat.encode(new CompressedStream(HEADER,
+                List.of())));
+
+        assertThat(decoded.blocks()).isEmpty();
     }
 
     @Test
@@ -84,13 +102,67 @@ class ContainerFormatTest {
     }
 
     @Test
-    void aLengthLargerThanTheStreamIsRejectedWithoutAllocatingIt() {
+    void aCodedLengthLargerThanTheStreamIsRejectedWithoutAllocatingIt() {
         byte[] encoded = encoded();
-        int arrayCountOffset = 8 + Integer.BYTES + 3 * Integer.BYTES;
-        ByteBuffer.wrap(encoded).putInt(arrayCountOffset + Integer.BYTES, Integer.MAX_VALUE);
+        int codedLengthOffset = FIRST_BLOCK_OFFSET + 1 + Integer.BYTES;
+        ByteBuffer.wrap(encoded).putInt(codedLengthOffset, Integer.MAX_VALUE);
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
-                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("byte count");
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("coded byte count");
+    }
+
+    @Test
+    void aStoredBlockLongerThanTheStreamIsRejectedWithoutAllocatingIt() {
+        byte[] encoded = ContainerFormat.encode(new CompressedStream(HEADER, List.of(Block.stored(new byte[]{1}))));
+        ByteBuffer.wrap(encoded).putInt(FIRST_BLOCK_OFFSET + 1, SEGMENT_SIZE);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("runs past the end");
+    }
+
+    @Test
+    void aBlockLongerThanTheSegmentSizeIsRejected() {
+        byte[] encoded = encoded();
+        ByteBuffer.wrap(encoded).putInt(FIRST_BLOCK_OFFSET + 1, SEGMENT_SIZE + 1);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("block length");
+    }
+
+    @Test
+    void aBlockOfNoBytesIsRejected() {
+        byte[] encoded = encoded();
+        ByteBuffer.wrap(encoded).putInt(FIRST_BLOCK_OFFSET + 1, 0);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("block length");
+    }
+
+    @Test
+    void anUnknownBlockKindIsRejected() {
+        byte[] encoded = encoded();
+        encoded[FIRST_BLOCK_OFFSET] = 9;
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("block kind 9");
+    }
+
+    @Test
+    void aBlockCountLargerThanTheStreamCouldHoldIsRejected() {
+        byte[] encoded = encoded();
+        ByteBuffer.wrap(encoded).putInt(BLOCK_COUNT_OFFSET, Integer.MAX_VALUE);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("block count");
+    }
+
+    @Test
+    void aSegmentSizeOfZeroIsRejected() {
+        byte[] encoded = encoded();
+        ByteBuffer.wrap(encoded).putInt(SEGMENT_SIZE_OFFSET, 0);
+
+        assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
+                .isInstanceOf(MalformedStreamException.class).hasMessageContaining("segment size");
     }
 
     @Test
@@ -105,9 +177,8 @@ class ContainerFormatTest {
     @Test
     void moreLengthFrequenciesThanTheLengthAlphabetHasSymbolsAreRejected() {
         StreamHeader narrow = new StreamHeader(6, 1, TripletCoding.VALACH, EntropyCoding.ADAPTIVE_ARITHMETIC,
-                new int[]{1, 1, 1});
-        byte[] encoded = ContainerFormat.encode(new CompressedStream(narrow, PAYLOAD));
-        ByteBuffer.wrap(encoded).putInt(8, 4);
+                new int[]{1, 1, 1}, SEGMENT_SIZE);
+        byte[] encoded = ContainerFormat.encode(new CompressedStream(narrow, BLOCKS));
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
                 .isInstanceOf(MalformedStreamException.class).hasMessageContaining("frequency count");
@@ -116,14 +187,14 @@ class ContainerFormatTest {
     @Test
     void lengthFrequenciesTheModelCannotTotalAreRejected() {
         byte[] encoded = encoded();
-        ByteBuffer.wrap(encoded).putInt(8 + Integer.BYTES, Integer.MAX_VALUE);
+        ByteBuffer.wrap(encoded).putInt(FIRST_FREQUENCY_OFFSET, Integer.MAX_VALUE);
 
         assertThatThrownBy(() -> ContainerFormat.decode(withChecksum(encoded)))
                 .isInstanceOf(MalformedStreamException.class).hasMessageContaining("length frequencies");
     }
 
     private static byte[] encoded() {
-        return ContainerFormat.encode(new CompressedStream(HEADER, PAYLOAD));
+        return ContainerFormat.encode(new CompressedStream(HEADER, BLOCKS));
     }
 
     /** Re-seals edited bytes, so a test reaches the check behind the checksum. */

@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class GoldenStreamTest {
 
-    private static final int SEGMENT_SIZE = 250;
+    private static final int SEGMENT_SIZE = 1000;
+    private static final int RANDOM_TAIL = 500;
+    private static final long SEED = 20260929L;
     /** Spelled out, so that a change of the defaults cannot change what the files must decode to. */
     private static final CompressionSettings BASE = CompressionSettings.defaults().withSegmentSize(SEGMENT_SIZE)
             .withDistanceBits(6).withLengthBits(4).withLengthFrequencies(45, 13, 10, 7, 5, 4);
@@ -63,6 +66,15 @@ class GoldenStreamTest {
         assertThat(new Compressor(golden.settings()).decompress(stream)).isEqualTo(plaintext());
     }
 
+    @ParameterizedTest
+    @MethodSource("goldens")
+    void everyGoldenStreamHoldsBothCodedAndStoredBlocks(Golden golden) throws MalformedStreamException {
+        CompressedStream stream = ContainerFormat.decode(resource(golden));
+
+        assertThat(stream.blocks()).hasAtLeastOneElementOfType(Block.Coded.class);
+        assertThat(stream.blocks()).hasAtLeastOneElementOfType(Block.Stored.class);
+    }
+
     @Test
     void theGoldenInputSpansSeveralSegments() {
         assertThat(plaintext().length).isGreaterThan(2 * SEGMENT_SIZE);
@@ -79,10 +91,16 @@ class GoldenStreamTest {
         }
     }
 
+    /** The corpus twice, so that segments code well, then random bytes, so that the last is stored. */
     private static byte[] plaintext() {
         ByteArrayOutputStream all = new ByteArrayOutputStream();
         List<CorpusFile> files = CorpusFile.all().toList();
-        files.forEach(file -> all.writeBytes(file.bytes()));
+        for (int round = 0; round < 2; round++) {
+            files.forEach(file -> all.writeBytes(file.bytes()));
+        }
+        byte[] noise = new byte[RANDOM_TAIL];
+        new Random(SEED).nextBytes(noise);
+        all.writeBytes(noise);
         return all.toByteArray();
     }
 

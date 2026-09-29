@@ -1,23 +1,16 @@
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.coding.AdaptiveArithmeticDecoder;
-import cz.cvut.fit.acb.coding.AdaptiveArithmeticEncoder;
-import cz.cvut.fit.acb.coding.BitArrayComposer;
-import cz.cvut.fit.acb.coding.BitArrayDecomposer;
-import cz.cvut.fit.acb.coding.ByteToTripletConverter;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.ChunkedContextIndex;
 import cz.cvut.fit.acb.dictionary.ContextOrder;
-import cz.cvut.fit.acb.dictionary.Dictionary;
-import cz.cvut.fit.acb.dictionary.DictionaryBase;
+import cz.cvut.fit.acb.dictionary.DecoderDictionary;
+import cz.cvut.fit.acb.dictionary.EncoderDictionary;
+import cz.cvut.fit.acb.dictionary.IndexedDecoderDictionary;
+import cz.cvut.fit.acb.dictionary.IndexedEncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
-import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
-import cz.cvut.fit.acb.triplets.coder.TripletCoder;
-import cz.cvut.fit.acb.triplets.coder.ValachTripletCoder;
-
-import java.util.List;
+import cz.cvut.fit.acb.format.Block;
+import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.triplets.FieldSource;
 
 public final class ACBProviderImpl implements ACBProvider {
 
@@ -28,39 +21,29 @@ public final class ACBProviderImpl implements ACBProvider {
     }
 
     @Override
-    public Dictionary getDictionary(SegmentBuffer segment) {
-        int maxDistance = this.settings.maxDistance();
-        int maxLength = this.settings.maxLength();
-        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment));
-        return new DictionaryBase(index, segment, maxDistance, maxLength);
+    public EncoderDictionary encoderDictionary(SegmentBuffer segment) {
+        return new IndexedEncoderDictionary(new ChunkedContextIndex(ContextOrder.byLastBytes(segment)), segment,
+                this.settings.maxDistance(), this.settings.maxLength());
     }
 
     @Override
-    public TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary) {
-        int distanceBits = this.settings.distanceBits();
-        int lengthBits = this.settings.lengthBits();
-        return switch (this.settings.tripletCoding()) {
-            case SALOMON -> new SalomonTripletCoder.SalomonByteless(segment, dictionary, distanceBits, lengthBits);
-            case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(segment, dictionary, distanceBits, lengthBits);
-            case SIMPLE -> new SimpleTripletCoder(segment, dictionary, distanceBits, lengthBits);
-            case VALACH -> new ValachTripletCoder(segment, dictionary, distanceBits, lengthBits);
-        };
+    public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
+        return new IndexedDecoderDictionary(new ChunkedContextIndex(ContextOrder.byLastBytes(segment)));
     }
 
     @Override
-    public TripletWriter getTripletWriter() {
-        return switch (this.settings.entropyCoding()) {
-            case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticEncoder(this.settings.lengthFrequencies());
-            case BIT_ARRAY -> new BitArrayComposer();
-        };
+    public TripletWriter writer() {
+        return this.settings.entropyCoding().writer(this.settings.lengthFrequencies());
     }
 
     @Override
-    public TripletProcessor getTripletReader(List<byte[]> payload) {
-        ByteToTripletConverter<?> converter = switch (this.settings.entropyCoding()) {
-            case ADAPTIVE_ARITHMETIC -> new AdaptiveArithmeticDecoder(this.settings.lengthFrequencies());
-            case BIT_ARRAY -> new BitArrayDecomposer();
-        };
-        return converter.open(payload);
+    public FieldSource reader(byte[] block) throws MalformedStreamException {
+        return this.settings.entropyCoding().reader(block, this.settings.lengthFrequencies());
+    }
+
+    /** The coded bytes if they are fewer than the segment's own, otherwise the segment itself. */
+    @Override
+    public Block block(byte[] segment, byte[] coded) {
+        return coded.length < segment.length ? Block.coded(segment.length, coded) : Block.stored(segment);
     }
 }

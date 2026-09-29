@@ -4,52 +4,65 @@ import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.Dictionary;
+import cz.cvut.fit.acb.dictionary.DecoderDictionary;
+import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
-import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.coder.TripletCoder;
+import cz.cvut.fit.acb.format.Block;
+import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.triplets.FieldSource;
 
-import java.util.List;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
-/** The real components, with each dictionary passed through {@code dictionaries} and triplets through a log. */
+/**
+ * The real components, with each dictionary passed through {@code snapshots} and every field
+ * through {@code log}, and every block coded.
+ */
 public final class InterceptingProvider implements ACBProvider {
 
     private final ACBProvider delegate;
-    private final UnaryOperator<Dictionary> dictionaries;
+    private final DictionarySnapshots.Side snapshots;
     private final TripletLog log;
 
-    public InterceptingProvider(ACBProvider delegate, UnaryOperator<Dictionary> dictionaries, TripletLog log) {
+    public InterceptingProvider(ACBProvider delegate, DictionarySnapshots.Side snapshots, TripletLog log) {
         this.delegate = delegate;
-        this.dictionaries = dictionaries;
+        this.snapshots = snapshots;
         this.log = log;
     }
 
     /** For {@code new Compressor(settings, components(...))}. */
-    public static Function<CompressionSettings, ACBProvider> components(UnaryOperator<Dictionary> dictionaries,
+    public static Function<CompressionSettings, ACBProvider> components(DictionarySnapshots.Side snapshots,
                                                                        TripletLog log) {
-        return settings -> new InterceptingProvider(new ACBProviderImpl(settings), dictionaries, log);
+        return settings -> new InterceptingProvider(new ACBProviderImpl(settings), snapshots, log);
+    }
+
+    /** Intercepts only the fields, leaving the dictionaries alone. */
+    public static Function<CompressionSettings, ACBProvider> logging(TripletLog log) {
+        return components(DictionarySnapshots.Side.ignoring(), log);
     }
 
     @Override
-    public Dictionary getDictionary(SegmentBuffer segment) {
-        return this.dictionaries.apply(this.delegate.getDictionary(segment));
+    public EncoderDictionary encoderDictionary(SegmentBuffer segment) {
+        return this.snapshots.observing(this.delegate.encoderDictionary(segment));
     }
 
     @Override
-    public TripletCoder getCoder(SegmentBuffer segment, Dictionary dictionary) {
-        return this.delegate.getCoder(segment, dictionary);
+    public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
+        return this.snapshots.observing(this.delegate.decoderDictionary(segment));
     }
 
     @Override
-    public TripletWriter getTripletWriter() {
-        return this.log.recording(this.delegate.getTripletWriter());
+    public TripletWriter writer() {
+        return this.log.recording(this.delegate.writer());
     }
 
     @Override
-    public TripletProcessor getTripletReader(List<byte[]> payload) {
-        return this.log.checking(this.delegate.getTripletReader(payload));
+    public FieldSource reader(byte[] block) throws MalformedStreamException {
+        return this.log.checking(this.delegate.reader(block), block);
     }
 
+    /** Always codes, so that the decoder is exercised however little coding gains on a small segment. */
+    @Override
+    public Block block(byte[] segment, byte[] coded) {
+        return Block.coded(segment.length, coded);
+    }
 }

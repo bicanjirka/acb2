@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.fixtures.CorpusFile;
+import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
@@ -115,13 +116,13 @@ class ACBFileIOTest {
         Path path = this.dir.resolve("stream.acb");
         int[] sizes = IntStream.concat(IntStream.of(0, Short.MAX_VALUE), new Random(300).ints(300, 0, 64)).toArray();
         CompressedStream saved = new CompressedStream(
-                StreamHeader.of(CompressionSettings.defaults()), randomArrays(sizes));
+                StreamHeader.of(CompressionSettings.defaults()), randomBlocks(sizes));
 
         this.io.saveCompressed(saved, path);
         CompressedStream read = this.io.openCompressed(path);
 
         assertThat(read.header()).isEqualTo(saved.header());
-        assertThat(read.payload()).containsExactlyElementsOf(saved.payload());
+        assertThat(read.blocks()).containsExactlyElementsOf(saved.blocks());
     }
 
     @Test
@@ -151,14 +152,14 @@ class ACBFileIOTest {
         });
     }
 
-    private static List<byte[]> randomArrays(int... sizes) {
+    private static List<Block> randomBlocks(int... sizes) {
         Random random = new Random(sizes.length);
-        List<byte[]> arrays = new ArrayList<>();
+        List<Block> blocks = new ArrayList<>();
         for (int size : sizes) {
             byte[] array = new byte[size];
             random.nextBytes(array);
-            arrays.add(array);
+            blocks.add(Block.coded(size + 1, array));
         }
-        return arrays;
+        return blocks;
     }
 }

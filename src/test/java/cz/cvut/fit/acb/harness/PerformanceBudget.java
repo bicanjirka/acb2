@@ -25,10 +25,10 @@ record PerformanceBudget(Map<TripletCoding, Floor> floors) {
 
     static PerformanceBudget current() {
         return new PerformanceBudget(Map.of(
-                TripletCoding.SIMPLE, new Floor(1.1, 1.6),
-                TripletCoding.SALOMON, new Floor(1.0, 1.6),
-                TripletCoding.SALOMON2, new Floor(1.0, 1.5),
-                TripletCoding.VALACH, new Floor(1.1, 1.7)));
+                TripletCoding.SIMPLE, new Floor(1.1, 2.3),
+                TripletCoding.SALOMON, new Floor(1.0, 2.3),
+                TripletCoding.SALOMON2, new Floor(1.0, 2.4),
+                TripletCoding.VALACH, new Floor(1.1, 2.5)));
     }
 
     Floor floorFor(TripletCoding coder) {

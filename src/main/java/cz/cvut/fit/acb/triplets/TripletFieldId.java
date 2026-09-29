@@ -1,8 +1,8 @@
 package cz.cvut.fit.acb.triplets;
 
 /**
- * One field of a triplet: its position in the triplet, which is also the payload stream it is
- * coded into, its width, and what it means. Length fields get the arithmetic coder's tuned
+ * One field of a triplet: its position in the triplet, which is also the model it is
+ * coded against, its width, and what it means. Length fields get the range coder's tuned
  * starting table.
  */
 public record TripletFieldId(int index, int bitSize, TripletFieldKind kind) {

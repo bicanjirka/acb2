@@ -50,13 +50,14 @@ class CompressionStatsTest {
     }
 
     @Test
-    void arithmeticFieldCostsAreTheSizeOfTheirPayloadArrays() {
+    void rangeCodedFieldCostsAreTheIdealCostOfTheBlockThatCarriesThem() {
         CompressionSettings settings = settings(TripletCoding.SIMPLE, EntropyCoding.ADAPTIVE_ARITHMETIC);
+        byte[] text = "the quick brown fox jumps over the lazy dog. ".repeat(100).getBytes(StandardCharsets.US_ASCII);
 
-        CompressionResult result = new Compressor(settings).compressWithStats(MISSISSIPPI);
+        CompressionResult result = new Compressor(settings).compressWithStats(text);
 
-        long payloadBits = result.stream().payload().stream().skip(1).mapToLong(array -> array.length * 8L).sum();
-        assertThat(result.stats().fieldBits()).isEqualTo(payloadBits).isPositive();
+        long blockBits = result.stream().blocks().getFirst().storedLength() * 8L;
+        assertThat(result.stats().fieldBits()).isPositive().isBetween(blockBits - 64, blockBits + 64);
     }
 
     @Test
@@ -81,6 +82,6 @@ class CompressionStatsTest {
         CompressionResult result = compressor.compressWithStats(MISSISSIPPI);
 
         assertThat(result.stream().header()).isEqualTo(compressor.compress(MISSISSIPPI).header());
-        assertThat(result.stream().payload()).containsExactlyElementsOf(compressor.compress(MISSISSIPPI).payload());
+        assertThat(result.stream().blocks()).containsExactlyElementsOf(compressor.compress(MISSISSIPPI).blocks());
     }
 }

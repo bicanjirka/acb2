@@ -10,39 +10,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DictionarySearchTest {
 
-    private static Dictionary dictionaryOf(String text) {
+    private static EncoderDictionary dictionaryOf(String text) {
         return new ACBProviderImpl(CompressionSettings.defaults())
-                .getDictionary(SegmentBuffer.of(text.getBytes(StandardCharsets.US_ASCII)));
+                .encoderDictionary(SegmentBuffer.of(text.getBytes(StandardCharsets.US_ASCII)));
     }
 
     @Test
     void amongEqualMatchesTheNearestToTheContextIsChosen() {
-        Dictionary dictionary = dictionaryOf("ababababab");
+        EncoderDictionary dictionary = dictionaryOf("ababababab");
         dictionary.update(0, 8);
 
-        DictionaryInfo found = dictionary.search(8);
+        SearchResult found = dictionary.search(8);
 
-        assertThat(found.getLength()).isEqualTo(2);
-        assertThat(found.getContent()).isEqualTo(found.getContext());
+        assertThat(found).isEqualTo(SearchResult.hit(0, 2));
     }
 
     @Test
     void theFirstRankIsACandidateWhenTheWindowIsClampedAtIt() {
-        Dictionary dictionary = dictionaryOf("aaa");
+        EncoderDictionary dictionary = dictionaryOf("aaa");
         dictionary.update(0, 1);
 
-        DictionaryInfo found = dictionary.search(1);
+        SearchResult found = dictionary.search(1);
 
-        assertThat(found.getContext()).isZero();
-        assertThat(found.getContent()).isZero();
-        assertThat(found.getLength()).isEqualTo(2);
+        assertThat(found).isEqualTo(SearchResult.hit(0, 2));
     }
 
     @Test
     void anEmptyDictionaryFindsNoMatch() {
-        DictionaryInfo found = dictionaryOf("aaa").search(0);
+        SearchResult found = dictionaryOf("aaa").search(0);
 
-        assertThat(found.getContent()).isEqualTo(-1);
-        assertThat(found.getLength()).isZero();
+        assertThat(found).isEqualTo(SearchResult.miss());
     }
 }
