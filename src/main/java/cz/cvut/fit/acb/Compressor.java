@@ -15,13 +15,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 /**
  * Compresses bytes into a {@link CompressedStream} and back, in memory. Holds no state between
@@ -63,22 +65,26 @@ public final class Compressor {
         ACBProvider provider = this.components.apply(this.settings);
         TripletLayout layout = this.settings.tripletCoding().layout(this.settings.distanceBits(),
                 this.settings.lengthBits());
-        List<Block> blocks = new ArrayList<>();
-        CompressionStats stats = CompressionStats.none();
-        while (segments.hasNext()) {
-            byte[] segment = requireSegmentSize(segments.next(), this.settings.segmentSize());
-            SegmentBuffer buffer = SegmentBuffer.of(segment);
-            TripletWriter writer = provider.writer();
-            long triplets = new SegmentEncoder(provider.encoderDictionary(buffer),
-                    this.settings.tripletCoding().parser(), layout, this.settings.searchWindow()).encode(buffer, writer);
-            byte[] coded = writer.finish();
-            blocks.add(provider.block(segment, coded));
-            stats = stats.plus(new CompressionStats(segment.length, 1, triplets, writer.costs()));
-        }
-        CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings), blocks);
+        List<CodedSegment> coded = StreamSupport
+                .stream(Spliterators.spliteratorUnknownSize(segments, Spliterator.ORDERED), false)
+                .map(segment -> this.code(requireSegmentSize(segment, this.settings.segmentSize()), provider, layout))
+                .toList();
+        CompressionStats stats = coded.stream().map(CodedSegment::stats).reduce(CompressionStats.none(),
+                CompressionStats::plus);
+        CompressedStream stream = new CompressedStream(StreamHeader.of(this.settings),
+                coded.stream().map(CodedSegment::block).toList());
         LOG.debug("Compressed {} bytes in {} segments into {} triplets, {} bits of fields", stats.inputBytes(),
                 stats.segments(), stats.triplets(), stats.fieldBits());
         return new CompressionResult(stream, stats);
+    }
+
+    private CodedSegment code(byte[] segment, ACBProvider provider, TripletLayout layout) {
+        SegmentBuffer buffer = SegmentBuffer.of(segment);
+        TripletWriter writer = provider.writer();
+        long triplets = new SegmentEncoder(provider.encoderDictionary(buffer), this.settings.tripletCoding().parser(),
+                layout, this.settings.searchWindow()).encode(buffer, writer);
+        Block block = provider.block(segment, writer.finish());
+        return new CodedSegment(block, new CompressionStats(segment.length, 1, triplets, writer.costs()));
     }
 
     public byte[] decompress(CompressedStream stream) throws MalformedStreamException {
@@ -139,5 +145,9 @@ public final class Compressor {
                 return segment;
             }
         };
+    }
+
+    /** One segment as coded, and what coding it did. */
+    private record CodedSegment(Block block, CompressionStats stats) {
     }
 }
