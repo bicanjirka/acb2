@@ -1,13 +1,13 @@
 package cz.cvut.fit.acb.triplets.coder;
 
 import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.triplets.FieldBits;
 import cz.cvut.fit.acb.triplets.FieldSink;
 import cz.cvut.fit.acb.triplets.FieldSource;
 import cz.cvut.fit.acb.triplets.Triplet;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletLayout;
-import cz.cvut.fit.acb.utils.BitUtils;
 
 /** {@code (dist, len, literal)}, every step; a literal alone has distance and length 0. */
 public final class SimpleTripletLayout implements TripletLayout {
@@ -35,14 +35,14 @@ public final class SimpleTripletLayout implements TripletLayout {
     }
 
     private void write(FieldSink sink, int distance, int length, byte literal) {
-        sink.write(this.distField, BitUtils.lowBits(distance, this.distanceBits));
+        sink.write(this.distField, FieldBits.lowBits(distance, this.distanceBits));
         sink.write(this.lengField, length);
         sink.write(this.byteField, literal & 0xFF);
     }
 
     @Override
     public Triplet read(FieldSource source) throws MalformedStreamException {
-        int distance = BitUtils.signExtend(source.read(this.distField), this.distanceBits);
+        int distance = FieldBits.signExtend(source.read(this.distField), this.distanceBits);
         int length = source.read(this.lengField);
         byte literal = (byte) source.read(this.byteField);
         return length == 0 ? Triplet.literal(literal) : Triplet.matchWithLiteral(distance, length, literal);

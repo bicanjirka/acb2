@@ -1,7 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.ConfiguredACBProvider;
 import cz.cvut.fit.acb.TripletCoding;
 import cz.cvut.fit.acb.fixtures.GeneratedInput;
 import cz.cvut.fit.acb.format.MalformedStreamException;
@@ -21,7 +21,7 @@ class LcpSearchTest {
     void aMatchImpliesTheBytesItSharesWithTheContentsBelowIt() throws MalformedStreamException {
         // at 8 the text goes on "abcq"; the contents at 0 ("abbX...") and 4 ("abcY...") share "ab"
         SegmentBuffer segment = SegmentBuffer.of("abbXabcYabcq".getBytes(StandardCharsets.US_ASCII));
-        ACBProviderImpl provider = new ACBProviderImpl(LCP);
+        ConfiguredACBProvider provider = new ConfiguredACBProvider(LCP);
         EncoderDictionary encoder = provider.encoderDictionary(segment);
         DecoderDictionary decoder = provider.decoderDictionary(segment);
         encoder.update(0, 1);
@@ -40,7 +40,7 @@ class LcpSearchTest {
     @Test
     void whenNoContentSortsBelowTheBestNothingIsImplied() {
         SegmentBuffer segment = SegmentBuffer.of("abcXabdYabcq".getBytes(StandardCharsets.US_ASCII));
-        EncoderDictionary encoder = new ACBProviderImpl(LCP).encoderDictionary(segment);
+        EncoderDictionary encoder = new ConfiguredACBProvider(LCP).encoderDictionary(segment);
         encoder.update(0, 1);
         encoder.update(4, 1);
 
@@ -57,7 +57,7 @@ class LcpSearchTest {
         CompressionSettings settings = LCP.withLengthBits(2);
         byte[] text = GeneratedInput.text(6000).bytes();
         SegmentBuffer segment = SegmentBuffer.of(text);
-        ACBProviderImpl provider = new ACBProviderImpl(settings);
+        ConfiguredACBProvider provider = new ConfiguredACBProvider(settings);
         EncoderDictionary encoder = provider.encoderDictionary(segment);
         SegmentBuffer decoded = SegmentBuffer.empty();
         DecoderDictionary decoder = provider.decoderDictionary(decoded);
@@ -83,7 +83,7 @@ class LcpSearchTest {
     @Test
     void aDistanceOutsideTheWindowIsMalformedNotAnAnswer() {
         SegmentBuffer segment = SegmentBuffer.of("abbXabcYabcq".getBytes(StandardCharsets.US_ASCII));
-        DecoderDictionary decoder = new ACBProviderImpl(LCP).decoderDictionary(segment);
+        DecoderDictionary decoder = new ConfiguredACBProvider(LCP).decoderDictionary(segment);
         decoder.update(0, 1);
 
         assertThatThrownBy(() -> decoder.impliedLength(8, 5))

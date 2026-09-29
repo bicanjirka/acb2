@@ -1,13 +1,13 @@
 package cz.cvut.fit.acb.triplets.coder;
 
 import cz.cvut.fit.acb.format.MalformedStreamException;
+import cz.cvut.fit.acb.triplets.FieldBits;
 import cz.cvut.fit.acb.triplets.FieldSink;
 import cz.cvut.fit.acb.triplets.FieldSource;
 import cz.cvut.fit.acb.triplets.Triplet;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
 import cz.cvut.fit.acb.triplets.TripletLayout;
-import cz.cvut.fit.acb.utils.BitUtils;
 
 /** {@code (len, literal)} for a literal alone, {@code (len, dist, literal)} for a match. */
 public final class ValachTripletLayout implements TripletLayout {
@@ -33,7 +33,7 @@ public final class ValachTripletLayout implements TripletLayout {
             }
             case Triplet.MatchWithLiteral match -> {
                 sink.write(this.lengField, match.length());
-                sink.write(this.distField, BitUtils.lowBits(match.distance(), this.distanceBits));
+                sink.write(this.distField, FieldBits.lowBits(match.distance(), this.distanceBits));
                 sink.write(this.byteField, match.literal() & 0xFF);
             }
             case Triplet.Match match -> throw new IllegalArgumentException("valach triplets always end in a literal");
@@ -46,7 +46,7 @@ public final class ValachTripletLayout implements TripletLayout {
         if (length == 0) {
             return Triplet.literal((byte) source.read(this.byteField));
         }
-        int distance = BitUtils.signExtend(source.read(this.distField), this.distanceBits);
+        int distance = FieldBits.signExtend(source.read(this.distField), this.distanceBits);
         return Triplet.matchWithLiteral(distance, length, (byte) source.read(this.byteField));
     }
 }

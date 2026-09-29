@@ -3,7 +3,6 @@ package cz.cvut.fit.acb.triplets;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
-import cz.cvut.fit.acb.utils.BitUtils;
 
 /**
  * Follows the fields of a triplet as a layout reads or writes them, and works out the context of its
@@ -45,7 +44,7 @@ final class LiteralTracker {
     void observe(TripletFieldId field, int value) {
         switch (field.kind()) {
             case FLAG -> this.sentLength = 0;
-            case DISTANCE -> this.distance = BitUtils.signExtend(value, field.bitSize());
+            case DISTANCE -> this.distance = FieldBits.signExtend(value, field.bitSize());
             case LENGTH -> this.sentLength = value;
             case LITERAL -> {
             }

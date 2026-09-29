@@ -1,9 +1,9 @@
-package cz.cvut.fit.acb.utils;
+package cz.cvut.fit.acb.triplets;
 
 /** Bit helpers for the fixed-width signed fields of a triplet. */
-public final class BitUtils {
+public final class FieldBits {
 
-    private BitUtils() {
+    private FieldBits() {
     }
 
     /** The low {@code bits} bits of {@code value}, as a field of that width stores it. */

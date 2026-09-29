@@ -12,11 +12,11 @@ import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.FieldSource;
 
-public final class ACBProviderImpl implements ACBProvider {
+public final class ConfiguredACBProvider implements ACBProvider {
 
     private final CompressionSettings settings;
 
-    public ACBProviderImpl(CompressionSettings settings) {
+    public ConfiguredACBProvider(CompressionSettings settings) {
         this.settings = settings;
     }
 

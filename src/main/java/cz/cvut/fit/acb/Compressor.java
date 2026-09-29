@@ -37,7 +37,7 @@ public final class Compressor {
     private final Function<CompressionSettings, ACBProvider> components;
 
     public Compressor(CompressionSettings settings) {
-        this(settings, ACBProviderImpl::new);
+        this(settings, ConfiguredACBProvider::new);
     }
 
     public Compressor(CompressionSettings settings, Function<CompressionSettings, ACBProvider> components) {

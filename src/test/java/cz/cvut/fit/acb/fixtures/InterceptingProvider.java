@@ -1,8 +1,8 @@
 package cz.cvut.fit.acb.fixtures;
 
 import cz.cvut.fit.acb.ACBProvider;
-import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.ConfiguredACBProvider;
 import cz.cvut.fit.acb.coding.TripletWriter;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
@@ -32,7 +32,7 @@ public final class InterceptingProvider implements ACBProvider {
     /** For {@code new Compressor(settings, components(...))}. */
     public static Function<CompressionSettings, ACBProvider> components(DictionarySnapshots.Side snapshots,
                                                                        TripletLog log) {
-        return settings -> new InterceptingProvider(new ACBProviderImpl(settings), snapshots, log);
+        return settings -> new InterceptingProvider(new ConfiguredACBProvider(settings), snapshots, log);
     }
 
     /** Intercepts only the fields, leaving the dictionaries alone. */

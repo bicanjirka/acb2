@@ -1,7 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.ConfiguredACBProvider;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DictionarySearchTest {
 
     private static EncoderDictionary dictionaryOf(String text) {
-        return new ACBProviderImpl(CompressionSettings.defaults())
+        return new ConfiguredACBProvider(CompressionSettings.defaults())
                 .encoderDictionary(SegmentBuffer.of(text.getBytes(StandardCharsets.US_ASCII)));
     }
 

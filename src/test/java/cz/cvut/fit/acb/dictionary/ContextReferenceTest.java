@@ -1,7 +1,7 @@
 package cz.cvut.fit.acb.dictionary;
 
-import cz.cvut.fit.acb.ACBProviderImpl;
 import cz.cvut.fit.acb.CompressionSettings;
+import cz.cvut.fit.acb.ConfiguredACBProvider;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -12,7 +12,7 @@ class ContextReferenceTest {
 
     /** A dictionary holding the given positions of {@code text}, whose length is the position asked about. */
     private static DecoderDictionary dictionaryOf(String text, int... positions) {
-        DecoderDictionary dictionary = new ACBProviderImpl(CompressionSettings.defaults())
+        DecoderDictionary dictionary = new ConfiguredACBProvider(CompressionSettings.defaults())
                 .decoderDictionary(SegmentBuffer.of(text.getBytes(StandardCharsets.US_ASCII)));
         for (int position : positions) {
             dictionary.update(position, 1);
