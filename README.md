@@ -56,8 +56,6 @@ from the file; only `-f`, `-m` and `-log` apply when decompressing.
   `(distance, length, next byte)`.
 - **valach**: no flag. Length 0 means `(literal)`; otherwise it writes
   `(length, distance, next byte)`.
-- **lcp** is experimental. The CLI refuses it because its output doesn't decompress yet (see
-  `TODO.md`).
 
 ## Development
 

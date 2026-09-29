@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  *
  */
 public abstract sealed class BaseTripletCoder implements TripletCoder
-        permits SimpleTripletCoder, SalomonTripletCoder, ValachTripletCoder, LCPTripletCoder {
+        permits SimpleTripletCoder, SalomonTripletCoder, ValachTripletCoder {
 
     private final Dictionary dictionary;
     private final SegmentBuffer segment;

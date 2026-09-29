@@ -146,9 +146,6 @@ final class CliParser {
         }
         if (cmd.hasOption("tc")) {
             TripletCoding coding = parseEnum(TripletCoding.class, cmd.getOptionValue("tc"), "triplet-coder");
-            if (coding == TripletCoding.LCP) {
-                throw new UsageException("triplet-coder LCP is experimental and its output does not decompress yet");
-            }
             settings = settings.withTripletCoding(coding);
         }
         return settings;

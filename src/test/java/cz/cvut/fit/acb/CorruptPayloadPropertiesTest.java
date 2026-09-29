@@ -64,7 +64,6 @@ class CorruptPayloadPropertiesTest {
     @Provide
     Arbitrary<CompressionSettings> settings() {
         Arbitrary<SettingsCombination> combinations = Arbitraries.of(SettingsCombination.all()
-                .filter(combination -> combination.knownRoundTripDefect().isEmpty())
                 .collect(Collectors.toList()));
         return Combinators.combine(combinations,
                 Arbitraries.integers().between(1, 8), Arbitraries.integers().between(1, 8))

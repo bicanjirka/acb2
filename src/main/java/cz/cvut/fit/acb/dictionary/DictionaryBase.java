@@ -2,7 +2,7 @@ package cz.cvut.fit.acb.dictionary;
 
 import cz.cvut.fit.acb.format.MalformedStreamException;
 
-public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
+public final class DictionaryBase implements Dictionary {
 
     private final ContextIndex index;
     private final SegmentBuffer segment;
@@ -15,18 +15,6 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
         this.segment = segment;
         this.maxDistance = maxDistance;
         this.maxLength = maxLength;
-    }
-
-    protected final ContextIndex index() {
-        return this.index;
-    }
-
-    protected final SegmentBuffer segment() {
-        return this.segment;
-    }
-
-    protected final int maxLength() {
-        return this.maxLength;
     }
 
     @Override
@@ -51,7 +39,7 @@ public sealed class DictionaryBase implements Dictionary permits DictionaryLCP {
      * Scans the ranks {@code first .. last} outward from the context, so the first longest match is
      * the nearest; at equal distance the rank above the context wins, as in ExCom.
      */
-    protected DictionaryInfo searchContent(int ctx, int idx, int first, int last) {
+    private DictionaryInfo searchContent(int ctx, int idx, int first, int last) {
         int bestIdx = -1;
         int bestLen = 0;
         if (first <= last) {

@@ -32,7 +32,7 @@ public final class ContainerFormat {
 
     private static final byte[] MAGIC = {'A', 'C', 'B'};
     private static final TripletCoding[] TRIPLET_CODES = {
-            TripletCoding.SIMPLE, TripletCoding.SALOMON, TripletCoding.SALOMON2, TripletCoding.VALACH, TripletCoding.LCP};
+            TripletCoding.SIMPLE, TripletCoding.SALOMON, TripletCoding.SALOMON2, TripletCoding.VALACH};
     private static final EntropyCoding[] ENTROPY_CODES = {EntropyCoding.ADAPTIVE_ARITHMETIC, EntropyCoding.BIT_ARRAY};
 
     private ContainerFormat() {

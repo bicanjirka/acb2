@@ -37,7 +37,7 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 `Compressor` (the in-memory core) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and
 `ACBFileIO` (its file side) · `ACBProvider*` (wires the strategies below from a
 `CompressionSettings` record) · `dictionary`
-(+ the `ContextIndex` behind it) · `triplets` (+ `coder`: Simple, Salomon, Valach, LCP) ·
+(+ the `ContextIndex` behind it) · `triplets` (+ `coder`: Simple, Salomon, Valach) ·
 `coding` (triplet↔byte: range coder with adaptive models, bit array) · `format` (the on-disk container:
 header, payload, CRC32) · `utils` (bit helpers).
 
@@ -61,8 +61,8 @@ header, payload, CRC32) · `utils` (bit helpers).
 - Round trips run in memory through `Compressor`, over every `fixtures.CorpusFile` (classpath
   `in/`). `fixtures.InterceptingProvider` wraps its
   components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.
-- A combination with an open `TODO.md` defect is skipped with its reason
-  (`SettingsCombination.known*Defect`), never passed; fixing it deletes the exclusion.
+- A combination with an open `TODO.md` defect is skipped in the grids with its reason, never
+  passed; fixing it deletes the exclusion.
 - `RatioRegressionTest` pins compressed sizes: a change that improves the ratio lowers the pins in
   the same commit. `harness.PerformanceHarness` fails under `PerformanceBudget`: raise the floors
   when a change makes the coders faster.

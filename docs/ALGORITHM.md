@@ -149,9 +149,9 @@ sorts as smaller. The decoder knows only the best content: it takes the largest 
 with it among the contents that sort below it, and does this only when `len > 0`. The `len`
 field is capped at `L` after subtracting, not before.
 
-Status: **not implemented as specified.** The current dictionary picks the second content by
-comparing against text the decoder does not have, so the two sides diverge. `-tc lcp` is
-refused by the CLI, and the tests skip it.
+Status: **not implemented.** The first version picked the second content by comparing against
+text the decoder does not have, so the two sides diverged; it was removed, and there is no
+`-tc lcp` until `TODO.md` closes the gap.
 
 ## 6. Worked examples
 

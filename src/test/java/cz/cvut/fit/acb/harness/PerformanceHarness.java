@@ -2,10 +2,8 @@ package cz.cvut.fit.acb.harness;
 
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.Compressor;
-import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
 import cz.cvut.fit.acb.fixtures.GeneratedInput;
-import cz.cvut.fit.acb.fixtures.SettingsCombination;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 
@@ -102,7 +100,6 @@ public final class PerformanceHarness {
 
     private static List<TripletCoding> workingCoders() {
         return Arrays.stream(TripletCoding.values())
-                .filter(coder -> new SettingsCombination(coder, EntropyCoding.ADAPTIVE_ARITHMETIC).knownRoundTripDefect().isEmpty())
                 .toList();
     }
 

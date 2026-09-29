@@ -59,7 +59,6 @@ class CliParserTest {
         assertThatThrownBy(() -> this.work("in", "out", "-af", "3,0")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-tc", "nonsense"))
                 .isInstanceOf(CliParser.UsageException.class);
-        assertThatThrownBy(() -> this.work("in", "out", "-tc", "lcp")).isInstanceOf(CliParser.UsageException.class);
         assertThatThrownBy(() -> this.work("in", "out", "-log", "loud")).isInstanceOf(CliParser.UsageException.class);
     }
 

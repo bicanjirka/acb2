@@ -10,10 +10,8 @@ import cz.cvut.fit.acb.dictionary.ChunkedContextIndex;
 import cz.cvut.fit.acb.dictionary.ContextOrder;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.DictionaryBase;
-import cz.cvut.fit.acb.dictionary.DictionaryLCP;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.triplets.TripletProcessor;
-import cz.cvut.fit.acb.triplets.coder.LCPTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.SimpleTripletCoder;
 import cz.cvut.fit.acb.triplets.coder.TripletCoder;
@@ -34,10 +32,7 @@ public final class ACBProviderImpl implements ACBProvider {
         int maxDistance = this.settings.maxDistance();
         int maxLength = this.settings.maxLength();
         ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment));
-        return switch (this.settings.tripletCoding()) {
-            case LCP -> new DictionaryLCP(index, segment, maxDistance, maxLength);
-            case SALOMON, SALOMON2, SIMPLE, VALACH -> new DictionaryBase(index, segment, maxDistance, maxLength);
-        };
+        return new DictionaryBase(index, segment, maxDistance, maxLength);
     }
 
     @Override
@@ -49,7 +44,6 @@ public final class ACBProviderImpl implements ACBProvider {
             case SALOMON2 -> new SalomonTripletCoder.SalomonByteful(segment, dictionary, distanceBits, lengthBits);
             case SIMPLE -> new SimpleTripletCoder(segment, dictionary, distanceBits, lengthBits);
             case VALACH -> new ValachTripletCoder(segment, dictionary, distanceBits, lengthBits);
-            case LCP -> new LCPTripletCoder(segment, dictionary, distanceBits, lengthBits);
         };
     }
 

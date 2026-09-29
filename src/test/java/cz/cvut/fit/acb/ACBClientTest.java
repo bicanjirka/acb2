@@ -100,11 +100,11 @@ class ACBClientTest {
     }
 
     @Test
-    void lcpTripletCodingIsRejectedUntilItRoundTrips() throws IOException {
+    void anUnknownTripletCodingIsAUsageErrorAndWritesNothing() throws IOException {
         Path input = this.corpusFile("aaaa");
         Path output = this.dir.resolve("aaaa.acb");
 
-        int exitCode = run(input, output, "-tc", "lcp");
+        int exitCode = run(input, output, "-tc", "nonsense");
 
         assertThat(exitCode).isEqualTo(USAGE);
         assertThat(output).doesNotExist();

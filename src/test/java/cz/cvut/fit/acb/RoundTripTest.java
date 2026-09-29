@@ -29,8 +29,8 @@ class RoundTripTest {
                 .flatMap(settings -> DegenerateInput.all().map(input -> Arguments.of(settings, input)));
     }
 
-    static Stream<SettingsCombination> workingSettings() {
-        return SettingsCombination.all().filter(settings -> settings.knownRoundTripDefect().isEmpty());
+    static Stream<SettingsCombination> settings() {
+        return SettingsCombination.all();
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -53,7 +53,7 @@ class RoundTripTest {
     }
 
     @ParameterizedTest
-    @MethodSource("workingSettings")
+    @MethodSource("settings")
     void anEmptyInputDecompressesToAnEmptyOutput(SettingsCombination settings) {
         byte[] decompressed = PipelineFixtures.roundTrip(settings.settings(), new byte[0]);
 
@@ -61,7 +61,7 @@ class RoundTripTest {
     }
 
     @ParameterizedTest
-    @MethodSource("workingSettings")
+    @MethodSource("settings")
     void oneCompressorHandlesStreamsIndependently(SettingsCombination settings) throws MalformedStreamException {
         Compressor compressor = new Compressor(settings.settings().withSegmentSize(13));
         List<byte[]> inputs = CorpusFile.all().map(CorpusFile::bytes).toList();

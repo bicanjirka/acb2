@@ -6,7 +6,6 @@ import cz.cvut.fit.acb.CompressionStats;
 import cz.cvut.fit.acb.Compressor;
 import cz.cvut.fit.acb.EntropyCoding;
 import cz.cvut.fit.acb.TripletCoding;
-import cz.cvut.fit.acb.fixtures.SettingsCombination;
 import cz.cvut.fit.acb.format.ContainerFormat;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.TripletFieldKind;
@@ -32,8 +31,8 @@ import java.util.stream.Stream;
  * java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarness DIR [key=a,b ...]
  * </pre>
  *
- * (Use {@code :} instead of {@code ;} outside Windows.) Keys: {@code coders} (default all that
- * work), {@code d} (default 6), {@code l} (default 4,7), {@code entropy} ({@code arith}, {@code bits};
+ * (Use {@code :} instead of {@code ;} outside Windows.) Keys: {@code coders} (default all
+ * coders), {@code d} (default 6), {@code l} (default 4,7), {@code entropy} ({@code arith}, {@code bits};
  * default arith).
  */
 public final class RatioHarness {
@@ -177,8 +176,6 @@ public final class RatioHarness {
         int[] selectedDistances = distances;
         int[] selectedLengths = lengths;
         return entropies.stream().flatMap(entropy -> selected.stream()
-                .filter(coder -> new SettingsCombination(coder, entropy)
-                        .knownRoundTripDefect().isEmpty())
                 .flatMap(coder -> Arrays.stream(selectedDistances).boxed()
                         .flatMap(d -> Arrays.stream(selectedLengths).mapToObj(l -> CompressionSettings.defaults()
                                 .withTripletCoding(coder).withEntropyCoding(entropy)

@@ -37,12 +37,9 @@ class RoundTripPropertiesTest {
         assertThat(decompressed).isEqualTo(input);
     }
 
-    /** Combinations with a known defect are left to {@code RoundTripTest}, which reports them skipped. */
     @Provide
     Arbitrary<SettingsCombination> settings() {
-        return Arbitraries.of(SettingsCombination.all()
-                .filter(settings -> settings.knownRoundTripDefect().isEmpty())
-                .toList());
+        return Arbitraries.of(SettingsCombination.all().toList());
     }
 
     /** Uniform bytes rarely repeat, so half the inputs use a three-letter alphabet to force matches. */

@@ -259,20 +259,20 @@ distances. Decoding repeats the choice, so it changes the format.
 - **Approach:** take the neighbour with the longer backward match (ties to the predecessor),
   measure on Calgary together with the nearest-tie walk. Bumps `VERSION`.
 
-### LCP dictionary diverges between encoder and decoder
+### The LCP coder is missing
 
-The decoder's dictionary differs from the encoder's after a few updates, and segmented
-decoding calls `select` with a negative rank. `ACBClient` refuses `-tc lcp` until this is
-closed, because the files it wrote did not decompress. The thesis-era build, rebuilt and run on
-Calgary: LCP output decompresses for 0 of the 10 text files, and every coder crashes on the 4
-binary files (the signed-byte bug fixed in `32d5071`), so Table 5.8's LCP and binary-file numbers
-came from output that was never decoded. What is known:
+The coder was removed in phase 5: its decoder's dictionary differed from the encoder's after a few
+updates, the files it wrote did not decompress, and porting it onto the shared update rule would
+only have carried the defect over. The thesis-era build, rebuilt and run on Calgary: LCP output
+decompresses for 0 of the 10 text files, and every coder crashes on the 4 binary files (the
+signed-byte bug fixed in `32d5071`), so Table 5.8's LCP and binary-file numbers came from output
+that was never decoded. What the removed code got wrong:
 
-- `DictionaryLCP.searchContent` mixes ranks and text positions: `bestIdx` holds a rank, but the
-  equal-length branch assigns it `cnt` (a position) and compares `bestIdx + bestLen` as a
+- `DictionaryLCP.searchContent` mixed ranks and text positions: `bestIdx` held a rank, but the
+  equal-length branch assigned it `cnt` (a position) and compared `bestIdx + bestLen` as a
   position.
-- It picks the second best by match length against the text, which the decoder cannot see, and
-  the decoder searches from the best content's position with the best itself still a candidate.
+- It picked the second best by match length against the text, which the decoder cannot see, and
+  the decoder searched from the best content's position with the best itself still a candidate.
 - The thesis specification (§3.3.1) is sound: best = the lexicographically smallest content of
   maximal match length L; second = a lexicographically smaller one; send `L - lcp(best, second)`,
   which is never negative or zero. It misses one rule: comparisons may only read bytes the decoder
@@ -282,8 +282,8 @@ came from output that was never decoded. What is known:
 - **Tie rule:** the best content is the lexicographically smallest of the maximal matches, the
   opposite of the nearest-wins walk of `DictionaryBase.searchContent`, so the rule belongs to the
   coder's search, not to the shared scan.
-- **Where:** `dictionary.DictionaryLCP`, `triplets.coder.LCPTripletCoder`, the `-tc` check in
-  `ACBClient`, `SettingsCombination.knownDictionaryDefect`.
+- **Where:** a new `TripletCoding.LCP` (format code 4) with its own search and layout, beside the
+  other coders; `docs/ALGORITHM.md` §5.5.
 - **Approach:** implement §3.3.1 exactly, with the visibility rule, efficiently. The encoder
   already knows every candidate's match length m(c) from the window scan. A candidate that
   matched less than L sorts below the best exactly when its byte at m(c) is below the text's byte
@@ -292,9 +292,8 @@ came from output that was never decoded. What is known:
   the tied candidates at L need a comparison beyond L to find the smallest. The decoder, knowing only
   the best, takes the largest LCP with the best among the candidates that sort below it: one
   `Arrays.mismatch` per candidate, and only when the sent length is non-zero. The length cap then
-  applies to `L - lcp`, which lets matches exceed `2^bits - 1`, the point of the method. Remove
-  the CLI refusal, the refusal in `Compressor.decompress` and the test exclusion together, and
-  re-measure Table 5.8 with round trips verified.
+  applies to `L - lcp`, which lets matches exceed `2^bits - 1`, the point of the method.
+  Re-measure Table 5.8 with round trips verified.
 
 ### Literals are coded order-0
 

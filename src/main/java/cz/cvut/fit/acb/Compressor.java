@@ -101,9 +101,6 @@ public final class Compressor {
                 || ByteBuffer.wrap(payload.getFirst()).getInt() < 0) {
             throw new MalformedStreamException("ACB payload does not start with a segment size");
         }
-        if (stream.header().tripletCoding() == TripletCoding.LCP) {
-            throw new MalformedStreamException("LCP streams cannot be decoded: the LCP dictionary diverges");
-        }
         ACBProvider provider = this.components.apply(stream.header().toSettings());
         TripletProcessor reader = provider.getTripletReader(payload);
         TripletCoder.DecodeFlag flag;

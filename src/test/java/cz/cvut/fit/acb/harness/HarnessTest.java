@@ -37,16 +37,6 @@ class HarnessTest {
     }
 
     @Test
-    void theRatioHarnessSkipsCoderCombinationsWithAKnownDefect() throws IOException {
-        Files.writeString(this.corpus.resolve("a"), "mississippi");
-
-        List<RatioHarness.Row> rows = RatioHarness.run(this.corpus, new String[]{"coders=lcp,simple", "l=4"},
-                new PrintStream(new ByteArrayOutputStream()));
-
-        assertThat(rows).extracting(RatioHarness.Row::label).containsExactly("simple d=6 l=4 arith");
-    }
-
-    @Test
     void theRatioHarnessRejectsAnOptionItDoesNotKnow() throws IOException {
         Files.writeString(this.corpus.resolve("a"), "mississippi");
 

@@ -8,11 +8,9 @@ import cz.cvut.fit.acb.format.MalformedStreamException;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** The round-trip assertions shared by the quick and the full test classes, which differ only in the grid. */
 public final class RoundTripChecks {
-
     private static final int SMALL_SEGMENT = 500;
 
     private RoundTripChecks() {
@@ -20,8 +18,6 @@ public final class RoundTripChecks {
 
     /** A corpus file decompresses to itself at every segment size that splits it interestingly. */
     public static void corpusFileRoundTripsAtEverySegmentSize(SettingsCombination settings, CorpusFile file) {
-        settings.knownRoundTripDefect().ifPresent(reason -> assumeTrue(false, reason));
-
         for (int segmentSize : segmentSizesFor(file.bytes().length)) {
             byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize),
                     file.bytes());
@@ -31,8 +27,6 @@ public final class RoundTripChecks {
     }
 
     public static void degenerateInputRoundTrips(SettingsCombination settings, DegenerateInput input) {
-        settings.knownRoundTripDefect().ifPresent(reason -> assumeTrue(false, reason));
-
         for (int segmentSize : new int[]{CompressionSettings.defaults().segmentSize(), SMALL_SEGMENT}) {
             byte[] decompressed = PipelineFixtures.roundTrip(settings.settings().withSegmentSize(segmentSize),
                     input.bytes());
@@ -43,7 +37,6 @@ public final class RoundTripChecks {
 
     public static void decoderRebuildsTheEncodersDictionary(SettingsCombination settings, CorpusFile file)
             throws MalformedStreamException {
-        settings.knownDictionaryDefect().ifPresent(reason -> assumeTrue(false, reason));
         DictionarySnapshots snapshots = new DictionarySnapshots();
         TripletLog log = new TripletLog();
         CompressedStream compressed = new Compressor(settings.settings(),
