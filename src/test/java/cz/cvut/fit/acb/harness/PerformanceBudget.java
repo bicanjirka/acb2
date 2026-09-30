@@ -30,6 +30,7 @@ record PerformanceBudget(Map<TripletCoding, Floor> floors) {
                 TripletCoding.SALOMON, new Floor(1.3, 3.2),
                 TripletCoding.SALOMON2, new Floor(1.6, 3.4),
                 TripletCoding.VALACH, new Floor(1.5, 3.4),
+                TripletCoding.PREFIX, new Floor(1.2, 3.1),
                 TripletCoding.ACB, new Floor(0.7, 1.0)));
     }
 

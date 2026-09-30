@@ -3,9 +3,10 @@ package cz.cvut.fit.acb.dictionary;
 import java.util.Arrays;
 
 /**
- * The order of contents and their common prefixes for {@link MatchRule#SMALLEST_WITH_LCP}. Both sides
- * see only the bytes before the position being coded, so a content is compared as far as that and
- * one that ends there sorts before every longer content it is a prefix of.
+ * Common prefixes of contents for the rules that imply one, {@link MatchRule#SMALLEST_WITH_LCP} and
+ * {@link MatchRule#NEAREST_WITH_PREFIX}, and the order of contents the first of them needs. The
+ * encoder and the decoder see only the bytes before the position being coded, so a content is
+ * compared as far as that and one that ends there sorts before every longer content it is a prefix of.
  */
 final class LcpMatches {
 

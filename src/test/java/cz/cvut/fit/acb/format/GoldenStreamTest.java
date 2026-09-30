@@ -52,9 +52,12 @@ class GoldenStreamTest {
                         .withDistanceBits(7).withLengthBits(3)),
                 new Golden("valach", BASE.withTripletCoding(TripletCoding.VALACH).withLengthBits(7)),
                 new Golden("lcp", BASE.withTripletCoding(TripletCoding.LCP)),
+                new Golden("prefix", BASE.withTripletCoding(TripletCoding.PREFIX)),
                 new Golden("valach-context", BASE.withTripletCoding(TripletCoding.VALACH).withLengthBits(7)
                         .withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC)),
                 new Golden("lcp-context", BASE.withTripletCoding(TripletCoding.LCP)
+                        .withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC)),
+                new Golden("prefix-context", BASE.withTripletCoding(TripletCoding.PREFIX)
                         .withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC)),
                 new Golden("valach-bit-array", BASE.withTripletCoding(TripletCoding.VALACH)
                         .withEntropyCoding(EntropyCoding.BIT_ARRAY).withDistanceBits(4)),

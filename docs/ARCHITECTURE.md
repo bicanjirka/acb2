@@ -164,6 +164,39 @@ recorded, so the two columns are not the same experiment, and what the table is 
 Tables 5.4 and 5.5 (the structures) are superseded by the table above, which is of the structures that
 replaced them; Tables 5.6 and 5.7 (the widths) by the ratio harness, which measures any width and length.
 
+## The prefix variant
+
+`lcp` (thesis section 3.3.1) sends the match length less the prefix the best content shares with the
+second best, and needs the best to be the smallest of the longest, so that the prefix is below the length.
+That is what makes it lose: it saves length bits and pays them back in distance, the smallest content being
+far from the context. Léhar's master thesis (CTU FIT 2016, the ExCom module `acb2`) has the same idea,
+his "V1", and reports it 0.5% better than Valach's coder as the mean of the ratios of the Calgary files,
+which the same rule in `valach`'s layout reproduces (970,320 bytes against 974,670, 0.45%); its larger
+gain over his own baseline is that baseline's, which is 4% behind Valach's.
+
+`prefix` takes the prefix from the walk instead of from the order of contents (`ALGORITHM.md` 5.6):
+the best stays the nearest of the longest, and the prefix is what it shares with the candidates walked
+before it, each of which matched fewer bytes. Calgary, `d = 6`, `l = 7`, ratio harness, one thread:
+
+| | Bytes | Distance | Length | Literal | Compress / decompress |
+|---|---|---|---|---|---|
+| `valach` | 974,670 | 327,344 | 237,858 | 408,864 | 2.8 / 3.8 MB/s |
+| `lcp`'s rule in `valach`'s layout (not kept) | 970,320 | 370,063 | 190,997 | 408,656 | 2.0 / 2.8 |
+| `prefix` | 935,923 | 327,227 | 199,417 | 408,675 | 2.3 / 3.1 |
+| `prefix`, `CONTEXT_ARITHMETIC` | 878,273 | | | | 1.4 / 1.7 |
+| `acb`, `d = 6` | 844,144 | 341,584 | 149,131 | 352,801 | 1.5 / 1.65 |
+
+It keeps the distance of `valach` and most of the saving in the length, and is smaller than `valach` on 13 of
+the 14 files (`geo` is 0.8% larger). The length width hardly matters (`l = 7` to `9` is 0.1%), so the gain
+is in the distribution of the length, not in matches beyond the longest. The decoder pays for it: it walks the
+window up to the chosen candidate, so at `d = 12` it decodes far slower than `valach`, and a wider window
+does not pay for that on the ratio. With the literal modelling of `CONTEXT_ARITHMETIC` the literals are as
+cheap as `acb`'s, and the distance is cheaper (327 KB against 342 KB, at `acb`'s funnel of 6); the whole of
+the remaining 4% is the length, 199 KB against 149 KB. `acb` codes it against the candidates that come
+after the chosen one as well (`ALGORITHM.md` 7.5), and a layout coder's models cannot see the dictionary:
+giving them that makes the coder `acb`. So the prefix variant is the best a layout can do, and the ratio of
+`acb` is not reachable by it.
+
 ## Where the bits go
 
 Book1 (768,771 bytes) with the thesis coder at its defaults, with `acb` at `-d 6` and with Buyanovsky's

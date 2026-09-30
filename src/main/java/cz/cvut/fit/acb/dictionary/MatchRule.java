@@ -17,7 +17,14 @@ public enum MatchRule {
      * out the longest common prefix of the best content with the contents that sort below it, and
      * the length sent is the match length less that prefix.
      */
-    SMALLEST_WITH_LCP(4, SmallestWithLcpMatcher::new);
+    SMALLEST_WITH_LCP(4, SmallestWithLcpMatcher::new),
+
+    /**
+     * The longest match; the nearest to the context among equals, as {@link #NEAREST}. The decoder can
+     * work out the longest common prefix of the best content with the contents walked before it, and
+     * the length sent is the match length less that prefix.
+     */
+    NEAREST_WITH_PREFIX(4, NearestWithPrefixMatcher::new);
 
     private final int limitFactor;
     private final Function<ContextRanking, Matcher> matchers;

@@ -46,7 +46,7 @@ file is the same for any number of threads.
 | `-f`, `--force` | Overwrite output files that already exist | refuse |
 | `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1). For `acb`, the funnel of analogies takes 2^(N−1) entries from each side of a context | 6 |
 | `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 (`acb`: 8) |
-| `-tc C`, `--triplet-coder C` | Coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp`, or `acb` | `valach` |
+| `-tc C`, `--triplet-coder C` | Coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp`, `prefix`, or `acb` | `valach` |
 | `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 (`acb`: 255) |
 | `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding (not for `acb`) | range coding |
 | `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and leaves out the bytes that would have made the match longer, and is about 6% smaller (`acb` codes with models of its own and takes only the first) | `ADAPTIVE_ARITHMETIC` |
@@ -65,6 +65,7 @@ file is the same for any number of threads.
 - **valach**: no flag. Length 0 means `(literal)`; otherwise it writes
   `(length, distance, next byte)`.
 - **lcp**: laid out as `simple`, but the best match is the lexicographically smallest of the longest ones, and the length sent is the match length less the prefix it shares with the contents below it, which the decoder works out itself.
+- **prefix**: laid out as `valach`, with `lcp`'s idea done with the nearest match: the best match is the nearest of the longest ones, and the length sent is the match length less the prefix it shares with the candidates scanned before it, which the decoder works out itself. Not from a source; 4% smaller than `valach`.
 - **acb**: Buyanovsky's own coder. Each step gathers the *funnel of analogies* of the context, the entries of
   the dictionary whose contexts agree with it beyond chance, weighted by how far they agree and how near
   they lie. It codes which of them continues the text (or none) by its weight, the length of the match
@@ -91,10 +92,13 @@ Mahoney's published table, on an older machine.
 | xz -9 | 845,952 | 2.15 | 1.0 s / 0.8 s |
 | `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 8.0 s / 9.0 s |
 | **`-tc acb -d 5`** | 855,407 | 2.18 | 2.4 s / 2.4 s |
+| `-tc prefix -ec CONTEXT_ARITHMETIC -d 10` | 868,318 | 2.21 | 8.7 s / 5.0 s |
+| `-tc prefix -ec CONTEXT_ARITHMETIC` | 878,273 | 2.24 | 2.7 s / 2.3 s |
 | `-tc valach -ec CONTEXT_ARITHMETIC -d 10` | 912,571 | 2.32 | 6.2 s / 3.7 s |
 | `-tc valach -ec CONTEXT_ARITHMETIC` | 916,945 | 2.33 | 2.5 s / 2.0 s |
 | `-tc salomon2 -ec CONTEXT_ARITHMETIC` | 917,050 | 2.34 | 2.4 s / 2.2 s |
 | `-tc simple -ec CONTEXT_ARITHMETIC` | 933,678 | 2.38 | 2.4 s / 2.1 s |
+| `-tc prefix` | 935,923 | 2.38 | 2.0 s / 1.5 s |
 | `-tc lcp -ec CONTEXT_ARITHMETIC` | 936,816 | 2.39 | 3.4 s / 2.8 s |
 | ExCom `acb` `d=10` | 967,714 | 2.46 | 3.2 s / 1.4 s |
 | ExCom `acb` `d=8` | 972,911 | 2.48 | 2.0 s / 1.3 s |
@@ -110,7 +114,7 @@ Mahoney's published table, on an older machine.
 `acb` is Buyanovsky's coder and is where the ratio is: at `-d 8` it beats `AC.C` with its widest funnel and
 the 1 MB frame, and at `-d 6` it is under `xz -9`, at a sixth of the time of `AC.C`. The five coders
 of the thesis are Salomon's and Valach's layouts of a triplet; the best of them at the defaults is 16%
-larger than `acb` (9% with the literal modelling of `CONTEXT_ARITHMETIC`). In the ratio harness one thread
+larger than `acb` (9% with the literal modelling of `CONTEXT_ARITHMETIC`), and `prefix` 11% (4%). In the ratio harness one thread
 codes `acb` at `-d 6` at about 1.4 MB/s and decodes it at 1.5, and `valach` at 2.5 and 3.5; a file of several
 segments is coded on all the processors (`-j`). `docs/ALGORITHM.md` has the rules of every coder and
 `docs/ARCHITECTURE.md` why the code is as it is and what was measured to get there.

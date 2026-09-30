@@ -183,7 +183,36 @@ Why `lcp < M`: a candidate below the best that shared `M` bytes with it would ma
 Deviations: all of 2.3 and 3.5, except that the nearest match no longer wins ties. Over Calgary the
 sizes are close to `simple`'s (`d = 6`: 994,471 against 991,407 at `l = 7`, 1,014,180 against
 1,016,907 at `l = 4`; `d = 10`, `l = 6`: 961,928 against 962,098), because the smallest content is
-often further from the context than the nearest one, and it costs about half the speed.
+often further from the context than the nearest one, and it costs about half the speed. `prefix` (5.6) keeps the nearest rule and implies a prefix from the walk.
+
+### 5.6 `prefix`: `(len, dist, literal)` with the length less a prefix
+
+Source: none; a variant of `lcp` (5.5). It is thesis §3.3.1's idea with the second content taken from the
+walk of 3.4 instead of from the order of contents, and it is the rule `acb` uses for its lengths (7.5).
+
+Laid out as `valach` (5.4): `len = 0` is followed by the literal alone, `len > 0` by `dist` and the literal.
+The **best** candidate is 3.4's, the first longest match on the walk outward from the context, so the
+nearest wins ties, and a match is measured up to `4L` bytes (an implementation limit). The **walk order**
+is 3.4's: the rank `ctx`, then at each distance `k` the rank above (`ctx + k`) before the one below
+(`ctx - k`), within the window of 3.2. `prefix` is the longest common prefix of the best content with the
+content of any candidate walked before it, compared only over the bytes before the position being coded, as
+unsigned bytes (0 if the best is walked first). The triplet sends `M' - prefix` instead of the match length,
+with `M' = min(M, prefix + L)`, so the field is capped at `L` after subtracting, not before.
+
+The decoder knows the walk order from `ctx` and `dist`, and the bytes before the position, so it finds
+`prefix` for the distance it has read, and only when `len > 0`. The step codes `M' + 1` bytes; 4.2 applies to
+`M'`, and a match that 4.2 would leave with no more than `prefix` bytes is written as a literal.
+
+Why `prefix < M`: a candidate walked before the best matched fewer bytes than it, so the text goes on as
+the best does where the candidate does not, and the two contents differ where the candidate stopped
+matching. What `prefix` measures over the known bytes is at most that, and so below `M`. It is unlike
+5.5's second content in that it needs no order of contents: later candidates, even ones that match as long,
+say nothing about the length, and the best does not have to be the smallest of its equals.
+
+Deviations: all of 2.3 and 3.5. Over Calgary (`d = 6`, `l = 7`) it is 935,923 bytes against `valach`'s
+974,670 (4.0% less) and 5.5's rule in `valach`'s layout, 970,320; with `CONTEXT_ARITHMETIC` 878,273 against
+916,945. It codes at about 80% of `valach`'s speed and decodes at 83% to 90% of it; the decoder walks the window
+up to the chosen candidate (`ARCHITECTURE.md`, "The prefix variant").
 
 ## 6. Worked examples
 
@@ -360,7 +389,7 @@ them (a candidate whose next byte lies at or past `idx` is left out, since that 
 after no match at all, the first byte of every candidate of the window. They are left out only when both
 sides can be sure: for
 a match, the length sent is below the longest a triplet carries, the match is below the longest one
-measured (`4L` for `lcp`), and the literal is not the last byte of the segment; for no match, the
+measured (`4L` for `lcp` and `prefix`), and the literal is not the last byte of the segment; for no match, the
 literal is at least the longest one measured (`4L`) from the end of the segment, since a match cut back
 to nothing there leaves a literal that is a byte the candidates start with. The decoder finds the set
 from the contents of the candidates and the content it has copied, so nothing is sent.
