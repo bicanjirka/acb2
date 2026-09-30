@@ -7,7 +7,7 @@ import cz.cvut.fit.acb.format.MalformedStreamException;
 
 import java.util.List;
 
-/** Codes one whole segment with Buyanovsky's associative coder; used once. */
+/** Codes one whole segment with Buyanovsky's associative coder, in one of its variants; used once. */
 public final class AssociativeEncoder {
 
     private final AnalogyDictionary dictionary;

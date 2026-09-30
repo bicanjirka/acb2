@@ -155,13 +155,14 @@ Working constraints and code style are in `CLAUDE.md`. Known gaps and planned wo
 
 The method is George Buyanovsky's. The triplet forms `valach` and `salomon2` come from ExCom, the compression
 library of Filip Šimek and Jakub Řezníček, whose ACB module is Michal Valach's master's thesis; the variant
-`lcp` is in Adam Léhar's thesis as well as in the one this project accompanies. `docs/REFERENCES.md` has every reference and says what
+`lcp` is in Adam Léhar's thesis as well as in the one this project accompanies. The mixing of predictions that
+`acbx` uses is Matt Mahoney's technique from the PAQ compressors. `docs/REFERENCES.md` has every reference and says what
 was taken from each; `docs/ALGORITHM.md` says, rule by rule, where this project follows a source and where not.
 
 ## Licence
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
 It contains no third-party code: the coders implement published algorithms (Salomon's, Valach's and
-Buyanovsky's) from their descriptions, and `acb` and `acbx` were written from his paper and a reading of his 1994
+Buyanovsky's, and Mahoney's context mixing for `acbx`) from their descriptions, and `acb` and `acbx` were written from his paper and a reading of his 1994
 reference code, which carries no licence and is not copied. The reference compressors in the table above
 were run, not included (ExCom is published under the GNU LGPL version 3).

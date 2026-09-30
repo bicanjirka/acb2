@@ -479,7 +479,32 @@ byte's candidates and of the heaviest agree; the two bytes before with the byte 
 far back the nearest candidates of the byte and of the heaviest lie. The banks are chosen by the rank and
 whether `k = 0`, and by the depth, the repeat and the candidates left; the map by the rank and the share.
 
-**9.8 Measurements.** Over Calgary (`d = 6`, `l = 8`, `C = 255`): 734,658 bytes against `acb`'s 843,240, the
+**9.8 The numbers.** What 9.4 to 9.7 leave open, as the code has it:
+
+- *Counters* start at 1/2 and move by `2 / (2n + 3)` of the way to the bit after `n` bits of their context, `n`
+  stopping at a limit: 30 for the literal's, 60 for the continuation's tables of bytes (the byte before with
+  the byte, and the hashed one), 255 for the others.
+- *Stretch and squash* work on 12-bit probabilities and stretches from -2047 to 2047 (1/256 units);
+  `squash` interpolates between its values at every 128th stretch, `4096 / (1 + e^(-x/256))` rounded
+  (`StrictMath`, so alike on every machine), and `stretch` is its inverse by table.
+- *Mixers* start every weight at 1/4. A weight moves by `x * e * r / 2^16` in units of 2^-16, where `x` is the
+  input's stretch, `e` the error in 12-bit units and `r` the rate: 24 for the literal, 16 for the end and the
+  continuation. A bank's sum is clamped to the range of stretches; the output is the squash of the banks'
+  stretches averaged.
+- *Probability maps* start as the identity and move the nearer of the two steps a probability falls between by
+  `2^-6` of the way. The literal and the continuation give `(mixed + 3 * mapped) / 4`; the end, with its two
+  maps, `(2 * mixed + 3 * byDepth + 3 * byPrevious) / 8`.
+- *Buckets:* a depth is itself up to 15, then `12 + floor(log2 k)` up to 27; a number of candidates is 1, 2,
+  3-4, 5-8, 9-16 or more; an agreement in whole bytes is itself up to 7, then `5 + floor(log2 bytes)` up to
+  15; a distance is `floor(log2 d)` up to 23; a share is its top 4 of 12 bits; a rank is itself up to 3.
+- *Hashed tables* have `2^b` counters, with `b = max(10, min(m, floor(log2 n) + e))` for a segment of `n`
+  bytes: the literal's after two bytes `e = 4`, `m = 22`; the end's `e = 1`, `m = 18`; the continuation's
+  `e = 2`, `m = 20`. Over 32 bits, the top `b` bits taken, with `a` the byte before and `z` the one before
+  it: the end hashes `((z * 256 + a) + 1) * 0x2F0B4F27 + min(k, 3) * 0x9E3779B1`; the continuation
+  `((z * 65536 + a * 256 + c) + 1) * 0x2F0B4F27` for the byte `c` asked about; the literal
+  `((a * 256 + z) + 1) * 0x2F0B4F27 + t * 0x9E3779B1` for the bits so far `t` (with a leading 1).
+
+**9.9 Measurements.** Over Calgary (`d = 6`, `l = 8`, `C = 255`): 734,658 bytes against `acb`'s 843,240, the
 decisions of the walk costing 424,568 (`acb`'s position and length 489,785) and the literals 308,884 (352,830).
 In the order they were added: coding `acb`'s literals by bits with the mixture gave 809,467 (without the
 bytes before, 825,139); the walk of 9.2, 763,192; the contexts of the bytes before in the

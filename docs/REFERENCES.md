@@ -12,7 +12,19 @@ them and quotes their numbers, and holds no text of theirs.
   distributed as `AC_ST_EN.DOC`), and the reference compressor `AC.C` with the archiver ACB 1.02c to 2.00c,
   from <http://ctxmodel.net/files/ACB.rar>. The `acb` coder (`-tc acb`) implements his method
   from the paper and from a reading of `AC.C`, which carries no licence and is not copied
-  (`ALGORITHM.md` section 7). The name ACB, *Associative Coder of Buyanovsky*, is his.
+  (`ALGORITHM.md` section 7). The name ACB, *Associative Coder of Buyanovsky*, is his. His paper's coding
+  of a string among the contents of the funnel of posthistory is what `acbx` does a byte at a time
+  (`ALGORITHM.md` 7.10 and section 9).
+
+## Context mixing
+
+- **[PAQ]** Matt Mahoney: the PAQ family of context-mixing compressors, and in particular *lpaq1* (2007),
+  <http://mattmahoney.net/dc/#lpaq>, published under the GNU GPL; and his book *Data Compression Explained*,
+  <http://mattmahoney.net/dc/dce.html>. The technique that `acbx` predicts its decisions with (`mixing`):
+  counters whose rate falls with what they have seen, the mixing of predictions in the logistic domain by
+  weights chosen by a context and trained on the error, and the adaptive probability map with interpolation
+  over 33 steps (`ALGORITHM.md` 9.5). The code and its constants are this project's: `Logistic` computes the
+  values of the logistic function it interpolates between, and nothing of lpaq1's source is used.
 
 ## The triplet forms
 
@@ -56,4 +68,7 @@ them and quotes their numbers, and holds no text of theirs.
   descriptions, and `ALGORITHM.md` lists every rule and each place the source is silent or is not followed.
 - `prefix` (`ALGORITHM.md` 5.6) is a variant of this project's, not of any source: [Bican]'s prefix idea with
   the rule that `AC.C` uses for its lengths.
+- `acbx` (`ALGORITHM.md` section 9) is a variant of this project's: `acb`'s dictionary and funnels, the byte-wise
+  walk of [Buyanovsky]'s paper, and the decisions predicted as [PAQ] predicts bits; the repeats are LZ77's
+  repeated match in associative terms. The choice of its models and contexts was measured here.
 - `CONTEXT_ARITHMETIC` and the range coder, the block format, the dictionary structures and the harnesses.

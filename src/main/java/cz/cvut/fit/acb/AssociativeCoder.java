@@ -7,8 +7,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Buyanovsky's own coder: it needs no layout of fields, since the probabilities of the position, the
- * length and the literal it codes come from the funnel of analogies of each step. The distance bits
+ * Buyanovsky's coder, in the variant its {@link AssociativeVariant} names: it needs no layout of fields,
+ * since the probabilities of what it codes come from the funnel of analogies of each step. The distance bits
  * set how many candidates a funnel takes from either side of a context (two to the power of one less),
  * the length bits the longest match, and the context depth how far contexts are compared.
  */
