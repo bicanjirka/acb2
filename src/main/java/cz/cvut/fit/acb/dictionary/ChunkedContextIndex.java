@@ -131,27 +131,33 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.locate(position);
         int chunk = this.foundChunk;
         int offset = this.foundOffset;
-        for (int added = 0; added < reach; added++) {
+        int left = reach;
+        while (left > 0) {
             if (offset == this.counts[chunk]) {
                 if (++chunk == this.chunkCount) {
                     break;
                 }
                 offset = 0;
             }
-            into.addAbove(this.chunks[chunk][offset], this.prefixes[chunk][offset], this.shared[chunk][offset] & 0xFF);
-            offset++;
+            int run = Math.min(left, this.counts[chunk] - offset);
+            into.addAbove(this.chunks[chunk], this.prefixes[chunk], this.shared[chunk], offset, run);
+            left -= run;
+            offset += run;
         }
         chunk = this.foundChunk;
-        offset = this.foundOffset - 1;
-        for (int added = 0; added < reach; added++) {
-            if (offset < 0) {
+        offset = this.foundOffset;
+        left = reach;
+        while (left > 0) {
+            if (offset == 0) {
                 if (--chunk < 0) {
                     break;
                 }
-                offset = this.counts[chunk] - 1;
+                offset = this.counts[chunk];
             }
-            into.addBelow(this.chunks[chunk][offset], this.prefixes[chunk][offset], this.shared[chunk][offset] & 0xFF);
-            offset--;
+            int run = Math.min(left, offset);
+            into.addBelow(this.chunks[chunk], this.prefixes[chunk], this.shared[chunk], offset - run, run);
+            left -= run;
+            offset -= run;
         }
     }
 

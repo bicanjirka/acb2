@@ -48,13 +48,25 @@ public final class SortedListContextIndex implements ContextIndex {
     public void around(int position, int reach, Surroundings into) {
         into.clear();
         int rank = this.rank(position);
-        for (int above = rank; above < Math.min(this.entries.size(), rank + reach); above++) {
-            into.addAbove(this.entries.get(above), this.order.prefix(this.entries.get(above)),
-                    this.cursorAt(above).sharedWithPrevious());
+        this.copy(rank, Math.min(this.entries.size(), rank + reach), into, true);
+        this.copy(Math.max(0, rank - reach), rank, into, false);
+    }
+
+    /** The entries of ranks {@code from .. to - 1} as a run of the index, the way a real index hands them over. */
+    private void copy(int from, int to, Surroundings into, boolean above) {
+        int count = to - from;
+        int[] positions = new int[count];
+        long[] prefixes = new long[count];
+        byte[] shared = new byte[count];
+        for (int i = 0; i < count; i++) {
+            positions[i] = this.entries.get(from + i);
+            prefixes[i] = this.order.prefix(positions[i]);
+            shared[i] = (byte) this.cursorAt(from + i).sharedWithPrevious();
         }
-        for (int below = rank - 1; below >= Math.max(0, rank - reach); below--) {
-            into.addBelow(this.entries.get(below), this.order.prefix(this.entries.get(below)),
-                    this.cursorAt(below).sharedWithPrevious());
+        if (above) {
+            into.addAbove(positions, prefixes, shared, 0, count);
+        } else {
+            into.addBelow(positions, prefixes, shared, 0, count);
         }
     }
 

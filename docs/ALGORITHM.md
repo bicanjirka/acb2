@@ -304,7 +304,8 @@ excluded.
 **7.8 What a step leaves in the dictionary.** The positions it coded, `idx .. idx + n - 1`, except that a step
 of at least `3 * floor(log2 N)` bytes adds only `idx`, since the rest is a copy of what the dictionary
 holds. `AC.C` does the same. Entries are therefore not always every position below `idx`, as 2.1 says of
-the other coders.
+the other coders. Over Calgary (`d = 6`) adding every position gave 845,743 bytes, 0.3% more than the
+rule's 843,240, and was 6% slower; a limit of 12 bytes instead of `3 * floor(log2 N)` gave 841,798.
 
 **7.9 Deviations from `AC.C`.** All of these are choices where the source is silent or ways of implementing
 what it says; none changes a field, a context, a candidate or a length.

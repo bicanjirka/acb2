@@ -86,6 +86,13 @@ as many as the fewest of the two neighbours do. Chunks of 256 and 512 cost the s
 and 1,024 a little more (0.27, 0.28), 2,048 and 64 much more (0.35, 0.43). Reading eight bytes at a time in
 the comparator made `valach` compress 13% faster at a depth of 10 and 21% at a depth of 255.
 
+The funnel of `acb` takes the entries around a context from the index as runs copied with `arraycopy`
+(`Surroundings`, primitive arrays refilled at every step), finds the weights of each side in a loop of its
+own and merges the sides after; choosing between the sides entry by entry cost a funnel of 62 candidates
+0.96 microseconds and this 0.58, a lookup of the place of the context being 0.21 of it. Every insert, too,
+is two thirds a lookup (0.165 of 0.23 microseconds), which is why the inserts of a step's 5.55 positions
+are the largest single cost of a step of `acb`.
+
 ### The thesis comparison of three structures
 
 The thesis (§4.4, §5.2, Tables 5.4 and 5.5) compared the time and memory of three backing structures for
@@ -181,7 +188,7 @@ further, gets the length almost free from the neighbours, and rarely spends a fu
 Compressing Calgary at the defaults, on the machine of the time: before the chunked index 0.45 MB/s
 compressing and 0.8 decompressing, against 1.4 MB/s for ExCom in C++ with the same model; after the index
 and the range coder 1.8 and 2.4; after the block format 1.7 and 3.5; with the comparator, prefixes and
-shared bytes of the index 2.8 and 3.9 (ratio harness, one thread, a faster machine than the first three).
+shared bytes of the index about 2.5 and 3.5 (ratio harness, one thread, a faster machine than the first three).
 
 ## Measuring
 

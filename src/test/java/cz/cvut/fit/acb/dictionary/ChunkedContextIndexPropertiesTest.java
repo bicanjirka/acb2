@@ -97,7 +97,7 @@ class ChunkedContextIndexPropertiesTest {
 
             assertThat(found.belowCount()).as("below %d", position).isEqualTo(wanted.belowCount());
             assertThat(found.aboveCount()).as("above %d", position).isEqualTo(wanted.aboveCount());
-            for (int i = 0; i < found.belowCount(); i++) {
+            for (int i = found.capacity() - found.belowCount(); i < found.capacity(); i++) {
                 assertThat(found.belowPositions()[i]).isEqualTo(wanted.belowPositions()[i]);
                 assertThat(found.belowShared()[i]).isEqualTo(wanted.belowShared()[i]);
                 assertThat(found.belowPrefixes()[i]).isEqualTo(wanted.belowPrefixes()[i]);
