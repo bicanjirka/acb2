@@ -91,13 +91,17 @@ start one process per file, and this coder runs one JVM for the directory.
 | `AC.C`, funnel capped at 55 per side (ACB 1.17 "NORMAL" width) | 846,912 | 2.16 | 26.4 s / 27.0 s |
 | `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 13.8 s / 15.9 s |
 | `AC.C`, funnel capped at 16 per side (ACB 1.17 "FAST" width) | 875,872 | 2.23 | 29.1 s / 28.2 s |
+| this, `-d 10 -ec CONTEXT_ARITHMETIC` | 925,593 | 2.36 | 4.1 s / 1.8 s * |
+| this, `-ec CONTEXT_ARITHMETIC` | 934,267 | 2.38 | 1.9 s / 1.8 s * |
 | ExCom ACB `d=10` | 967,714 | 2.46 | 6.0 s / 2.6 s |
 | ExCom ACB `d=8` | 972,911 | 2.48 | 3.3 s / 3.0 s |
+| this, defaults (`valach -d 6 -l 7`) | 974,670 | 2.48 | 1.6 s / 1.6 s * |
 | ExCom ACB defaults (distance ±31, length 7 bits) | 988,420 | 2.52 | 2.3 s / 2.5 s |
-| this, `-tc valach -d 6 -l 7` | 1,012,317 | 2.58 | 7.1 s / 3.9 s |
 | gzip -9 | 1,017,624 | 2.59 | 1.5 s |
-| this, `-tc valach` | 1,049,160 | 2.67 | 7.1 s / 3.8 s |
-| this, defaults (`simple`) | 1,076,271 | 2.74 | 7.2 s / 3.9 s |
+
+\* Re-measured on 2026-09-30 on a faster machine, after phases 4 to 6 and 8 (segments coded in
+parallel); every size in the other rows reproduced exactly there, and ExCom `d=10` took
+2.8 s / 1.2 s and `AC.C` with the 1 MB frame 17.0 s / 18.0 s.
 
 Measured earlier on patched builds (phase 2 below): nearest tie with the rank-0 fix gives
 `valach -d 10 -l 6` 962,297 and `valach -d 8 -l 5` 985,371.
@@ -158,7 +162,7 @@ for the order-0 model.
 ### Real ACB as a coder of its own
 
 The triplet coders are Salomon's simplification. Buyanovsky's own coder (`docs/ALGORITHM.md`,
-section 7) is 14% smaller than ExCom and 17% smaller than this coder's best on Calgary, and even at the
+section 7) is 14% smaller than ExCom and 10% smaller than this coder's best on Calgary, and even at the
 narrowest funnel (16 per side) it beats ExCom's best by 9%. A fixed window of ±2^(d-1) ranks
 cannot get there: ACB admits only contexts that agree with the current one beyond the noise
 level, weights them by that agreement, and codes the position by those weights. This
