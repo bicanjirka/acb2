@@ -10,7 +10,7 @@ public final class FunnelFixtures {
     public static Funnel funnelOf(int[] positions, int[] weights) {
         Funnel funnel = new Funnel(positions.length);
         for (int i = 0; i < positions.length; i++) {
-            funnel.add(positions[i], weights[i]);
+            funnel.add(positions[i], weights[i], 0, i + 1);
         }
         return funnel;
     }

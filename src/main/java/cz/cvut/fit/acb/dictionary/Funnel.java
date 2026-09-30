@@ -10,12 +10,16 @@ public final class Funnel {
 
     private final int[] positions;
     private final int[] weights;
+    private final int[] agreements;
+    private final int[] distances;
     private int size;
     private long totalWeight;
 
     Funnel(int capacity) {
         this.positions = new int[capacity];
         this.weights = new int[capacity];
+        this.agreements = new int[capacity];
+        this.distances = new int[capacity];
     }
 
     public int size() {
@@ -31,6 +35,19 @@ public final class Funnel {
         return this.weights[index];
     }
 
+    /** How many bits the context of candidate {@code index} has in common with the current one. */
+    public int agreement(int index) {
+        return this.agreements[index];
+    }
+
+    /**
+     * How many ranks candidate {@code index} lies from the place of the current context: {@code k} for the
+     * {@code k}-th entry above it, {@code -k} for the {@code k}-th below.
+     */
+    public int distance(int index) {
+        return this.distances[index];
+    }
+
     /** The weights of all the candidates added up. */
     public long totalWeight() {
         return this.totalWeight;
@@ -41,8 +58,10 @@ public final class Funnel {
         this.totalWeight = 0;
     }
 
-    void add(int position, int weight) {
+    void add(int position, int weight, int agreement, int distance) {
         this.positions[this.size] = position;
+        this.agreements[this.size] = agreement;
+        this.distances[this.size] = distance;
         this.weights[this.size++] = weight;
         this.totalWeight += weight;
     }

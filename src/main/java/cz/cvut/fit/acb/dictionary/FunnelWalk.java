@@ -27,6 +27,8 @@ final class FunnelWalk {
     private final Surroundings surroundings;
     private final int[] aboveWeights;
     private final int[] belowWeights;
+    private final int[] aboveAgreements;
+    private final int[] belowAgreements;
     private byte[] bytes;
     private int position;
     private long contextPrefix;
@@ -45,6 +47,8 @@ final class FunnelWalk {
         this.surroundings = new Surroundings(reach);
         this.aboveWeights = new int[reach];
         this.belowWeights = new int[reach];
+        this.aboveAgreements = new int[reach];
+        this.belowAgreements = new int[reach];
     }
 
     /** Capacity a funnel needs for this walk. */
@@ -69,9 +73,9 @@ final class FunnelWalk {
         int[] abovePositions = this.surroundings.abovePositions();
         int[] belowPositions = this.surroundings.belowPositions();
         int aboveCount = this.weigh(abovePositions, this.surroundings.abovePrefixes(),
-                this.surroundings.aboveShared(), this.surroundings.aboveCount(), true, this.aboveWeights);
+                this.surroundings.aboveShared(), this.surroundings.aboveCount(), true, this.aboveWeights, this.aboveAgreements);
         int belowCount = this.weigh(belowPositions, this.surroundings.belowPrefixes(),
-                this.surroundings.belowShared(), this.surroundings.belowCount(), false, this.belowWeights);
+                this.surroundings.belowShared(), this.surroundings.belowCount(), false, this.belowWeights, this.belowAgreements);
         int nearestBelow = belowPositions.length - 1;
         int above = 0;
         int below = 0;
@@ -79,9 +83,11 @@ final class FunnelWalk {
             int aboveWeight = above < aboveCount ? this.aboveWeights[above] : 0;
             int belowWeight = below < belowCount ? this.belowWeights[below] : 0;
             if (aboveWeight >= belowWeight) {
-                funnel.add(abovePositions[above++], aboveWeight);
+                funnel.add(abovePositions[above], aboveWeight, this.aboveAgreements[above], above + 1);
+                above++;
             } else {
-                funnel.add(belowPositions[nearestBelow - below++], belowWeight);
+                funnel.add(belowPositions[nearestBelow - below], belowWeight, this.belowAgreements[below], -below - 1);
+                below++;
             }
         }
     }
@@ -93,7 +99,7 @@ final class FunnelWalk {
      * @return how many entries are admitted
      */
     private int weigh(int[] positions, long[] prefixes, byte[] shared, int count, boolean ascending,
-                      int[] weights) {
+                      int[] weights, int[] agreements) {
         if (count == 0) {
             return 0;
         }
@@ -127,6 +133,7 @@ final class FunnelWalk {
             if (weight == 0) {
                 return admitted;
             }
+            agreements[admitted] = agreement;
             weights[admitted++] = weight;
             if (taken >= count) {
                 return admitted;

@@ -68,6 +68,26 @@ class RangeCoderPropertiesTest {
         assertThat(decoder.target(total)).isEqualTo(total - rare);
     }
 
+    @Property
+    void bitsOfAnyProbabilityInterleavedWithSymbolsDecodeToThemselves(
+            @ForAll @Size(max = 400) List<@IntRange(min = 1, max = RangeEncoder.PROBABILITY_ONE - 1) Integer> odds,
+            @ForAll @Size(max = 400) List<Boolean> bits) throws MalformedStreamException {
+        int count = Math.min(odds.size(), bits.size());
+        RangeEncoder encoder = new RangeEncoder();
+        for (int i = 0; i < count; i++) {
+            encoder.encodeBit(bits.get(i) ? 1 : 0, odds.get(i));
+            encoder.encode(i % 3, 1, 3);
+        }
+        encoder.finish();
+        RangeDecoder decoder = new RangeDecoder(encoder.toArray());
+
+        for (int i = 0; i < count; i++) {
+            assertThat(decoder.decodeBit(odds.get(i))).isEqualTo(bits.get(i) ? 1 : 0);
+            assertThat(decoder.target(3)).isEqualTo(i % 3);
+            decoder.consume(i % 3, 1);
+        }
+    }
+
     @Provide
     Arbitrary<int[]> distributions() {
         Arbitrary<int[]> flat = Arbitraries.integers().between(1, 50).array(int[].class).ofMinSize(1).ofMaxSize(30);

@@ -45,8 +45,9 @@ given) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and `ACBFileIO` w
 matcher; the `AnalogyDictionary` and its funnels of analogies for `acb`) · `triplets` (the `Triplet`,
 the segment encoder and decoder that share one update rule; `coder`: the layouts and parsers) ·
 `associative` (Buyanovsky's coder: one step rule, `AssociativeSteps`, that the encoder and the decoder
-both run, and the models behind it) · `coding` (field↔byte: range coder with adaptive models, bit
-array, `CumulativeTable`) · `counts` (the Fenwick tree) · `format` (the on-disk container: header,
+both run, and the models behind it) · `coding` (field↔byte: range coder of symbols and of bits with
+adaptive models, bit array, `CumulativeTable`) · `mixing` (predictions of a bit: counters, the logistic
+`Mixer`, `ProbabilityMap`) · `counts` (the Fenwick tree) · `format` (the on-disk container: header,
 blocks, CRC32; `ContainerWriter` and `ContainerReader` do it a block at a time).
 
 ## Boundaries

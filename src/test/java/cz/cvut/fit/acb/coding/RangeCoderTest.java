@@ -32,6 +32,32 @@ class RangeCoderTest {
     }
 
     @Test
+    void biasedBitsAreCodedWithinAHalfPercentOfTheirEntropy() {
+        Random random = new Random(20260930L);
+        int probabilityOfOne = RangeEncoder.PROBABILITY_ONE / 10;
+        RangeEncoder encoder = new RangeEncoder();
+        double entropyBits = 0;
+
+        for (int i = 0; i < 50_000; i++) {
+            int bit = random.nextInt(10) == 0 ? 1 : 0;
+            encoder.encodeBit(bit, probabilityOfOne);
+            entropyBits -= Math.log(bit != 0 ? 0.1 : 0.9) / Math.log(2);
+        }
+        encoder.finish();
+
+        assertThat(encoder.toArray().length * 8.0).isBetween(entropyBits * 0.99, entropyBits * 1.005 + 64);
+    }
+
+    @Test
+    void aBitThatCouldNotBeEitherIsRefused() {
+        RangeEncoder encoder = new RangeEncoder();
+
+        assertThatThrownBy(() -> encoder.encodeBit(1, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> encoder.encodeBit(0, RangeEncoder.PROBABILITY_ONE))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void aStreamOfNoSymbolsTakesAtMostTheFlush() {
         RangeEncoder encoder = new RangeEncoder();
         encoder.finish();

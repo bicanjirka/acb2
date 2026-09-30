@@ -17,14 +17,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FunnelWalkTest {
 
-    /** A candidate of a funnel: where its content starts and what it weighs. */
-    private record Candidate(int position, int weight) {
+    /**
+     * A candidate of a funnel: where its content starts, what it weighs, the bits its context agrees on and
+     * its distance in ranks from the context, above positive.
+     */
+    private record Candidate(int position, int weight, int agreement, int distance) {
     }
 
     private static List<Candidate> candidatesOf(Funnel funnel) {
         List<Candidate> candidates = new ArrayList<>();
         for (int i = 0; i < funnel.size(); i++) {
-            candidates.add(new Candidate(funnel.position(i), funnel.weight(i)));
+            candidates.add(new Candidate(funnel.position(i), funnel.weight(i), funnel.agreement(i), funnel.distance(i)));
         }
         return candidates;
     }
@@ -59,9 +62,14 @@ class FunnelWalkTest {
                 return funnel;
             }
             if (aboveWeight >= belowWeight) {
-                funnel.add(new Candidate(sorted.cursorAt(slot + above++).position(), aboveWeight));
+                int entry = sorted.cursorAt(slot + above).position();
+                funnel.add(new Candidate(entry, aboveWeight, ContextBits.between(text, position, entry, depth), above + 1));
+                above++;
             } else {
-                funnel.add(new Candidate(sorted.cursorAt(slot - 1 - below++).position(), belowWeight));
+                int entry = sorted.cursorAt(slot - 1 - below).position();
+                funnel.add(new Candidate(entry, belowWeight, ContextBits.between(text, position, entry, depth),
+                        -(below + 1)));
+                below++;
             }
         }
     }

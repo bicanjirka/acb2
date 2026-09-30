@@ -12,6 +12,10 @@ public final class RangeEncoder {
     /** Largest total a symbol may be coded against; the range must stay much larger than the total. */
     public static final int MAX_TOTAL = 1 << 20;
 
+    /** A bit's probability is a number of {@code 2^-16}ths. */
+    public static final int PROBABILITY_BITS = 16;
+    public static final int PROBABILITY_ONE = 1 << PROBABILITY_BITS;
+
     static final long TOP = 1L << 24;
     static final long FULL_RANGE = 0xFFFFFFFFL;
 
@@ -35,6 +39,30 @@ public final class RangeEncoder {
         long unit = this.range / total;
         this.low += unit * cumulative;
         this.range = unit * frequency;
+        while (this.range < TOP) {
+            this.range <<= 8;
+            this.shiftLow();
+        }
+    }
+
+    /**
+     * Codes one bit against the probability that it is 1, in units of {@code 2^-}{@link #PROBABILITY_BITS};
+     * the same as {@link #encode} over a total of {@code 2^PROBABILITY_BITS}, with 1 the first symbol.
+     */
+    public void encodeBit(int bit, int probabilityOfOne) {
+        if (this.finished) {
+            throw new IllegalStateException("The coder is finished");
+        }
+        if (probabilityOfOne <= 0 || probabilityOfOne >= PROBABILITY_ONE) {
+            throw new IllegalArgumentException("Not a probability of a bit that can be either: " + probabilityOfOne);
+        }
+        long unit = this.range >>> PROBABILITY_BITS;
+        if (bit != 0) {
+            this.range = unit * probabilityOfOne;
+        } else {
+            this.low += unit * probabilityOfOne;
+            this.range = unit * (PROBABILITY_ONE - probabilityOfOne);
+        }
         while (this.range < TOP) {
             this.range <<= 8;
             this.shiftLow();

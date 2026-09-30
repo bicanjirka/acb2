@@ -54,6 +54,33 @@ public final class RangeDecoder {
         }
     }
 
+    /**
+     * Reads a bit that {@link RangeEncoder#encodeBit} coded with the same probability.
+     *
+     * @throws MalformedStreamException if the stream ends inside its data
+     */
+    public int decodeBit(int probabilityOfOne) throws MalformedStreamException {
+        if (probabilityOfOne <= 0 || probabilityOfOne >= RangeEncoder.PROBABILITY_ONE) {
+            throw new IllegalArgumentException("Not a probability of a bit that can be either: " + probabilityOfOne);
+        }
+        long unit = this.range >>> RangeEncoder.PROBABILITY_BITS;
+        long bound = unit * probabilityOfOne;
+        int bit;
+        if (this.code < bound) {
+            this.range = bound;
+            bit = 1;
+        } else {
+            this.code -= bound;
+            this.range = unit * (RangeEncoder.PROBABILITY_ONE - probabilityOfOne);
+            bit = 0;
+        }
+        while (this.range < RangeEncoder.TOP) {
+            this.code = ((this.code << 8) | this.nextByte()) & RangeEncoder.FULL_RANGE;
+            this.range <<= 8;
+        }
+        return bit;
+    }
+
     private int nextByte() throws MalformedStreamException {
         if (this.position < this.bytes.length) {
             return this.bytes[this.position++] & 0xFF;
