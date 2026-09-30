@@ -65,6 +65,17 @@ final class ForecastedLiterals {
             table.set(symbol, frequency);
             total += frequency;
         }
+        return this.voteInto(table, total);
+    }
+
+    /**
+     * Adds the votes to a table in which every byte already has its frequency, 0 for a byte left out, and
+     * ends it; {@link #fill} is this after setting those frequencies.
+     *
+     * @param total the frequencies set, summed
+     * @return whether some byte is possible
+     */
+    boolean voteInto(CumulativeTable table, long total) {
         for (int i = 0; i < this.votedCount; i++) {
             int symbol = this.votedList[i];
             int heavy = this.votes[symbol] / HEAVY_VOTES;

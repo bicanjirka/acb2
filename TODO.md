@@ -42,16 +42,20 @@ counts only the bits where it could differ. What ACB 2.00 models beyond `AC.C` i
   byte-ordered `ChunkedContextIndex` cannot hold as it is; measure first what the bits inside a literal cost
   `acbx` against what the bit-level walk would spend on them.
 
-### `acbx` runs at 0.85 MB/s
+### `acbx` runs at 0.9 MB/s
 
-Calgary at `d = 6`: 734,658 bytes at about 0.85 MB/s compressing and 0.9 decompressing, one thread; `acb`
-does 1.5 and 1.6. A JFR profile over Calgary puts a third of the time in `Mixer.mix` and `update`, a quarter
-in the dictionary (the funnels and the inserts, as in `acb`), a tenth in the walk over the candidates
-(`Continuations`) and a tenth in the literal's distributions. Keeping the mixer's banks in one array was no
-faster.
+Calgary at `d = 6`: 734,658 bytes at about 0.9 MB/s both ways, one thread; `acb` does 1.5 and 1.6. A JFR profile
+over Calgary puts two fifths of the time in the dictionary (the funnels, the voting funnel and the inserts, as in
+`acb`), a sixth in the walk over the candidates (`Continuations.gather` and `keep`), a tenth in the counters, a
+twelfth in the mixer and as much in setting up each literal's distributions. Of the 10.5 million decisions,
+1.7 million are on a byte every live candidate agrees on; they take about 6% of the time and come in runs of one
+to three bytes mostly, so coding the runs as lengths, a format change, would buy about 3%. Keeping each
+counter's probability and count in one `int` gave 4%, one pass over the bytes for a literal's three
+distributions 2%, and mixing two banks in one pass 3%; keeping the mixer's banks in one array, and remembering
+each candidate's byte in `gather` so that `keep` reads no text, gave nothing.
 
-- **Where:** `mixing.Mixer`, `associative.MatchEndModel`, `ContinuationModel`, `MixedLiteralModel`,
-  `Continuations`.
-- **Approach:** fewer decisions, not cheaper ones: a matched byte on which every live candidate agrees costs a
-  full mix, and runs of such bytes could be coded by a length with a model of their own; `d = 5` is 10% faster
-  for 0.3%. Both change the format.
+- **Where:** the dictionary, as in the `acb` entry above; `associative.Continuations`; the hashed tables of
+  `MatchEndModel`, `ContinuationModel` and `MixedLiteralModel`.
+- **Approach:** the dictionary work of the `acb` entry serves both coders and is the most of what is left; after
+  it, the cache misses of the hashed tables, which smaller tables or two counters to a cache line would cut, at
+  a change of the format. `d = 5` is 10% faster for 0.3%.

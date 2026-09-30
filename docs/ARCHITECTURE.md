@@ -222,10 +222,14 @@ step are inputs too (orders 1 and 2), and are worth 6% of the file; without them
 Calgary, 6.7% below `acb`. It is still an LZ77 coder: a step is a copy from the dictionary and a literal, and
 its decoder copies.
 
-The price is speed. A decision is a mix of seven inputs in two banks, and a matched byte costs at least one;
-mixing and learning are about a third of the time (a JFR profile over Calgary), the dictionary as much as in
-`acb`, and the walk over the candidates a tenth. `acbx` codes Calgary at about 0.85 MB/s against `acb`'s 1.5.
-The funnel can be narrower than `acb`'s at little cost (`d = 5` is 0.3% larger and 10% faster).
+The price is speed. A decision is a mix of seven inputs in two banks, and a matched byte costs at least one:
+Calgary takes 10.5 million, 4.7 of them the bits of literals. A JFR profile over Calgary puts two fifths of the
+time in the dictionary, the same code as `acb`'s, a sixth in the walk over the candidates, a tenth in the
+counters (mostly waiting on memory for the large hashed tables), a twelfth in mixing and learning and as much in
+setting up each literal's distributions. `acbx` codes Calgary at about 0.9 MB/s against `acb`'s 1.5. The
+decisions on a byte every live candidate agrees on are 1.7 million of them and about 6% of the time, in runs of
+one to three bytes mostly, so coding the runs as lengths would save little. The funnel can be narrower than
+`acb`'s at little cost (`d = 5` is 0.3% larger and 10% faster).
 
 ## Where the bits go
 

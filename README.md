@@ -128,7 +128,7 @@ at about 1.7 times its time. Its models of the text before a step are worth 6% o
 without them). The five coders
 of the thesis are Salomon's and Valach's layouts of a triplet; the best of them at the defaults is 16%
 larger than `acb` (9% with the literal modelling of `CONTEXT_ARITHMETIC`), and `prefix` 11% (4%). In the ratio harness one thread
-codes `acb` at `-d 6` at about 1.5 MB/s and decodes it at 1.6, `acbx` at 0.85 and 0.9, and `valach` at 2.5 and 3.5; a file of several
+codes `acb` at `-d 6` at about 1.5 MB/s and decodes it at 1.6, `acbx` at 0.9 both ways, and `valach` at 2.5 and 3.5; a file of several
 segments is coded on all the processors (`-j`). `docs/ALGORITHM.md` has the rules of every coder and
 `docs/ARCHITECTURE.md` why the code is as it is and what was measured to get there.
 
