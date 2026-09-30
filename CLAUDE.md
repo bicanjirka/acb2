@@ -40,15 +40,16 @@ given) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and `ACBFileIO` w
 `ConfiguredACBProvider` (builds a segment's dictionaries, field writer and reader from a
 `CompressionSettings` record) · a coder is one `TripletCoding` constant, which carries a `Coder`: a
 `LayoutCoder` (layout, parser and `MatchRule`; its `SegmentCoding` runs the `triplets` pipeline) or the
-`AssociativeCoder` (`-tc acb`; its `SegmentCoding` runs `associative`) · `dictionary` (+ the
-`ContextIndex` behind it, in an encoder and a decoder view; a `MatchRule` constant carries its
-matcher; the `AnalogyDictionary` and its funnels of analogies for `acb`) · `triplets` (the `Triplet`,
-the segment encoder and decoder that share one update rule; `coder`: the layouts and parsers) ·
-`associative` (Buyanovsky's coder: one step rule, `AssociativeSteps`, that the encoder and the decoder
-both run, and the models behind it) · `coding` (field↔byte: range coder of symbols and of bits with
-adaptive models, bit array, `CumulativeTable`) · `mixing` (predictions of a bit: counters, the logistic
-`Mixer`, `ProbabilityMap`) · `counts` (the Fenwick tree) · `format` (the on-disk container: header,
-blocks, CRC32; `ContainerWriter` and `ContainerReader` do it a block at a time).
+`AssociativeCoder` (`-tc acb` and `-tc acbx`, an `AssociativeVariant` each; its `SegmentCoding` runs
+`associative`) · `dictionary` (+ the `ContextIndex` behind it, in an encoder and a decoder view; a
+`MatchRule` constant carries its matcher; the `AnalogyDictionary` and its funnels of analogies for `acb`
+and `acbx`) · `triplets` (the `Triplet`, the segment encoder and decoder that share one update rule;
+`coder`: the layouts and parsers) · `associative` (Buyanovsky's coder: a step rule that the encoder and
+the decoder both run, `AssociativeSteps` for `acb` and `MixedSteps` for `acbx`, and the models behind
+them) · `coding` (field↔byte: range coder of symbols and of bits with adaptive models, bit array,
+`CumulativeTable`) · `mixing` (predictions of a bit: counters, the logistic `Mixer`, `ProbabilityMap`) ·
+`counts` (the Fenwick tree) · `format` (the on-disk container: header, blocks, CRC32; `ContainerWriter`
+and `ContainerReader` do it a block at a time).
 
 ## Boundaries
 

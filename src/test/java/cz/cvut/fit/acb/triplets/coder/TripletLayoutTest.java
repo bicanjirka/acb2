@@ -101,7 +101,7 @@ class TripletLayoutTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TripletCoding.class, names = "ACB", mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = TripletCoding.class, names = {"ACB", "ACBX"}, mode = EnumSource.Mode.EXCLUDE)
     void aLayoutReadsBackALiteralAndTheMatchFormItCarries(TripletCoding coding) throws MalformedStreamException {
         TripletLayout layout = layoutOf(coding);
         FieldQueue fields = new FieldQueue();
@@ -116,7 +116,7 @@ class TripletLayoutTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TripletCoding.class, names = "ACB", mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = TripletCoding.class, names = {"ACB", "ACBX"}, mode = EnumSource.Mode.EXCLUDE)
     void aLayoutReportsAStreamThatEndsInsideATriplet(TripletCoding coding) {
         assertThatThrownBy(() -> layoutOf(coding).read(new FieldQueue()))
                 .isInstanceOf(MalformedStreamException.class).hasMessageContaining("inside a triplet");

@@ -13,7 +13,7 @@ public final class AssociativeEncoder {
     private final AnalogyDictionary dictionary;
     private final SegmentBuffer segment;
     private final EncodingPort port;
-    private final AssociativeSteps steps;
+    private final StepRule steps;
 
     /**
      * @param dictionary a dictionary over {@code segment}, which it reads but never changes
@@ -21,12 +21,12 @@ public final class AssociativeEncoder {
      * @param maxLength the longest match, which is cut short there
      * @param lengthStart where the model of the lengths starts from, one frequency per excess
      */
-    public AssociativeEncoder(AnalogyDictionary dictionary, SegmentBuffer segment, int reach, int maxLength,
-                              int[] lengthStart) {
+    public AssociativeEncoder(AssociativeVariant variant, AnalogyDictionary dictionary, SegmentBuffer segment,
+                              int reach, int maxLength, int[] lengthStart) {
         this.dictionary = dictionary;
         this.segment = segment;
         this.port = new EncodingPort(segment, maxLength);
-        this.steps = new AssociativeSteps(dictionary, segment, segment.length(), maxLength, lengthStart, 2 * reach,
+        this.steps = variant.steps(dictionary, segment, segment.length(), maxLength, lengthStart, 2 * reach,
                 this.port);
     }
 

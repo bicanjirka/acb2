@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.associative.AssociativeVariant;
 import cz.cvut.fit.acb.dictionary.MatchRule;
 import cz.cvut.fit.acb.triplets.coder.BareMatchParser;
 import cz.cvut.fit.acb.triplets.coder.LiteralAfterMatchParser;
@@ -24,9 +25,10 @@ public enum TripletCoding {
             MatchRule.NEAREST)),
     VALACH(3, LayoutCoder.of(ValachTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST)),
     LCP(4, LayoutCoder.of(SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.SMALLEST_WITH_LCP)),
-    ACB(5, new AssociativeCoder()),
+    ACB(5, new AssociativeCoder(AssociativeVariant.BUYANOVSKY)),
     PREFIX(6, LayoutCoder.of(ValachTripletLayout::new, new LiteralAfterMatchParser(),
-            MatchRule.NEAREST_WITH_PREFIX));
+            MatchRule.NEAREST_WITH_PREFIX)),
+    ACBX(7, new AssociativeCoder(AssociativeVariant.MIXED));
 
     private final int formatCode;
     private final Coder coder;

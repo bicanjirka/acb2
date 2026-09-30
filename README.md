@@ -44,12 +44,12 @@ file is the same for any number of threads.
 |---|---|---|
 | `-de`, `--decompress` | Decompress instead of compress | compress |
 | `-f`, `--force` | Overwrite output files that already exist | refuse |
-| `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1). For `acb`, the funnel of analogies takes 2^(N−1) entries from each side of a context | 6 |
-| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 (`acb`: 8) |
-| `-tc C`, `--triplet-coder C` | Coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp`, `prefix`, or `acb` | `valach` |
-| `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 (`acb`: 255) |
-| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding (not for `acb`) | range coding |
-| `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and leaves out the bytes that would have made the match longer, and is about 6% smaller (`acb` codes with models of its own and takes only the first) | `ADAPTIVE_ARITHMETIC` |
+| `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1). For `acb` and `acbx`, the funnel of analogies takes 2^(N−1) entries from each side of a context | 6 |
+| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 (`acb`, `acbx`: 8) |
+| `-tc C`, `--triplet-coder C` | Coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp`, `prefix`, `acb`, or `acbx` | `valach` |
+| `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 (`acb`, `acbx`: 255) |
+| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding (not for `acb` or `acbx`) | range coding |
+| `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and leaves out the bytes that would have made the match longer, and is about 6% smaller (`acb` and `acbx` code with models of their own and take only the first) | `ADAPTIVE_ARITHMETIC` |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
 | `-j N`, `--threads N` | Threads that code segments at the same time; the output does not depend on it | the number of processors |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
@@ -72,6 +72,13 @@ file is the same for any number of threads.
   as what it has beyond the matches of the candidates weighed higher, and, when the match ended on a
   mismatch, the literal, which cannot be a byte that a candidate would have matched with, and which the
   funnel of the context after the match votes on. `docs/ALGORITHM.md` section 7 has every rule.
+- **acbx**: a variant of `acb` with the same dictionary and funnels, coded as Buyanovsky's paper places the
+  text among the contents of the funnel: byte by byte, it codes whether the text leaves all the candidates
+  still agreeing with it, and if not, which of their next bytes it takes, so the match is copied from any of
+  them. The two candidates a step ended with, moved past the literal, are tried again at the next step. Every
+  decision and every bit of a literal is predicted by counters of the candidates, the funnel's weights and the
+  one or two bytes before, mixed as a context-mixing coder does. Not from a source; 13% smaller than `acb`, at
+  about 60% of its speed. `docs/ALGORITHM.md` section 9 has every rule.
 
 ## How it compares
 
@@ -83,15 +90,17 @@ Mahoney's published table, on an older machine.
 
 | Compressor | Bytes | bits/byte | Compress / decompress |
 |---|---|---|---|
+| **`-tc acbx`** (`-d 6`) | 734,658 | 1.87 | 4.1 s / 3.9 s |
+| **`-tc acbx -d 5`** | 737,059 | 1.88 | 3.7 s / 3.6 s |
 | ACB 2.00a (Mahoney's table) | 778,760 | 1.98 | 18.7 s / 18.7 s |
 | bzip2 -9 | 828,347 | 2.11 | 0.5 s / 1.2 s |
-| **`-tc acb -d 8`** | 835,696 | 2.13 | 4.3 s / 4.0 s |
+| **`-tc acb -d 8`** | 835,696 | 2.13 | 4.2 s / 3.8 s |
 | Buyanovsky's `AC.C` (1994), `Kc 0`, 1 MB frame | 837,107 | 2.13 | 18.9 s / 20.3 s |
-| **`-tc acb -d 7`** | 837,618 | 2.13 | 3.4 s / 3.2 s |
-| **`-tc acb`** (`-d 6`) | 843,240 | 2.15 | 2.9 s / 2.7 s |
+| **`-tc acb -d 7`** | 837,618 | 2.13 | 3.2 s / 3.0 s |
+| **`-tc acb`** (`-d 6`) | 843,240 | 2.15 | 2.5 s / 2.4 s |
 | xz -9 | 845,952 | 2.15 | 1.0 s / 0.8 s |
 | `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 8.0 s / 9.0 s |
-| **`-tc acb -d 5`** | 855,407 | 2.18 | 2.4 s / 2.4 s |
+| **`-tc acb -d 5`** | 855,407 | 2.18 | 2.2 s / 2.1 s |
 | `-tc prefix -ec CONTEXT_ARITHMETIC -d 10` | 868,318 | 2.21 | 8.7 s / 5.0 s |
 | `-tc prefix -ec CONTEXT_ARITHMETIC` | 878,273 | 2.24 | 2.7 s / 2.3 s |
 | `-tc valach -ec CONTEXT_ARITHMETIC -d 10` | 912,571 | 2.32 | 6.2 s / 3.7 s |
@@ -111,11 +120,14 @@ Mahoney's published table, on an older machine.
 | `-tc salomon` | 1,008,201 | 2.57 | 1.8 s / 1.3 s |
 | gzip -9 | 1,017,624 | 2.59 | 0.4 s / 0.7 s |
 
-`acb` is Buyanovsky's coder and is where the ratio is: at `-d 8` it beats `AC.C` with its widest funnel and
-the 1 MB frame, and at `-d 6` it is under `xz -9`, at a sixth of the time of `AC.C`. The five coders
+`acb` is Buyanovsky's coder: at `-d 8` it beats `AC.C` with its widest funnel and the 1 MB frame, and at
+`-d 6` it is under `xz -9`, at a sixth of the time of `AC.C`. `acbx` codes the same funnels byte by byte with
+mixed models and is where the ratio is: 13% smaller than `acb` and under the figure given for ACB 2.00a,
+at about 1.7 times its time. Its models of the text before a step are worth 6% of that (786,340 bytes
+without them). The five coders
 of the thesis are Salomon's and Valach's layouts of a triplet; the best of them at the defaults is 16%
 larger than `acb` (9% with the literal modelling of `CONTEXT_ARITHMETIC`), and `prefix` 11% (4%). In the ratio harness one thread
-codes `acb` at `-d 6` at about 1.4 MB/s and decodes it at 1.5, and `valach` at 2.5 and 3.5; a file of several
+codes `acb` at `-d 6` at about 1.5 MB/s and decodes it at 1.6, `acbx` at 0.85 and 0.9, and `valach` at 2.5 and 3.5; a file of several
 segments is coded on all the processors (`-j`). `docs/ALGORITHM.md` has the rules of every coder and
 `docs/ARCHITECTURE.md` why the code is as it is and what was measured to get there.
 
@@ -150,6 +162,6 @@ was taken from each; `docs/ALGORITHM.md` says, rule by rule, where this project 
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
 It contains no third-party code: the coders implement published algorithms (Salomon's, Valach's and
-Buyanovsky's) from their descriptions, and `acb` was written from his paper and a reading of his 1994
+Buyanovsky's) from their descriptions, and `acb` and `acbx` were written from his paper and a reading of his 1994
 reference code, which carries no licence and is not copied. The reference compressors in the table above
 were run, not included (ExCom is published under the GNU LGPL version 3).

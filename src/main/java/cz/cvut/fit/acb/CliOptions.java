@@ -85,7 +85,8 @@ final class CliOptions {
                 .hasArg()
                 .argName("coder")
                 .desc("<coder> represents triplet coding strategy (default is valach)\n"
-                        + "acb is Buyanovsky's own coder: it codes with models of its own, so it takes no -ec or -bs\n"
+                        + "acb is Buyanovsky's own coder and acbx its variant with mixed models: they code with models of their "
+                        + "own, so they take no -ec or -bs\n"
                         + "values = " + Arrays.toString(TripletCoding.values()))
                 .build());
         return options;

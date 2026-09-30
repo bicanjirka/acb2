@@ -5,6 +5,7 @@ import cz.cvut.fit.acb.coding.LengthFrequencies;
 import cz.cvut.fit.acb.format.StreamHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,21 +85,22 @@ class CompressionSettingsTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
-    @Test
-    void theAssociativeCoderOnlyGoesWithTheEntropyCodingOfItsOwnModels() {
-        CompressionSettings associative = CompressionSettings.defaults().withTripletCoding(TripletCoding.ACB);
+    @ParameterizedTest
+    @EnumSource(value = TripletCoding.class, names = {"ACB", "ACBX"})
+    void anAssociativeCoderOnlyGoesWithTheEntropyCodingOfItsOwnModels(TripletCoding coding) {
+        CompressionSettings associative = CompressionSettings.defaults().withTripletCoding(coding);
 
         assertThat(associative.entropyCoding()).isEqualTo(EntropyCoding.ADAPTIVE_ARITHMETIC);
         assertThatThrownBy(() -> associative.withEntropyCoding(EntropyCoding.BIT_ARRAY))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> CompressionSettings.defaults().withEntropyCoding(EntropyCoding.BIT_ARRAY)
-                .withTripletCoding(TripletCoding.ACB)).isInstanceOf(IllegalArgumentException.class);
+                .withTripletCoding(coding)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void everyCoderOtherThanTheAssociativeOneStartsFromTheGeneralDefaults() {
+    void everyCoderOtherThanTheAssociativeOnesStartsFromTheGeneralDefaults() {
         for (TripletCoding coding : TripletCoding.values()) {
-            if (coding != TripletCoding.ACB) {
+            if (coding.layoutCoder().isPresent()) {
                 assertThat(CompressionSettings.defaultsFor(coding))
                         .isEqualTo(CompressionSettings.defaults().withTripletCoding(coding));
             }

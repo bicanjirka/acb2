@@ -1,7 +1,7 @@
 package cz.cvut.fit.acb.associative;
 
-import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
 import cz.cvut.fit.acb.coding.CumulativeTable;
+import cz.cvut.fit.acb.coding.FrequencyCounts;
 
 /**
  * The excess of a match over what the decoder knows of it, as the recent matches had it, and the
@@ -14,13 +14,13 @@ final class LengthModel {
     /** Every candidate that shares a length adds this share of the model's total, more for the first ones. */
     private static final int BOOST_DIVISOR = 10;
 
-    private final AdaptiveFrequencyModel frequencies;
+    private final FrequencyCounts frequencies;
     private final int[] boosts;
     private final int[] touched;
     private int touchedCount;
 
     LengthModel(int[] startingTable) {
-        this.frequencies = new AdaptiveFrequencyModel(startingTable);
+        this.frequencies = new FrequencyCounts(startingTable);
         this.boosts = new int[startingTable.length];
         this.touched = new int[startingTable.length];
     }

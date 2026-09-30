@@ -39,6 +39,8 @@ class RatioRegressionTest {
         return Stream.of(
                 new Pin("text", text, TripletCoding.ACB, arith, 12_839),
                 new Pin("binary", binary, TripletCoding.ACB, arith, 24_815),
+                new Pin("text", text, TripletCoding.ACBX, arith, 10_786),
+                new Pin("binary", binary, TripletCoding.ACBX, arith, 21_820),
                 new Pin("text", text, TripletCoding.SALOMON, arith, 17_192),
                 new Pin("text", text, TripletCoding.SALOMON, bits, 26_187),
                 new Pin("text", text, TripletCoding.SALOMON2, arith, 15_438),

@@ -1,5 +1,7 @@
 package cz.cvut.fit.acb;
 
+import cz.cvut.fit.acb.associative.AssociativeVariant;
+
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
@@ -12,9 +14,15 @@ import java.util.Set;
  */
 final class AssociativeCoder implements Coder {
 
+    private final AssociativeVariant variant;
+
+    AssociativeCoder(AssociativeVariant variant) {
+        this.variant = variant;
+    }
+
     @Override
     public SegmentCoding segmentCoding(CompressionSettings settings) {
-        return new AssociativeSegmentCoding(settings);
+        return new AssociativeSegmentCoding(this.variant, settings);
     }
 
     @Override

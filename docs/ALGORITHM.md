@@ -9,7 +9,7 @@ Sources (full references in `REFERENCES.md`): the CTU FIT master thesis this pro
 [Bican] (§1.2 basic method, §1.3 Salomon's modifications, §3.2.1 triplet variations, §3.3.1 second best
 content), Salomon's *Data Compression* [Salomon] (as the thesis describes it), the ExCom library [ExCom] and
 Valach's thesis [Valach] (`salomon2`, `valach`), and Buyanovsky's own 1994 code and paper [Buyanovsky]
-(section 7).
+(section 7, and the variant of section 9).
 
 ## 1. Terms
 
@@ -368,8 +368,9 @@ what it says; none changes a field, a context, a candidate or a length.
 
 **7.10 The paper's own coding.** The paper codes a string by the number of the candidate that agrees most, a
 "difference bit" (on which side of it the string sorts in content order) and an "extract" length. That is
-the idea of the `lcp` coder done right, where `AC.C` implements the simpler coding above. Neither the
-paper's coding nor ACB 2.00's modelling is implemented (`TODO.md`).
+the idea of the `lcp` coder done right, where `AC.C` implements the simpler coding above. `acbx` (section 9)
+codes a step as the paper places the string among the contents of the funnel, a byte at a time instead of a
+bit; the paper's bit-level form and ACB 2.00's modelling are not implemented (`TODO.md`).
 
 ## 8. Entropy coding of fields
 
@@ -401,3 +402,94 @@ from 974,670 to 916,945 (5.9%), and costs 29% of the compression speed and 39% o
 speed. Leaving out only the one byte the chosen content goes on with, as an earlier version did, gave
 368,471 literal bytes and a file of 934,267, for 10% and 17% of the speed: the rest of the set is worth
 1.9% of the file for about 20% of the speed.
+
+## 9. The mixed associative coder: `acbx`
+
+Source: none as a whole; a variant of this project's of `acb` (section 7), as `prefix` is of `lcp`. Its
+dictionary, its funnels of analogies and their weights, what a step leaves in the dictionary, the exclusions of
+a literal and the votes of the second funnel are `acb`'s (7.1, 7.2, 7.6 to 7.8) and the same code. What
+differs is how a step is coded: as Buyanovsky's paper places the text among the contents of the funnel of
+posthistory (7.10), a byte at a time, and every decision of it as a bit predicted by models that learn,
+mixed (9.5). It takes `acb`'s settings and starts from them (`d = 6`, `l = 8`, `C = 255`), and is always
+`ADAPTIVE_ARITHMETIC`.
+
+**9.1 The candidates.** For `idx` with at least 4 bytes before it and a non-empty funnel (7.2), the candidates
+are the entries of the funnel, in its order and with its weights, followed by the *repeats* of the step before
+(9.3), each weighing a quarter of the heaviest candidate of the funnel (at least 1). With an empty funnel the
+step is a literal (9.4) of which nothing is excluded and nothing voted, and the repeats are forgotten.
+
+**9.2 The walk.** All the candidates are alive at depth `k = 0`. At depth `k`:
+
+1. If `k = L` or `idx + k` is the end of the segment, the step ends: it coded `k` bytes and no literal.
+2. Each live candidate `c` goes on with the byte `s[c + k]`. That byte is before `idx + k`, so the decoder has
+   it, even where `c + k` is `idx` or past it: it appends each byte as it decodes it, and the match may
+   overlap what it codes, as 3.3 allows. The bytes are grouped: `W(b)` is the weight of the live candidates
+   that go on with `b` and `n(b)` their number, and they are ranked by `W(b)`, the heavier first, equal
+   weights in the order of the first candidate that gives them.
+3. *The end.* Whether `s[idx + k]` is none of these bytes. It is not coded when all 256 values are among
+   them. If the text ends there, the literal at `idx + k` follows (9.4), with every byte of the group excluded,
+   and, when `k > 0`, the votes of the second funnel of the context at `idx + k` as in 7.7; the step coded
+   `k + 1` bytes. Ending at `k = 0` is the escape.
+4. *The continuation.* Otherwise, for the ranks `r = 0, 1, ...` in turn, whether the text goes on with the
+   byte of rank `r`, until one is taken; the last rank is taken without being coded. The candidates that
+   went on with another byte die, and the walk goes to `k + 1`.
+
+The match is the `k` bytes the walk went through, which every live candidate has, so the decoder copies it
+from any of them. The chosen candidate of `acb` is not named; the text names the bytes.
+
+**9.3 The repeats.** A step that ends at depth `k > 0` with a literal leaves as repeats the first two
+candidates alive at `k`, moved on by `k + 1` bytes, past the literal; a step that ends without one (9.2, 1)
+leaves the first two moved on by `k`. An escape or an empty funnel leaves none. A repeat is where a content
+that the text left for one byte would go on, the repeated match of LZ77 coders; its position is below the
+next `idx`, and it is known to both sides.
+
+**9.4 The literal.** Coded a bit at a time, the top bit first. A bit is not coded where every byte on one side
+of it is excluded. Otherwise its probability mixes (9.5):
+
+- the share of the upper side in the distribution of 7.7 (literals of the segment so far, votes, exclusions);
+- the same without the votes;
+- the share in the frequencies of the literals that came after the same byte (section 8's model, one per
+  byte, flat at first), without the excluded bytes;
+- counters of the bits so far after the same byte, and after the same two bytes (hashed).
+
+The weights are chosen by the bit and whether the literal has votes, only exclusions or neither, and in a
+second bank by the byte before; the mixture is refined by the bits so far and that state.
+
+**9.5 How a decision is predicted.** Every decision is a bit. Its inputs are probabilities: shares of the
+weights of the funnel, and adaptive counters of how often the bit was 1 in a context, each of which moves by
+`1 / (n + 1.5)` of the way after `n` bits of its context, `n` at most a limit. They are mixed in the logistic
+domain (`stretch(p) = ln(p / (1 - p))`), the weighted sum squashed back; the weights are chosen by a small
+context in each of two banks, each bank learns from its own error and the two are averaged. An adaptive
+probability map by a context then corrects the mixture, and the corrected and the mixed probability are
+averaged. The result, of 12 bits, is range-coded as a probability of 16. Everything is integer arithmetic, so
+both sides compute the same. Hashed tables have `2^b` counters, `b` growing with the size of the segment up to
+a limit, so that a small segment does not pay for a large table.
+
+**9.6 The end** is predicted from counters of: the depth with the number of live candidates, whether they all
+go on alike and whether a repeat goes on with the heaviest byte; the depth with how far the context of the
+heaviest candidate agrees; the byte before with the depth; the byte before with the heaviest byte; the two
+bytes before with the depth up to 3 (hashed); the depth with how far back the nearest candidate of the
+heaviest byte lies. The banks are chosen by the depth and by the candidate state; the maps by the depth and by
+the byte before.
+
+**9.7 The continuation** is predicted from the byte's share of the weight and of the number of the live
+candidates not yet ruled out, and from counters of: the rank with the number of candidates of the byte, of those
+left and whether a repeat gives it; the byte before with the byte; the rank with how far the contexts of the
+byte's candidates and of the heaviest agree; the two bytes before with the byte (hashed); the rank with how
+far back the nearest candidates of the byte and of the heaviest lie. The banks are chosen by the rank and
+whether `k = 0`, and by the depth, the repeat and the candidates left; the map by the rank and the share.
+
+**9.8 Measurements.** Over Calgary (`d = 6`, `l = 8`, `C = 255`): 734,658 bytes against `acb`'s 843,240, the
+decisions of the walk costing 424,568 (`acb`'s position and length 489,785) and the literals 308,884 (352,830).
+In the order they were added: coding `acb`'s literals by bits with the mixture gave 809,467 (without the
+bytes before, 825,139); the walk of 9.2, 763,192; the contexts of the bytes before in the
+end and the continuation, 749,731; the repeats, 742,681 (one 743,324, three 743,465); the nearest candidate,
+739,857; the second banks, a count share and the map by the byte before, 734,622. Without any context of the
+bytes before (orders 1 and 2 out of 9.4, 9.6 and 9.7) it is 786,340. The width matters less than for `acb`:
+`d = 5, 7, 8` give 737,059, 733,975 and 733,736.
+
+Tried and left out: giving one weight to the candidates of the same content (they held 0.06% of `acb`'s
+position distribution); a position weight learnt from how often each place won, instead of 7.2's or times it
+(0.5% better and 16% worse); order-0 counters and the byte the chosen content goes on with, as LZMA's matched
+literal, in 9.4 (no gain); the votes alone as an input; order-1 and order-2 models of the whole text for the
+literal (0.02%); more repeats; other rules of 7.8 and longer matches (`l = 10, 12`), all within 0.1%.

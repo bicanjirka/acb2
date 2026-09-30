@@ -20,11 +20,14 @@ makes the `SegmentCoding` that turns one segment into a block and back. There ar
   `EntropyCoding` (`coding`) turns the fields into bytes.
 - `acb` has no layout: the probabilities of what it codes come from the funnel of analogies of each step,
   so `associative` codes the position, the length and the literal against distributions made at the step.
+  `acbx` is the same `AssociativeCoder` with another step rule (an `AssociativeVariant` constant), which walks
+  the contents of the funnel a byte at a time and codes every decision as a bit (`mixing`).
 
 The `ACBProvider` makes the parts of a segment (dictionaries, writer, reader) from the settings, which is
 the seam the tests use to look inside.
 
-The packages depend on each other in one direction, upward: `counts` (the Fenwick tree) knows nothing;
+The packages depend on each other in one direction, upward: `counts` (the Fenwick tree) and `mixing` (the
+predictions of a bit) know nothing;
 `dictionary` uses it; `triplets` uses the dictionary; `coding` uses both; `associative` uses all of them;
 and the root package, where `Compressor` and the settings are, uses everything. Two things go the other
 way and are accepted. The packages above `counts` throw `format.MalformedStreamException`, since a stream
@@ -44,7 +47,11 @@ So what a step does to the state is written once. For the thesis coders, `Segmen
 place a triplet reaches the dictionary, and the encoder's parser and the decoder's layout both feed it.
 For `acb`, `AssociativeSteps` is the whole step, and it asks a `SymbolPort` for each symbol: the encoder's
 port finds it in the text and codes it, the decoder's reads it and rebuilds the text. A decision that only
-one side could take has nowhere to be written.
+one side could take has nowhere to be written. `acbx`'s `MixedSteps` codes many small decisions whose answer
+the encoder reads off the text, so the same two ports are also a `DecisionPort`, which takes a bit together
+with the encoder's answer (`textByte`, which the decoder answers with 0): the encoder codes the answer, the
+decoder reads one from the stream and ignores what it was given, and the step goes on from what the port
+returns. The answer is only ever handed to the port, never branched on.
 
 ## Blocks, and the versions of the container
 
@@ -198,19 +205,41 @@ after the chosen one as well (`ALGORITHM.md` 7.5), and a layout coder's models c
 giving them that makes the coder `acb`. So the prefix variant is the best a layout can do, and the ratio of
 `acb` is not reachable by it.
 
+## The mixed variant
+
+`acb` names the candidate that continues the text and then the length. That costs the weight of that one
+candidate, where what happened is that the text went on as a whole group of candidates did, those that share
+its first bytes; and merging only the candidates of identical content, which can never be chosen, gains
+nothing (0.06% of the position distribution is theirs, since a long step leaves one entry). Nor is the weight
+formula the loss: weights learnt from how often each place of the funnel won come within 0.5% of AC.C's.
+Coding the step as the paper does, byte by byte against the summed weights of the candidates still in agreement
+(`ALGORITHM.md` 9.2), was estimated at 488.7 KB against 492.9 KB for position and length with a crude model of
+where the match ends, and is 424.6 KB with the mixed models of 9.6 and 9.7.
+
+The models are what a context-mixing coder uses, over what the associative coder knows: the funnel's weights
+and agreements, how many candidates are left and how near, whether they agree, the repeats. The bytes before a
+step are inputs too (orders 1 and 2), and are worth 6% of the file; without them `acbx` is 786,340 bytes on
+Calgary, 6.7% below `acb`. It is still an LZ77 coder: a step is a copy from the dictionary and a literal, and
+its decoder copies.
+
+The price is speed. A decision is a mix of seven inputs in two banks, and a matched byte costs at least one;
+mixing and learning are about a third of the time (a JFR profile over Calgary), the dictionary as much as in
+`acb`, and the walk over the candidates a tenth. `acbx` codes Calgary at about 0.85 MB/s against `acb`'s 1.5.
+The funnel can be narrower than `acb`'s at little cost (`d = 5` is 0.3% larger and 10% faster).
+
 ## Where the bits go
 
 Book1 (768,771 bytes) with the thesis coder at its defaults, with `acb` at `-d 6` and with Buyanovsky's
 `AC.C` (1 MB frame, `Kc 0`, its own build that prints the bits of each component):
 
-| | `valach` | `acb` `-d 6` | `AC.C` |
-|---|---|---|---|
-| Steps | 171,089 | 173,755 | 128,844 |
-| Average step | 4.5 bytes | 4.4 bytes | 6.0 bytes |
-| Position or distance | 108,838 B | 113,582 B | 136 KB, over a funnel of about 1,000 candidates |
-| Length | 67,819 B | 43,037 B | 36 KB, coded relative to better-ranked candidates |
-| Literal | 108,198 B (order-0) | 83,792 B | 63 KB, with exclusion and funnel forecast |
-| Total | 284,918 B | 240,482 B | 235 KB |
+| | `valach` | `acb` `-d 6` | `AC.C` | `acbx` |
+|---|---|---|---|---|
+| Steps | 171,089 | 173,755 | 128,844 | |
+| Average step | 4.5 bytes | 4.4 bytes | 6.0 bytes | |
+| Position or distance | 108,838 B | 113,582 B | 136 KB, over a funnel of about 1,000 candidates | 93,563 B (which byte, and the escape) |
+| Length | 67,819 B | 43,037 B | 36 KB, coded relative to better-ranked candidates | 47,461 B (where the match ends) |
+| Literal | 108,198 B (order-0) | 83,792 B | 63 KB, with exclusion and funnel forecast | 74,354 B |
+| Total | 284,918 B | 240,482 B | 235 KB | 215,618 B |
 
 The gap to the thesis coders is structural, not tuning: real ACB spends more on the position but reaches
 further, gets the length almost free from the neighbours, and rarely spends a full literal. Most of what

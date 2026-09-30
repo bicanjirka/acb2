@@ -1,7 +1,7 @@
 package cz.cvut.fit.acb.associative;
 
-import cz.cvut.fit.acb.coding.AdaptiveFrequencyModel;
 import cz.cvut.fit.acb.coding.CumulativeTable;
+import cz.cvut.fit.acb.coding.FrequencyCounts;
 
 import java.util.Arrays;
 
@@ -19,7 +19,7 @@ final class ForecastedLiterals {
     /** A byte whose votes weigh at least this much counts double in the mixture, and more for each doubling. */
     private static final int HEAVY_VOTES = 2048;
 
-    private final AdaptiveFrequencyModel frequencies = flat();
+    private final FrequencyCounts frequencies = flat();
     private final int[] excludedIn = new int[SYMBOLS];
     private final int[] votedIn = new int[SYMBOLS];
     private final int[] votes = new int[SYMBOLS];
@@ -27,17 +27,20 @@ final class ForecastedLiterals {
     private int literal = 1;
     private int votedCount;
     private long voteTotal;
+    private boolean anyExcluded;
 
     /** Forgets the exclusions and votes of the last literal. */
     void reset() {
         this.literal++;
         this.votedCount = 0;
         this.voteTotal = 0;
+        this.anyExcluded = false;
     }
 
     /** The literal cannot be {@code symbol}. */
     void exclude(int symbol) {
         this.excludedIn[symbol] = this.literal;
+        this.anyExcluded = true;
     }
 
     /** A funnel candidate of weight {@code weight} says the literal is {@code symbol}; a byte left out gets no vote. */
@@ -72,13 +75,33 @@ final class ForecastedLiterals {
         return table.seal();
     }
 
+    /** Whether the literal cannot be {@code symbol}. */
+    boolean excluded(int symbol) {
+        return this.excludedIn[symbol] == this.literal;
+    }
+
+    /** Whether any byte is left out. */
+    boolean excludedAny() {
+        return this.anyExcluded;
+    }
+
+    /** How often {@code symbol} came as a literal, in the model's units. */
+    int frequency(int symbol) {
+        return this.frequencies.frequency(symbol);
+    }
+
+    /** Whether any byte got a vote. */
+    boolean voted() {
+        return this.voteTotal > 0;
+    }
+
     void update(int symbol) {
         this.frequencies.increment(symbol);
     }
 
-    private static AdaptiveFrequencyModel flat() {
+    private static FrequencyCounts flat() {
         int[] initial = new int[SYMBOLS];
         Arrays.fill(initial, 1);
-        return new AdaptiveFrequencyModel(initial);
+        return new FrequencyCounts(initial);
     }
 }

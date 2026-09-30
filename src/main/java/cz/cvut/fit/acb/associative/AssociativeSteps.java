@@ -14,7 +14,7 @@ import cz.cvut.fit.acb.format.MalformedStreamException;
  * the match ended on a mismatch, a literal follows, which cannot be a byte that a candidate matching as
  * long would have gone on with, and is voted on by the funnel of the context the match made.
  */
-final class AssociativeSteps {
+final class AssociativeSteps implements StepRule {
 
     private final AnalogyDictionary dictionary;
     private final SegmentBuffer text;
@@ -44,13 +44,8 @@ final class AssociativeSteps {
         this.port = port;
     }
 
-    /**
-     * Codes the step that starts at {@code idx}, below the segment's length.
-     *
-     * @return how many bytes the step coded
-     * @throws MalformedStreamException if the stream asks for something no text can have
-     */
-    int step(int idx) throws MalformedStreamException {
+    @Override
+    public int step(int idx) throws MalformedStreamException {
         Funnel funnel = this.dictionary.funnel(idx);
         this.literals.reset();
         if (funnel.size() == 0) {

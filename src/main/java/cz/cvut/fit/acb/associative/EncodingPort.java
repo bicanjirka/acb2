@@ -14,7 +14,7 @@ import java.util.List;
  * The encoder's side of a step: it finds in the text which candidate continues it, and range-codes
  * that and what follows against the distributions it is given.
  */
-final class EncodingPort implements SymbolPort {
+final class EncodingPort implements StepPort {
 
     private final SegmentBuffer text;
     private final int maxLength;
@@ -62,6 +62,24 @@ final class EncodingPort implements SymbolPort {
 
     @Override
     public void copied(int from, int count) {
+    }
+
+    @Override
+    public int textByte(int at) {
+        return Byte.toUnsignedInt(this.text.byteAt(at));
+    }
+
+    @Override
+    public int bit(TripletFieldKind kind, int encoderBit, int probabilityOfOne) {
+        this.encoder.encodeBit(encoderBit, probabilityOfOne);
+        this.costs.add(kind, RangeEncoder.PROBABILITY_ONE,
+                encoderBit != 0 ? probabilityOfOne : RangeEncoder.PROBABILITY_ONE - probabilityOfOne);
+        return encoderBit;
+    }
+
+
+    @Override
+    public void appended(int value) {
     }
 
     byte[] finish() {
