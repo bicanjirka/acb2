@@ -30,4 +30,13 @@ public interface Dictionary {
      * @throws MalformedStreamException if the distance does not name an entry
      */
     int impliedLength(int idx, int distance) throws MalformedStreamException;
+
+    /**
+     * The bytes that would have made a match longer: of the candidates of the window, those whose first
+     * {@code length} bytes are the same as the text's, which the content at {@code content} gives, go on
+     * with one byte each. With a {@code length} of 0 every candidate qualifies and {@code content} means
+     * nothing. A candidate whose next byte is not known yet, because it lies at or past {@code idx}, is
+     * left out.
+     */
+    ByteSet continuations(int idx, int content, int length);
 }

@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.ConfiguredACBProvider;
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
@@ -52,6 +53,12 @@ public final class ThreadRecordingProvider implements ACBProvider {
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
         this.threads.add(Thread.currentThread());
         return this.provider.decoderDictionary(segment);
+    }
+
+    @Override
+    public AnalogyDictionary analogyDictionary(SegmentBuffer segment) {
+        this.threads.add(Thread.currentThread());
+        return this.provider.analogyDictionary(segment);
     }
 
     @Override

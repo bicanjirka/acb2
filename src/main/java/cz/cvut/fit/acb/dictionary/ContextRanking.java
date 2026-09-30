@@ -71,6 +71,39 @@ final class ContextRanking {
         return successorAgreement > predecessorAgreement ? successor : successor - 1;
     }
 
+    /** What {@link Dictionary#continuations} says over the window around the context of {@code idx}. */
+    ByteSet continuations(int idx, int content, int length) {
+        ByteSet.Builder continuations = ByteSet.builder();
+        int ctx = this.contextRankOf(idx);
+        int first = this.window.first(ctx);
+        int last = this.window.last(ctx, this.index.size());
+        if (first <= last) {
+            byte[] bytes = this.segment.bytes();
+            ContextCursor cursor = this.index.cursorAt(first);
+            for (int rank = first; rank <= last; rank++) {
+                int candidate = cursor.position();
+                if (continues(bytes, candidate, content, length, idx)) {
+                    continuations.add(Byte.toUnsignedInt(bytes[candidate + length]));
+                }
+                cursor.moveUp();
+            }
+        }
+        return continuations.build();
+    }
+
+    private static boolean continues(byte[] bytes, int candidate, int content, int length, int idx) {
+        if (candidate + length >= idx) {
+            return false;
+        }
+        int period = idx - content;
+        for (int k = 0; k < length; k++) {
+            if (bytes[candidate + k] != bytes[content + k % period]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** The positions of the ranks {@code first .. last}, in rank order. */
     int[] positionsOf(int first, int last) {
         int[] positions = new int[Math.max(0, last - first + 1)];

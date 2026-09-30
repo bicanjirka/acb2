@@ -33,7 +33,7 @@ import java.io.UncheckedIOException;
  */
 public final class ContainerFormat {
 
-    static final int VERSION = 4;
+    static final int VERSION = 5;
 
     static final byte[] MAGIC = {'A', 'C', 'B'};
 

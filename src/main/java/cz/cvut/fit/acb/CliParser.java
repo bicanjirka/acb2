@@ -83,7 +83,10 @@ final class CliParser {
     }
 
     private CompressionSettings settings(CommandLine cmd) throws UsageException {
-        CompressionSettings settings = CompressionSettings.defaults();
+        TripletCoding coding = cmd.hasOption("tc")
+                ? parseEnum(TripletCoding.class, cmd.getOptionValue("tc"), "triplet-coder")
+                : CompressionSettings.defaults().tripletCoding();
+        CompressionSettings settings = CompressionSettings.defaultsFor(coding);
         if (cmd.hasOption("d")) {
             settings = settings.withDistanceBits(parseInt(cmd.getOptionValue("d"), "distance"));
         }
@@ -108,10 +111,6 @@ final class CliParser {
             } catch (NumberFormatException e) {
                 throw new UsageException("arith-freq is not a comma separated list of integers: " + value);
             }
-        }
-        if (cmd.hasOption("tc")) {
-            TripletCoding coding = parseEnum(TripletCoding.class, cmd.getOptionValue("tc"), "triplet-coder");
-            settings = settings.withTripletCoding(coding);
         }
         return settings;
     }

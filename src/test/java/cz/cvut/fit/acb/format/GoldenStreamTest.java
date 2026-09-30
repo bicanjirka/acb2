@@ -57,7 +57,9 @@ class GoldenStreamTest {
                 new Golden("lcp-context", BASE.withTripletCoding(TripletCoding.LCP)
                         .withEntropyCoding(EntropyCoding.CONTEXT_ARITHMETIC)),
                 new Golden("valach-bit-array", BASE.withTripletCoding(TripletCoding.VALACH)
-                        .withEntropyCoding(EntropyCoding.BIT_ARRAY).withDistanceBits(4)));
+                        .withEntropyCoding(EntropyCoding.BIT_ARRAY).withDistanceBits(4)),
+                new Golden("acb", BASE.withTripletCoding(TripletCoding.ACB).withDistanceBits(5).withLengthBits(6)
+                        .withContextDepth(200)));
     }
 
     @ParameterizedTest

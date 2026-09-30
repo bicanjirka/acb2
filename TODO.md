@@ -12,14 +12,13 @@ first so the big refactor (phase 7) lands on a tested, measured, fast base.
 
 | Phase | Theme | Size | Format change |
 |---|---|---|---|
-| 7 | Buyanovsky's associative coder (`-tc acb`) | large | `VERSION` 5 (new coder code) |
 | 9 | Documentation pass and final measurements | small | no |
 
 ## Handoff for the next session
 
-State on 2026-09-29: research, planning and phases 0 to 6 and 8 are finished (phase 8 ran before 7,
-so the coder of phase 7 is written against segments coded in parallel). Phases 7 (large) and 9 are
-open and neither is started; do not begin one without being asked. Do not redo the research below; its numbers are final unless the code
+State on 2026-09-30: research, planning and phases 0 to 8 are finished (phase 8 ran before 7, so the
+coder of phase 7 is written against segments coded in parallel). Phase 9 is open; do not begin one without
+being asked. Do not redo the research below; its numbers are final unless the code
 changes. Measure ratio and speed with the harnesses; their Javadoc in
 `src/test/java/cz/cvut/fit/acb/harness` says how to run them.
 
@@ -143,50 +142,37 @@ and Nayuki's coder 14% compressing and 30% decompressing, mostly rebuilding its 
   defaults, against ExCom's 1.4 MB/s in C++ with the same model. After phases 3 and 4: 1.8 and 2.4 MB/s;
   after the block format of phase 5: 1.7 and 3.5.
 
-## Phase 7: Buyanovsky's associative coder
+## Open gaps
 
-### Literals after a miss exclude nothing
+### `acb` runs at 1.2 to 1.3 MB/s, not 2
 
-`CONTEXT_ARITHMETIC` codes a literal against the model of the byte before it and leaves out the
-byte the chosen content continues with when the match ended on a mismatch. That took the Calgary
-literals from 408,864 to 368,471 bytes (`valach`, 4.1% of the file). A literal after no match at all
-can also never equal the first byte of any candidate of the window, and `AC.C` excludes every
-candidate that matched as long as the best one; it codes book1's literals in 3.9 bits against 5.05
-for the order-0 model.
+Calgary at `d = 6`: 843,240 bytes (under the 850 KB target) at 1.3 MB/s compressing and 1.4
+decompressing, one thread; `valach` does 2.3 and 3.1 on the same machine. A step of 5.55 bytes on
+average costs about 4.2 us: the dictionary insert of each of its positions, 0.25 us (5.55 of them), the
+funnel of analogies of the context, 1.0 us, and the funnel that votes on the literal, 1.0 us; the rest is
+the coder and its tables (about 0.25 us of literal table). Even with no funnels at all the coder does
+2.15 MB/s, the inserts and the literal table. Narrowing the funnel (`d = 5`: 855,407 bytes, about 1.7
+MB/s) or the voting funnel (16 per side: +0.6% and 13% faster) buys speed with ratio, and inserting only
+the first position of a step of 12 bytes or more, not 3 * log2 of the size, gives 841,798 bytes and about
+3% speed.
 
-- **Where:** `triplets.LiteralTracker`, `triplets.LiteralContext`, `coding.LiteralModel`.
-- **Approach:** let the context carry a set of excluded bytes instead of one, filled from the
-  window's candidates by both sides, and measure what it gains against what it costs in speed. The
-  funnel forecast belongs to phase 7.
+- **Where:** `dictionary.FunnelWalk` and `ChunkedContextIndex.locate`, `around` and `insert`.
+- **Approach:** make a funnel cost half: find the place of the next context from the place of the last
+  one rather than by a search (the contexts of positions next to each other are related), and keep the
+  byte each entry's content starts with next to it so that no candidate's text is read to find its match.
+  The second, tried, gained nothing at the defaults. Or insert fewer positions per step, which the
+  insert cost (0.25 us each) says is half of the time.
 
-### Real ACB as a coder of its own
+### Beyond `AC.C`: the paper's own coding and ACB 2.00's modelling
 
-The triplet coders are Salomon's simplification. Buyanovsky's own coder (`docs/ALGORITHM.md`,
-section 7) is 14% smaller than ExCom and 10% smaller than this coder's best on Calgary, and even at the
-narrowest funnel (16 per side) it beats ExCom's best by 9%. A fixed window of ±2^(d-1) ranks
-cannot get there: ACB admits only contexts that agree with the current one beyond the noise
-level, weights them by that agreement, and codes the position by those weights. This
-supersedes the earlier "candidate set is a fixed window" entry.
+`AC.C` reaches 837 KB on Calgary and ACB 2.00 779 KB, and `acb` here 843 KB at `d = 6` and 835 KB at
+`d = 8`. The paper codes a string by the candidate's number, a "difference bit" and an "extract" length,
+which is the idea of the `lcp` coder done right; ACB 2.00 models the literals and positions further.
 
-- **Where:** new `-tc acb` constant of `TripletCoding` (phase 5 made a coder one constant), its parser and model in the
-  core, `docs/ALGORITHM.md` (the specification), the harness.
-- **Approach:** implement the model from the specification, not from `AC.C` (which has no
-  licence), on the phase 3-5 base:
-  - The funnel: walk outward from the context slot with the `ContextIndex` cursor while the
-    bit-level context agreement exceeds `log2(Kc·N/500)`, compared eight bytes at a time as
-    big-endian `long`s with `numberOfLeadingZeros` of the XOR. Cap the width with a setting in the
-    header, with presets at ACB 1.17's S = 16, 55 and 100.
-  - Position coding with weights from agreement and rank distance plus an adaptive escape, by
-    the phase 4 range coder from a per-step cumulative table.
-  - Length as the excess over the best better-weighted candidate's LCP, with the boost from
-    later candidates; the literal only after a mismatch, with exclusions and the funnel forecast.
-  - The frame: one dictionary per segment, the neighbour-replacement policy when full, and the
-    long-match insertion skip; measure each against simply keeping everything.
-  - Round trips on Calgary for every width and level, since the 1994 code itself loses symmetry
-    at `Kc 2`. Targets: at most 850 KB on Calgary, at least 2 MB/s each way.
-  - Afterwards, as research: Buyanovsky's own difference-bit-and-extract coding of the paper, and
-    modern modelling (mixing the funnel's literal predictions, secondary estimation) toward ACB
-    2.00's 779 KB.
+- **Where:** `associative` (a new step rule next to `AssociativeSteps`), `docs/ALGORITHM.md` section 7.
+- **Approach:** as named variants, never changes to `acb`: the difference-bit and extract coding of the
+  paper; a mixing of the funnel's literal votes with an order-1 model; a correction of the position
+  weights by how often a candidate of that place won.
 
 ## Phase 9: documentation and final measurements
 

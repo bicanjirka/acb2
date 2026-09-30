@@ -28,6 +28,10 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         requireFieldBits("length", lengthBits);
         Objects.requireNonNull(tripletCoding, "tripletCoding");
         Objects.requireNonNull(entropyCoding, "entropyCoding");
+        if (!tripletCoding.entropyCodings().contains(entropyCoding)) {
+            throw new IllegalArgumentException(tripletCoding + " cannot be coded with " + entropyCoding
+                    + ", only with " + tripletCoding.entropyCodings());
+        }
         Objects.requireNonNull(lengthFrequencies, "lengthFrequencies").requireFits(lengthAlphabetSize(lengthBits));
         if (segmentSize < 1) {
             throw new IllegalArgumentException("segment size must be greater than zero: " + segmentSize);
@@ -45,6 +49,11 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
 
     public static CompressionSettings defaults() {
         return DEFAULTS;
+    }
+
+    /** The settings a coder starts from: the general defaults, less what the coder sets otherwise. */
+    public static CompressionSettings defaultsFor(TripletCoding coding) {
+        return coding.preset(DEFAULTS.withTripletCoding(coding));
     }
 
     public CompressionSettings withDistanceBits(int bits) {
@@ -89,10 +98,15 @@ public record CompressionSettings(int distanceBits, int lengthBits, TripletCodin
         return (1 << this.lengthBits) - 1;
     }
 
-    /** What the dictionaries and the literal contexts need of these settings. */
+    /**
+     * What the dictionaries and the literal contexts of a layout coder need of these settings.
+     *
+     * @throws IllegalStateException if the coder is not a layout coder
+     */
     public SearchWindow searchWindow() {
-        return new SearchWindow(this.contextDepth, this.maxDistance(), this.maxLength(),
-                this.tripletCoding.matchRule());
+        return this.tripletCoding.layoutCoder()
+                .orElseThrow(() -> new IllegalStateException(this.tripletCoding + " has no window of ranks"))
+                .window(this);
     }
 
     private static void requireFieldBits(String field, int bits) {

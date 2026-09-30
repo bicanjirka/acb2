@@ -16,4 +16,10 @@ public interface ContextIndex {
 
     /** @throws IndexOutOfBoundsException if there is no entry of that rank */
     ContextCursor cursorAt(int rank);
+
+    /**
+     * Copies the entries on either side of the place {@code position} would sort in, at most
+     * {@code reach} of each and no more than {@code into} holds, without a search for their ranks.
+     */
+    void around(int position, int reach, Surroundings into);
 }

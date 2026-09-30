@@ -1,8 +1,6 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.dictionary.MatchRule;
-import cz.cvut.fit.acb.triplets.TripletLayout;
-import cz.cvut.fit.acb.triplets.TripletParser;
 import cz.cvut.fit.acb.triplets.coder.BareMatchParser;
 import cz.cvut.fit.acb.triplets.coder.LiteralAfterMatchParser;
 import cz.cvut.fit.acb.triplets.coder.SalomonTripletLayout;
@@ -11,37 +9,29 @@ import cz.cvut.fit.acb.triplets.coder.ValachTripletLayout;
 
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * How a match is laid out as triplet fields. A constant carries all there is to a coder: its code in
- * the container format, the layout of its fields and the parser that turns matches into triplets, so
- * a new coder is added here and nowhere else. Codes are fixed here rather than taken from ordinals,
- * so reordering the constants cannot change what old files mean.
+ * How a segment is coded. A constant carries all there is to a coder: its code in the container
+ * format and what codes a segment, so a new coder is added here and nowhere else. Codes are fixed
+ * here rather than taken from ordinals, so reordering the constants cannot change what old files mean.
  */
 public enum TripletCoding {
 
-    SIMPLE(0, SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST),
-    SALOMON(1, SalomonTripletLayout::bare, new BareMatchParser(), MatchRule.NEAREST),
-    SALOMON2(2, SalomonTripletLayout::withLiteral, new LiteralAfterMatchParser(), MatchRule.NEAREST),
-    VALACH(3, ValachTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST),
-    LCP(4, SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.SMALLEST_WITH_LCP);
-
-    /** Makes the layout of a coder for the given field widths. */
-    @FunctionalInterface
-    private interface LayoutFactory {
-        TripletLayout create(int distanceBits, int lengthBits);
-    }
+    SIMPLE(0, LayoutCoder.of(SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST)),
+    SALOMON(1, LayoutCoder.of(SalomonTripletLayout::bare, new BareMatchParser(), MatchRule.NEAREST)),
+    SALOMON2(2, LayoutCoder.of(SalomonTripletLayout::withLiteral, new LiteralAfterMatchParser(),
+            MatchRule.NEAREST)),
+    VALACH(3, LayoutCoder.of(ValachTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.NEAREST)),
+    LCP(4, LayoutCoder.of(SimpleTripletLayout::new, new LiteralAfterMatchParser(), MatchRule.SMALLEST_WITH_LCP)),
+    ACB(5, new AssociativeCoder());
 
     private final int formatCode;
-    private final LayoutFactory layouts;
-    private final TripletParser parser;
-    private final MatchRule matchRule;
+    private final Coder coder;
 
-    TripletCoding(int formatCode, LayoutFactory layouts, TripletParser parser, MatchRule matchRule) {
+    TripletCoding(int formatCode, Coder coder) {
         this.formatCode = formatCode;
-        this.layouts = layouts;
-        this.parser = parser;
-        this.matchRule = matchRule;
+        this.coder = coder;
     }
 
     /** The code the container format stores for this coder. */
@@ -53,17 +43,23 @@ public enum TripletCoding {
         return Arrays.stream(values()).filter(coding -> coding.formatCode == code).findFirst();
     }
 
-    public TripletLayout layout(int distanceBits, int lengthBits) {
-        return this.layouts.create(distanceBits, lengthBits);
+    /** What codes a segment, for the settings of a stream; it holds no state, so it serves every segment. */
+    public SegmentCoding segmentCoding(CompressionSettings settings) {
+        return this.coder.segmentCoding(settings);
     }
 
-    /** The parser of the encoder; it holds no state, so one serves every stream. */
-    public TripletParser parser() {
-        return this.parser;
+    /** The coder as a layout of triplet fields over a window of ranks; empty for a coder that is not one. */
+    public Optional<LayoutCoder> layoutCoder() {
+        return this.coder.layoutCoder();
     }
 
-    /** Which candidate of the search window is the best match, and what of its length the decoder works out. */
-    public MatchRule matchRule() {
-        return this.matchRule;
+    /** The entropy codings this coder can be used with. */
+    public Set<EntropyCoding> entropyCodings() {
+        return this.coder.entropyCodings();
+    }
+
+    /** The settings this coder starts from, given the general defaults with this coder chosen. */
+    CompressionSettings preset(CompressionSettings defaults) {
+        return this.coder.preset(defaults);
     }
 }

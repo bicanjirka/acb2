@@ -26,7 +26,7 @@ Buyanovsky's own 1994 code and paper (section 7).
 **2.1 Entries.** After every step the entries are exactly the positions `0 .. idx-1` of the
 segment, where `idx` is the position coding continues from. A step that codes `n` bytes inserts
 positions `idx .. idx+n-1`, whether or not it carries a literal. Each segment starts with an
-empty dictionary.
+empty dictionary. The `acb` coder inserts fewer after a long step (7.8).
 
 **2.2 Order.** Entries are ordered by context, compared right to left over at most the last `C`
 bytes, where `C` is the context depth (`CompressionSettings.contextDepth`, default 10, stored in
@@ -211,51 +211,133 @@ neighbour that agrees longer. The same input under the other coders:
 `sssss`, `simple`: the thesis (§1.3.2) gives `(0,0,s) (0,3,s)`, and so does the code: the second
 step uses the only entry, rank 0.
 
-## 7. Buyanovsky's associative coder
+## 7. Buyanovsky's associative coder: `acb`
 
-The reference for the planned `-tc acb` coder. It is what Buyanovsky's 1994 code (`AC.C`, no
-licence: read it, never copy it) and his paper "Research method of pseudostochastic systems"
-describe. The thesis (§2.1) says his algorithm is unknown and that distances are not
-arithmetic-coded; both are wrong.
+Source: Buyanovsky's 1994 code (`AC.C`, which carries no licence: read, never copied) and his paper
+"Research method of pseudostochastic systems". The thesis (§2.1) says his algorithm is unknown and
+that distances are not arithmetic-coded; both are wrong. What follows is what this project's coder
+does, rule by rule, and in 7.9 where that differs from `AC.C`.
 
-- **Dictionary.** A sorted array of pointers to every position of the frame (1,024 to 262,144, or
-  more), ordered by the unbounded right-to-left context, compared as machine words. Insertion is
-  a `memmove` into the array (the paper's "simple list", O(n) per insert). Once full, a new
-  pointer replaces whichever of its two neighbours shares less with it. After a long match (at
-  least 3 * log2 of the frame fill) only the first position is inserted.
-- **Funnel of analogies.** From the current context's slot, walk outward on both sides, in order
-  of weight, over neighbours whose context agrees with the current one for more than
-  `SB = log2(Kc * N / 500)` bits, the paper's "stochastic component" (`N` = contexts stored). The
-  agreement in bits comes from an XOR and bit scan over 4-byte words, capped at 256 bytes; the
-  width is capped at 2,047 candidates. A candidate's weight (`EVR`) grows with context agreement
-  and falls with rank distance.
-- **Position.** The candidate is arithmetic-coded with probability proportional to its weight,
-  plus an escape symbol whose weight adapts from recent success (`Sucsess`, `Swch` in the code).
-  The encoder picks, in weight
-  order, the first candidate with the strictly longest match, so ties go to the most similar
-  context.
-- **Length.** Coded as `Max - Pr_L - 1`, where `Pr_L` is the longest match among candidates coded
-  before the chosen one. The decoder recovers `Pr_L` as the longest common prefix of the chosen
-  content with those candidates, which equals it exactly (a candidate that matched less than the
-  best one diverges from the best one where it diverged from the text). Lengths already shared by later
-  candidates get a boosted probability. Matches never overlap the current position, and
-  comparisons read only decoded bytes.
-- **Literal.** Coded only when the match ended on a mismatch (not at a boundary or at 256). Every
-  byte that a candidate with an equal-length match would predict is excluded, because it would
-  have made the match longer. After a match, the literal model mixes the order-0 table with the
-  next bytes of the funnel candidates for the new context.
-- **Statistics.** Frequency tables sorted by count, updated in sliding windows (2,048 literals,
-  1,024 lengths) through a ring buffer, and one custom 32-bit arithmetic coder. The length table
-  starts at `{45, 13, 10, 7, 5, 4}` for excess lengths 0 to 5. This project's length model starts
-  flat instead: over Calgary a flat start beat that table and several shapes of it by about 0.01%.
-- **The paper's own coding.** The code of a string is the candidate number, a "difference bit"
-  (which side of it the current content sorts in content order) and an "extract" length. This is
-  the LCP idea done right; `AC.C` implements the simpler `Pr_L` variant above. ACB 1.17 caps the
-  funnel at 16, 55 or 100 candidates per side (FAST, NORMAL, MAX); ACB 2.00 improves the modelling
-  further, and both are closed.
-- **Symmetry.** `AC.C` at its default level (`Kc 2`) fails to decode some inputs, so its encoder
-  and decoder disagree somewhere. Every model decision must be derived from state both sides
-  share.
+The coder has no layout of fields: it codes the position, the length and the literal of a step against
+distributions that the funnel of analogies of the step gives, and it does not use the entropy codings of
+section 8 (`acb` is always `ADAPTIVE_ARITHMETIC`). `-d` sets how many entries a funnel takes from either
+side of a context, `R = 2^(distanceBits - 1)`; `-l` the longest match, `L = 2^lengthBits - 1`; `-cd` how
+many bytes of context are compared, `C`. The coder starts from `d = 6`, `l = 8`, `C = 255`.
+
+**7.1 The dictionary.** As in 2.2, with `C` bytes of context, except that entries are added by 7.8.
+Every entry is a position below `idx`, so its content has at least one byte known.
+
+**7.2 The funnel of analogies.** For the position `idx` about to be coded, with `N` entries and at least 4
+bytes before `idx` (otherwise the funnel is empty):
+
+- `S = floor(log2(17 * N / 500))` is the number of bits by which a context must agree to be more than
+  chance (`17` is `Kc` of `AC.C` at its best level, `Kc 0`; `S` is 0 below 59 entries).
+- The **agreement** of an entry is how many bits its context has in common with that of `idx`, going back
+  from each, the nearest byte first and the top bit of a byte first, over at most `C` bytes and never
+  past the start of the segment.
+- The funnel takes entries outward from the place where `idx` would sort, at most `R` on each side. The
+  weight of the entry `k` places from that place, `k >= 1`, with agreement `a` and `b = floor(a / 8)` whole
+  bytes, is 0 if `a - S < 2`, and otherwise
+  `(b + floor(1024 / k) + ((a + 1) mod 8)) * floor(log2(1 + b))`. A side ends at its first entry of
+  weight 0. The two sides are merged by weight: the next entry is the one above the place if it weighs at
+  least as much as the next one below, else the one below. The funnel is that order, with the weights.
+- The weights grow with the agreement and fall with the distance in ranks, which the paper asks of them
+  and does not fix; the formula is the shape that `AC.C` uses.
+
+Sorted as they are, the agreement only falls outward, and the agreement of an entry is the least of that
+of the entry before it and the bytes the two have in common. So the dictionary keeps, next to each entry,
+how much it shares with the one before it, and the first bytes of its context, and the walk compares
+bytes only for the two entries next to `idx`. This implements the rule above and changes nothing in it.
+
+**7.3 The step.** The encoder finds for every candidate `j` of the funnel the match `T(j)`: how many bytes
+`s[idx ..]` has in common with the content of `j`, at most `L` and never more than `idx - j`, so that a
+match does not reach the bytes being coded. The best candidate is the first in funnel order with the
+longest match, if that is at least 1. A step codes, in this order:
+
+1. **The position**: a symbol from 0 to the funnel's size, against a distribution in which candidate `i`
+   (symbol `i + 1`) weighs its weight (7.4) and symbol 0, the **escape**, means that no candidate matches.
+   An empty funnel codes no position. After an escape, or with an empty funnel, go to 4.
+2. **The length** `M` of the match (7.5).
+3. **The literal** after the match, the byte that ended it, if the match ended on a mismatch (7.6).
+   Then the step is over: it coded `M + 1` bytes, or `M` if no literal follows.
+4. **The literal** of an escape or of an empty funnel, the byte at `idx`: the step codes 1 byte.
+
+What a step leaves in the dictionary is 7.8.
+
+**7.4 The position distribution.** The weights of the funnel are shifted right, none to less than 1, until
+they total at most `2^19`. The escape weighs `T * (e + 1) / (n - e + 1)`, where `T` is the total of the
+shifted weights and `e` and `n` count the recent steps of the same *class* that ended in an escape and all
+of them. The class is `min(15, floor(log2(w)))` for the weight `w` of the first candidate, and both
+counts are halved when `n` reaches 256. The escape weighs at least 1 and at most `2^19`. The paper asks
+for an escape that adapts to recent success and fixes no rule.
+
+**7.5 The length.** Let `c` be the chosen candidate. `P` is the longest common prefix of the content of `c`
+with the content of any candidate before `c` in the funnel, compared over the bytes before `idx`
+(0 if `c` is the first). The match `M` is more than `P`, since `c` is the first candidate to reach it: a
+candidate before `c` matched fewer bytes, the text agrees with `c` on those bytes and differs from the
+candidate where it does, and so the two contents share exactly what that candidate matched. The decoder
+therefore finds `P` itself, and `M - P - 1` is what is coded: a number from 0 to
+`min(L, idx - c) - P - 1`, against an adaptive model of the recent such numbers (the frequency model of
+section 8, starting from `lengthFrequencies`, flat by default) restricted to the numbers that are possible.
+Candidates after `c` that share `t > P` bytes with `c`, `t` at most the longest possible match, make the
+number `t - P - 1` likelier, since a text that leaves `c` where they do has a match of `t`: if `m`
+candidates share `t`, its frequency gains `total * (n + floor(log2(n + 2))) / 10`, with `n = m - floor(m / 4)`.
+
+**7.6 When a literal follows.** None follows a match of `L` bytes, which may have been cut short, or one that
+reaches the end of the segment. Otherwise the **excluded** bytes are `s[e + M]` for every candidate `e`
+whose content shares `M` bytes with that of `c` (`c` among them) and for which `e + M < idx`, so that the
+byte is known. Each of those candidates matched as long as `c` and went on with that byte, which would have
+made the match longer than the longest, so the text cannot go on with it. If no byte is excluded, `c` reaches
+`idx`, nothing says that the match ended on a mismatch, and no literal follows. An escape excludes the first
+byte of every candidate, for the same reason.
+
+**7.7 The literal distribution.** The frequency of a byte is that of an adaptive order-0 model over the
+literals of the segment (section 8's model, flat at the start), with every excluded byte at 0. After a match,
+the funnel of the context that the match made, at `idx + M`, votes. It is a second funnel, with the weights
+`a * floor(log2 a)` if `a - S >= 4` and 0 otherwise, and no distance. Each candidate gives its weight to the
+byte at its content. A byte that is excluded gets no vote; every other byte has its frequency raised by
+`(d + 1) * total * v / V`, where `total` is the model's total over the bytes that are left, `v` the weight
+of the votes for the byte, `V` all the votes and `d = floor(log2(floor(v / 2048)))`, or 0 if `v < 4096`.
+The literal after an escape, or of an empty funnel, has no votes: the candidates that would vote are all
+excluded.
+
+**7.8 What a step leaves in the dictionary.** The positions it coded, `idx .. idx + n - 1`, except that a step
+of at least `3 * floor(log2 N)` bytes adds only `idx`, since the rest is a copy of what the dictionary
+holds. `AC.C` does the same. Entries are therefore not always every position below `idx`, as 2.1 says of
+the other coders.
+
+**7.9 Deviations from `AC.C`.** All of these are choices where the source is silent or ways of implementing
+what it says; none changes a field, a context, a candidate or a length.
+
+- A segment is a frame (section 4) and its dictionary keeps every position: there is no replacement of the
+  neighbour that shares less once the frame is full. A frame of 256 KB gave 849,813 bytes on Calgary and
+  1 MB gave 837,107, so keeping everything is the stronger; the segment size caps what is kept.
+- The agreement is over `C <= 255` bytes (`AC.C`: 256), and near the start of a segment over the bytes that
+  there are, where `AC.C` counts 0 when fewer than 4 lie before.
+- `R` is a setting. `AC.C` takes up to 1,024 candidates from each side; ACB 1.17 has presets of 16, 55 and
+  100. Over Calgary (`l = 8`, `C = 255`) `d = 4, 5, 6, 7, 8, 9` give 878,363, 855,407, 843,240, 837,618,
+  835,696 and 834,710 bytes. `AC.C` gave 846,912 at 55 per side, 839,769 at 128 and 837,107 at its widest.
+- The escape is a miss rate per class of funnel (7.4); `AC.C` adapts two counters (`Sucsess`, `Swch`) from
+  the ratio of hits and misses. Counting by the size of the funnel gave 843,934 bytes, by nothing 846,395.
+- The statistics are the halving frequency models of section 8, which with increments of 32 forget as a
+  sliding window of 2,048 symbols does; `AC.C` keeps rings of the last 2,048 literals and 1,024 lengths. Its
+  length table starts at `{45, 13, 10, 7, 5, 4}`; this one starts flat.
+- The weight constants are `AC.C`'s. A nearness of 256 over the distance instead of 1,024 gave 0.13% less,
+  which wider funnels do not share, so the constant is kept.
+- The longest match is `2^l - 1`, not 256, and a match measured at `L` bytes carries no literal, as at 256
+  in `AC.C`.
+- The votes of the second funnel come from all its entries; `AC.C` leaves out the entry just below the
+  context, which is a slip, not a rule.
+- The coder of section 8 codes the symbols, with totals of at most `2^20`, where `AC.C` has a 32-bit coder of
+  its own.
+- What a step does is written once (`AssociativeSteps`), and the encoder and the decoder differ only in
+  where a symbol comes from, so no decision can be made from what one side has and the other has not.
+  `AC.C` at its default level (`Kc 2`) fails to decode book1.
+
+**7.10 The paper's own coding.** The paper codes a string by the number of the candidate that agrees most, a
+"difference bit" (on which side of it the string sorts in content order) and an "extract" length. That is
+the idea of the `lcp` coder done right, where `AC.C` implements the simpler coding above. Neither the
+paper's coding nor ACB 2.00's modelling is implemented (`TODO.md`).
 
 ## 8. Entropy coding of fields
 
@@ -269,11 +351,21 @@ start empty in every block (4.3). The thesis and its sources fix none of this.
 measure what the range coder gains.
 
 `CONTEXT_ARITHMETIC` is a **variant**, not something a coder defines: a literal is coded against
-the model of the byte before it, and never as the byte the chosen content continues with when the
-match ended on a mismatch. A model for a byte is made when the byte is first seen, from the model of
-all literals with every count divided by 16 (8, 64 and 256 were all worse). The excluded byte is
-left out only when both sides can be sure the match ended on a mismatch: the length sent is below
-the longest a triplet carries, the match is below the longest one measured (`4L` for `lcp`), and
-the literal is not the last byte of the segment. Over Calgary (`valach`, `d = 6`, `l = 7`) it takes
-the literals from 408,864 to 368,471 bytes and the file from 974,670 to 934,267 (4.1%), and costs
-10% of the compression speed and 17% of the decompression speed.
+the model of the byte before it, and never as a byte that would have made the match longer. A model
+for a byte is made when the byte is first seen, from the model of all literals with every count
+divided by 16 (8, 64 and 256 were all worse). The bytes left out are those that every candidate of the
+window (3.2) that matched as far as the chosen one would have gone on with, the chosen content among
+them (a candidate whose next byte lies at or past `idx` is left out, since that byte is not known yet);
+after no match at all, the first byte of every candidate of the window. They are left out only when both
+sides can be sure: for
+a match, the length sent is below the longest a triplet carries, the match is below the longest one
+measured (`4L` for `lcp`), and the literal is not the last byte of the segment; for no match, the
+literal is at least the longest one measured (`4L`) from the end of the segment, since a match cut back
+to nothing there leaves a literal that is a byte the candidates start with. The decoder finds the set
+from the contents of the candidates and the content it has copied, so nothing is sent.
+
+Over Calgary (`valach`, `d = 6`, `l = 7`) it takes the literals from 408,864 to 351,149 bytes and the file
+from 974,670 to 916,945 (5.9%), and costs 29% of the compression speed and 39% of the decompression
+speed. Leaving out only the one byte the chosen content goes on with, as an earlier version did, gave
+368,471 literal bytes and a file of 934,267, for 10% and 17% of the speed: the rest of the set is worth
+1.9% of the file for about 20% of the speed.

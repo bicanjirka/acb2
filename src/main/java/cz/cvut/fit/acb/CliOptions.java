@@ -40,14 +40,15 @@ final class CliOptions {
                 .argName("N")
                 .desc("N bits, 1 to " + CompressionSettings.MAX_FIELD_BITS
                         + ", used for distance triplet element (default is 6)\n"
-                        + "maximal context-content distance is 2^(N - 1)")
+                        + "maximal context-content distance is 2^(N - 1); for acb, a funnel of analogies takes "
+                        + "2^(N - 1) entries from either side of a context")
                 .build());
         options.addOption(Option.builder("l")
                 .longOpt("length")
                 .hasArg()
                 .argName("N")
                 .desc("N bits, 1 to " + CompressionSettings.MAX_FIELD_BITS
-                        + ", used for length triplet element (default is 7)\n"
+                        + ", used for length triplet element (default is 7, 8 for acb)\n"
                         + "maximal length is 2^(N)-1")
                 .build());
         options.addOption(Option.builder("cd")
@@ -55,7 +56,8 @@ final class CliOptions {
                 .hasArg()
                 .argName("N")
                 .desc("N bytes, 1 to " + CompressionSettings.MAX_CONTEXT_DEPTH
-                        + ", of the context before a position decide where it sorts in the dictionary (default is 10)")
+                        + ", of the context before a position decide where it sorts in the dictionary "
+                        + "(default is 10, " + CompressionSettings.MAX_CONTEXT_DEPTH + " for acb)")
                 .build());
         options.addOption(Option.builder("ec")
                 .longOpt("entropy-coder")
@@ -83,6 +85,7 @@ final class CliOptions {
                 .hasArg()
                 .argName("coder")
                 .desc("<coder> represents triplet coding strategy (default is valach)\n"
+                        + "acb is Buyanovsky's own coder: it codes with models of its own, so it takes no -ec or -bs\n"
                         + "values = " + Arrays.toString(TripletCoding.values()))
                 .build());
         return options;

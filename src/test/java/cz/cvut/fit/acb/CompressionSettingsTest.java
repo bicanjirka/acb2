@@ -85,6 +85,27 @@ class CompressionSettingsTest {
     }
 
     @Test
+    void theAssociativeCoderOnlyGoesWithTheEntropyCodingOfItsOwnModels() {
+        CompressionSettings associative = CompressionSettings.defaults().withTripletCoding(TripletCoding.ACB);
+
+        assertThat(associative.entropyCoding()).isEqualTo(EntropyCoding.ADAPTIVE_ARITHMETIC);
+        assertThatThrownBy(() -> associative.withEntropyCoding(EntropyCoding.BIT_ARRAY))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> CompressionSettings.defaults().withEntropyCoding(EntropyCoding.BIT_ARRAY)
+                .withTripletCoding(TripletCoding.ACB)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void everyCoderOtherThanTheAssociativeOneStartsFromTheGeneralDefaults() {
+        for (TripletCoding coding : TripletCoding.values()) {
+            if (coding != TripletCoding.ACB) {
+                assertThat(CompressionSettings.defaultsFor(coding))
+                        .isEqualTo(CompressionSettings.defaults().withTripletCoding(coding));
+            }
+        }
+    }
+
+    @Test
     void theBitWidthsBoundTheMatchDistanceAndLength() {
         CompressionSettings settings = CompressionSettings.defaults().withDistanceBits(6).withLengthBits(4);
 

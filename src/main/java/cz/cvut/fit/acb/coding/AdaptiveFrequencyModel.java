@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.coding;
 
 import cz.cvut.fit.acb.counts.FenwickTree;
+import cz.cvut.fit.acb.dictionary.ByteSet;
 
 /**
  * Symbol frequencies that grow as symbols are seen and are halved when their total would pass a
@@ -59,23 +60,34 @@ public final class AdaptiveFrequencyModel {
         return this.tree.indexAt(target);
     }
 
-    /** The total of the frequencies without symbol {@code excluded}; nothing is left out if it is -1. */
-    public int totalWithout(int excluded) {
-        return excluded < 0 ? this.total : this.total - this.frequencies[excluded];
-    }
-
-    /** {@link #cumulative} in a model that leaves symbol {@code excluded} out; {@code symbol} is not that symbol. */
-    public int cumulativeWithout(int symbol, int excluded) {
-        int sum = this.cumulative(symbol);
-        return excluded >= 0 && symbol > excluded ? sum - this.frequencies[excluded] : sum;
-    }
-
-    /** {@link #symbolAt} in a model that leaves symbol {@code excluded} out. */
-    public int symbolAtWithout(int target, int excluded) {
-        if (excluded >= 0 && target >= this.cumulative(excluded)) {
-            return this.symbolAt(target + this.frequencies[excluded]);
+    /** The total of the frequencies without the symbols of {@code excluded}. */
+    public int totalWithout(ByteSet excluded) {
+        int total = this.total;
+        for (int symbol = excluded.next(0); symbol >= 0; symbol = excluded.next(symbol + 1)) {
+            total -= this.frequencies[symbol];
         }
-        return this.symbolAt(target);
+        return total;
+    }
+
+    /** {@link #cumulative} in a model that leaves the symbols of {@code excluded} out; {@code symbol} is not one of them. */
+    public int cumulativeWithout(int symbol, ByteSet excluded) {
+        int sum = this.cumulative(symbol);
+        for (int left = excluded.next(0); left >= 0 && left < symbol; left = excluded.next(left + 1)) {
+            sum -= this.frequencies[left];
+        }
+        return sum;
+    }
+
+    /** {@link #symbolAt} in a model that leaves the symbols of {@code excluded} out. */
+    public int symbolAtWithout(int target, ByteSet excluded) {
+        int removed = 0;
+        for (int left = excluded.next(0); left >= 0; left = excluded.next(left + 1)) {
+            if (target < this.cumulative(left) - removed) {
+                break;
+            }
+            removed += this.frequencies[left];
+        }
+        return this.symbolAt(target + removed);
     }
 
     public void increment(int symbol) {

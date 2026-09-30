@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.dictionary.ByteSet;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.FieldSource;
 import cz.cvut.fit.acb.triplets.LiteralContext;
@@ -39,7 +40,7 @@ public final class ContextRangeTripletReader implements FieldSource {
             return symbol;
         }
         AdaptiveFrequencyModel model = this.literals.modelFor(context.previous());
-        int excluded = context.excluded();
+        ByteSet excluded = context.excluded();
         int symbol = model.symbolAtWithout(this.decoder.target(model.totalWithout(excluded)), excluded);
         this.decoder.consume(model.cumulativeWithout(symbol, excluded), model.frequency(symbol));
         this.literals.update(context.previous(), symbol);

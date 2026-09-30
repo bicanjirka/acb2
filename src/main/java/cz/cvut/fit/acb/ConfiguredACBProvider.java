@@ -1,10 +1,12 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
 import cz.cvut.fit.acb.dictionary.ChunkedContextIndex;
 import cz.cvut.fit.acb.dictionary.ContextOrder;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
+import cz.cvut.fit.acb.dictionary.IndexedAnalogyDictionary;
 import cz.cvut.fit.acb.dictionary.IndexedDecoderDictionary;
 import cz.cvut.fit.acb.dictionary.IndexedEncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
@@ -28,6 +30,12 @@ public final class ConfiguredACBProvider implements ACBProvider {
     @Override
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
         return new IndexedDecoderDictionary(this.indexOver(segment), segment, this.settings.searchWindow());
+    }
+
+    @Override
+    public AnalogyDictionary analogyDictionary(SegmentBuffer segment) {
+        return new IndexedAnalogyDictionary(this.indexOver(segment), segment, this.settings.maxDistance(),
+                this.settings.contextDepth());
     }
 
     private ChunkedContextIndex indexOver(SegmentBuffer segment) {

@@ -3,6 +3,7 @@ package cz.cvut.fit.acb.fixtures;
 import cz.cvut.fit.acb.dictionary.ContextCursor;
 import cz.cvut.fit.acb.dictionary.ContextIndex;
 import cz.cvut.fit.acb.dictionary.ContextOrder;
+import cz.cvut.fit.acb.dictionary.Surroundings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,20 @@ public final class SortedListContextIndex implements ContextIndex {
         return new ListCursor(rank);
     }
 
+    @Override
+    public void around(int position, int reach, Surroundings into) {
+        into.clear();
+        int rank = this.rank(position);
+        for (int above = rank; above < Math.min(this.entries.size(), rank + reach); above++) {
+            into.addAbove(this.entries.get(above), this.order.prefix(this.entries.get(above)),
+                    this.cursorAt(above).sharedWithPrevious());
+        }
+        for (int below = rank - 1; below >= Math.max(0, rank - reach); below--) {
+            into.addBelow(this.entries.get(below), this.order.prefix(this.entries.get(below)),
+                    this.cursorAt(below).sharedWithPrevious());
+        }
+    }
+
     private final class ListCursor implements ContextCursor {
 
         private int rank;
@@ -59,6 +74,15 @@ public final class SortedListContextIndex implements ContextIndex {
         @Override
         public int position() {
             return SortedListContextIndex.this.entries.get(this.rank);
+        }
+
+        @Override
+        public int sharedWithPrevious() {
+            if (this.rank == 0) {
+                return 0;
+            }
+            return SortedListContextIndex.this.order.sharedBytes(
+                    SortedListContextIndex.this.entries.get(this.rank - 1), this.position());
         }
 
         @Override

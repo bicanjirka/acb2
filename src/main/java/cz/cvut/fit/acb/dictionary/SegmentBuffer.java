@@ -75,7 +75,7 @@ public final class SegmentBuffer {
      */
     public int commonLength(int first, int second, int limit) {
         int count = Math.min(limit, this.length - Math.max(first, second));
-        if (count <= 0) {
+        if (count <= 0 || this.bytes[first] != this.bytes[second]) {
             return 0;
         }
         int mismatch = Arrays.mismatch(this.bytes, first, first + count, this.bytes, second, second + count);

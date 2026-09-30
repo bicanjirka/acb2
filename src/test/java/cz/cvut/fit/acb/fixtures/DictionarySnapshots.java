@@ -1,8 +1,10 @@
 package cz.cvut.fit.acb.fixtures;
 
+import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
+import cz.cvut.fit.acb.dictionary.ByteSet;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
-import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
+import cz.cvut.fit.acb.dictionary.Funnel;
 import cz.cvut.fit.acb.dictionary.SearchResult;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 
@@ -29,6 +31,8 @@ public final class DictionarySnapshots {
 
         DecoderDictionary observing(DecoderDictionary dictionary);
 
+        AnalogyDictionary observing(AnalogyDictionary dictionary);
+
         /** Leaves every dictionary as it is. */
         static Side ignoring() {
             return new Side() {
@@ -41,19 +45,24 @@ public final class DictionarySnapshots {
                 public DecoderDictionary observing(DecoderDictionary dictionary) {
                     return dictionary;
                 }
+
+                @Override
+                public AnalogyDictionary observing(AnalogyDictionary dictionary) {
+                    return dictionary;
+                }
             };
         }
     }
 
     public Side recording() {
-        return this.side(actual -> this.snapshots.add(positionsOf(actual)));
+        return this.side(positions -> this.snapshots.add(positions));
     }
 
     public Side verifying() {
-        return this.side(actual -> {
+        return this.side(positions -> {
             assertThat(this.verified).as("the decoder updates no more often than the encoder")
                     .isLessThan(this.snapshots.size());
-            assertThat(positionsOf(actual)).as("dictionary after update %d", this.verified)
+            assertThat(positions).as("dictionary after update %d", this.verified)
                     .isEqualTo(this.snapshots.get(this.verified));
             this.verified++;
         });
@@ -67,7 +76,7 @@ public final class DictionarySnapshots {
         return this.verified;
     }
 
-    private Side side(Consumer<Dictionary> afterUpdate) {
+    private Side side(Consumer<int[]> afterUpdate) {
         return new Side() {
             @Override
             public EncoderDictionary observing(EncoderDictionary dictionary) {
@@ -78,12 +87,23 @@ public final class DictionarySnapshots {
             public DecoderDictionary observing(DecoderDictionary dictionary) {
                 return new ObservedDecoder(dictionary, afterUpdate);
             }
+
+            @Override
+            public AnalogyDictionary observing(AnalogyDictionary dictionary) {
+                return new ObservedAnalogy(dictionary, afterUpdate);
+            }
         };
     }
 
-    private static int[] positionsOf(Dictionary dictionary) {
+    /** The position of the entry at a rank, as a dictionary says it. */
+    private interface Selector {
+
+        int select(int rank) throws MalformedStreamException;
+    }
+
+    private static int[] positionsOf(int size, Selector dictionary) {
         try {
-            int[] positions = new int[dictionary.size()];
+            int[] positions = new int[size];
             for (int rank = 0; rank < positions.length; rank++) {
                 positions[rank] = dictionary.select(rank);
             }
@@ -96,9 +116,9 @@ public final class DictionarySnapshots {
     private static final class ObservedEncoder implements EncoderDictionary {
 
         private final EncoderDictionary delegate;
-        private final Consumer<Dictionary> afterUpdate;
+        private final Consumer<int[]> afterUpdate;
 
-        private ObservedEncoder(EncoderDictionary delegate, Consumer<Dictionary> afterUpdate) {
+        private ObservedEncoder(EncoderDictionary delegate, Consumer<int[]> afterUpdate) {
             this.delegate = delegate;
             this.afterUpdate = afterUpdate;
         }
@@ -111,6 +131,11 @@ public final class DictionarySnapshots {
         @Override
         public int contextRank(int idx) {
             return this.delegate.contextRank(idx);
+        }
+
+        @Override
+        public ByteSet continuations(int idx, int content, int length) {
+            return this.delegate.continuations(idx, content, length);
         }
 
         @Override
@@ -126,7 +151,7 @@ public final class DictionarySnapshots {
         @Override
         public void update(int idx, int count) {
             this.delegate.update(idx, count);
-            this.afterUpdate.accept(this.delegate);
+            this.afterUpdate.accept(positionsOf(this.delegate.size(), this.delegate::select));
         }
 
         @Override
@@ -138,9 +163,9 @@ public final class DictionarySnapshots {
     private static final class ObservedDecoder implements DecoderDictionary {
 
         private final DecoderDictionary delegate;
-        private final Consumer<Dictionary> afterUpdate;
+        private final Consumer<int[]> afterUpdate;
 
-        private ObservedDecoder(DecoderDictionary delegate, Consumer<Dictionary> afterUpdate) {
+        private ObservedDecoder(DecoderDictionary delegate, Consumer<int[]> afterUpdate) {
             this.delegate = delegate;
             this.afterUpdate = afterUpdate;
         }
@@ -156,6 +181,11 @@ public final class DictionarySnapshots {
         }
 
         @Override
+        public ByteSet continuations(int idx, int content, int length) {
+            return this.delegate.continuations(idx, content, length);
+        }
+
+        @Override
         public int impliedLength(int idx, int distance) throws MalformedStreamException {
             return this.delegate.impliedLength(idx, distance);
         }
@@ -163,12 +193,49 @@ public final class DictionarySnapshots {
         @Override
         public void update(int idx, int count) {
             this.delegate.update(idx, count);
-            this.afterUpdate.accept(this.delegate);
+            this.afterUpdate.accept(positionsOf(this.delegate.size(), this.delegate::select));
         }
 
         @Override
         public int select(int rank) throws MalformedStreamException {
             return this.delegate.select(rank);
+        }
+    }
+
+    private static final class ObservedAnalogy implements AnalogyDictionary {
+
+        private final AnalogyDictionary delegate;
+        private final Consumer<int[]> afterUpdate;
+
+        private ObservedAnalogy(AnalogyDictionary delegate, Consumer<int[]> afterUpdate) {
+            this.delegate = delegate;
+            this.afterUpdate = afterUpdate;
+        }
+
+        @Override
+        public int size() {
+            return this.delegate.size();
+        }
+
+        @Override
+        public void update(int idx, int count) {
+            this.delegate.update(idx, count);
+            this.afterUpdate.accept(positionsOf(this.delegate.size(), this.delegate::select));
+        }
+
+        @Override
+        public int select(int rank) throws MalformedStreamException {
+            return this.delegate.select(rank);
+        }
+
+        @Override
+        public Funnel funnel(int position) {
+            return this.delegate.funnel(position);
+        }
+
+        @Override
+        public Funnel forecast(int position) {
+            return this.delegate.forecast(position);
         }
     }
 }

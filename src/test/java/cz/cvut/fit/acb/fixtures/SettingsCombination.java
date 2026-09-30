@@ -12,7 +12,7 @@ public record SettingsCombination(TripletCoding tripletCoding, EntropyCoding ent
 
     public static Stream<SettingsCombination> all() {
         return Arrays.stream(TripletCoding.values())
-                .flatMap(tc -> Arrays.stream(EntropyCoding.values()).map(cd -> new SettingsCombination(tc, cd)));
+                .flatMap(tc -> tc.entropyCodings().stream().sorted().map(cd -> new SettingsCombination(tc, cd)));
     }
 
     public CompressionSettings settings() {

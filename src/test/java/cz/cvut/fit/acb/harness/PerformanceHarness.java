@@ -14,7 +14,7 @@ import java.util.Locale;
 
 /**
  * Times compression and decompression of seeded text-like, binary, run-heavy and random inputs for
- * each coder (length field of 7 bits, defaults otherwise), after a warm-up round trip, and exits
+ * each coder (at the settings it starts from), after a warm-up round trip, and exits
  * non-zero when a coder is under its {@link PerformanceBudget}. The median of the repetitions is
  * used for each input; the coder's figure is the total bytes over the total of those medians.
  *
@@ -29,7 +29,6 @@ public final class PerformanceHarness {
 
     private static final int DEFAULT_SIZE = 131_072;
     private static final int DEFAULT_REPETITIONS = 3;
-    private static final int LENGTH_BITS = 7;
 
     /** One coder's speed over all the inputs. */
     record Speed(TripletCoding coder, double compress, double decompress) {
@@ -55,8 +54,7 @@ public final class PerformanceHarness {
 
     static boolean run(int size, int repetitions, PerformanceBudget budget, PrintStream out) {
         List<GeneratedInput> inputs = GeneratedInput.all(size).toList();
-        out.printf(Locale.ROOT, "%d inputs of %,d bytes, median of %d, length field %d bits%n%n", inputs.size(), size,
-                repetitions, LENGTH_BITS);
+        out.printf(Locale.ROOT, "%d inputs of %,d bytes, median of %d%n%n", inputs.size(), size, repetitions);
         out.printf(Locale.ROOT, "%-10s %10s %10s %10s %10s%n", "coder", "comp MB/s", "dec MB/s", "floor comp",
                 "floor dec");
         boolean withinBudget = true;
@@ -73,8 +71,7 @@ public final class PerformanceHarness {
     }
 
     static Speed measure(TripletCoding coder, List<GeneratedInput> inputs, int repetitions) {
-        Compressor compressor = new Compressor(CompressionSettings.defaults().withTripletCoding(coder)
-                .withLengthBits(LENGTH_BITS));
+        Compressor compressor = new Compressor(CompressionSettings.defaultsFor(coder));
         long bytes = 0;
         double compressSeconds = 0;
         double decompressSeconds = 0;

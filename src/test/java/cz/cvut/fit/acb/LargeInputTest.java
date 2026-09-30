@@ -39,6 +39,37 @@ class LargeInputTest {
     }
 
     @Test
+    void aFileOfSeveralSegmentsIsTheSameFromTheAssociativeCoderOnOneThreadAndOnSeveral(@TempDir Path dir)
+            throws IOException {
+        Path input = Files.write(dir.resolve("text"), GeneratedInput.text(2_500_000).bytes());
+        Path single = dir.resolve("single.acb");
+        Path several = dir.resolve("several.acb");
+        Path restored = dir.resolve("restored");
+
+        int exitCodes = new ACBClient().run(new String[]{input.toString(), single.toString(), "-tc", "acb", "-j", "1"})
+                + new ACBClient().run(new String[]{input.toString(), several.toString(), "-tc", "acb", "-j", "3"})
+                + new ACBClient().run(new String[]{several.toString(), restored.toString(), "-de", "-j", "3"});
+
+        assertThat(exitCodes).isZero();
+        assertThat(several).hasSameBinaryContentAs(single);
+        assertThat(restored).hasSameBinaryContentAs(input);
+    }
+
+    @Test
+    void aMultiSegmentTextFromTheAssociativeCoderAtItsWidestFunnelDecompressesToItself()
+            throws MalformedStreamException {
+        byte[] text = GeneratedInput.text(SIZE).bytes();
+        CompressionSettings settings = CompressionSettings.defaultsFor(TripletCoding.ACB).withDistanceBits(10)
+                .withSegmentSize(SEGMENT_SIZE);
+        Compressor compressor = new Compressor(settings);
+
+        CompressedStream stream = compressor.compress(text);
+
+        assertThat(ContainerFormat.encode(stream).length).isLessThan(text.length / 2);
+        assertThat(compressor.decompress(stream)).isEqualTo(text);
+    }
+
+    @Test
     void aMultiSegmentTextDecompressesToItselfAndIsSmallerThanItsInput() throws MalformedStreamException {
         byte[] text = GeneratedInput.text(SIZE).bytes();
         CompressionSettings settings = CompressionSettings.defaults()

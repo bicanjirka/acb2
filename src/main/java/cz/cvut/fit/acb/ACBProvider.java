@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb;
 
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
@@ -17,6 +18,9 @@ public interface ACBProvider {
     EncoderDictionary encoderDictionary(SegmentBuffer segment);
 
     DecoderDictionary decoderDictionary(SegmentBuffer segment);
+
+    /** The dictionary of the associative coder, which is the same on both sides. */
+    AnalogyDictionary analogyDictionary(SegmentBuffer segment);
 
     TripletWriter writer();
 

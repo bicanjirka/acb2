@@ -1,17 +1,10 @@
 package cz.cvut.fit.acb;
 
-import cz.cvut.fit.acb.coding.TripletWriter;
-import cz.cvut.fit.acb.dictionary.SearchWindow;
-import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.Block;
 import cz.cvut.fit.acb.format.BlockSource;
 import cz.cvut.fit.acb.format.CompressedStream;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.format.StreamHeader;
-import cz.cvut.fit.acb.triplets.FieldSource;
-import cz.cvut.fit.acb.triplets.SegmentDecoder;
-import cz.cvut.fit.acb.triplets.SegmentEncoder;
-import cz.cvut.fit.acb.triplets.TripletLayout;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -84,25 +77,15 @@ public final class Compressor {
      */
     public CompressionStats compressInto(Iterator<byte[]> segments, Consumer<Block> blocks) {
         ACBProvider provider = this.components.apply(this.settings);
-        TripletLayout layout = this.settings.tripletCoding().layout(this.settings.distanceBits(),
-                this.settings.lengthBits());
+        SegmentCoding coding = this.settings.tripletCoding().segmentCoding(this.settings);
         TotalledBlocks totalled = new TotalledBlocks(blocks);
         this.mapper.map(OrderedMapper.Feed.of(segments),
-                segment -> this.code(requireSegmentSize(segment, this.settings.segmentSize()), provider, layout),
+                segment -> coding.encode(requireSegmentSize(segment, this.settings.segmentSize()), provider),
                 totalled);
         CompressionStats stats = totalled.stats;
         LOG.debug("Compressed {} bytes in {} segments into {} triplets, {} bits of fields", stats.inputBytes(),
                 stats.segments(), stats.triplets(), stats.fieldBits());
         return stats;
-    }
-
-    private CodedSegment code(byte[] segment, ACBProvider provider, TripletLayout layout) {
-        SegmentBuffer buffer = SegmentBuffer.of(segment);
-        TripletWriter writer = provider.writer();
-        long triplets = new SegmentEncoder(provider.encoderDictionary(buffer), this.settings.tripletCoding().parser(),
-                layout, this.settings.searchWindow()).encode(buffer, writer);
-        Block block = provider.block(segment, writer.finish());
-        return new CodedSegment(block, new CompressionStats(segment.length, 1, triplets, writer.costs()));
     }
 
     public byte[] decompress(CompressedStream stream) throws MalformedStreamException {
@@ -125,11 +108,11 @@ public final class Compressor {
             throws MalformedStreamException {
         CompressionSettings settings = header.toSettings();
         ACBProvider provider = this.components.apply(settings);
-        TripletLayout layout = settings.tripletCoding().layout(settings.distanceBits(), settings.lengthBits());
+        SegmentCoding coding = settings.tripletCoding().segmentCoding(settings);
         AtomicLong bytes = new AtomicLong();
         this.mapper.map(blocks::next, block -> switch (block) {
             case Block.Stored stored -> stored.bytes();
-            case Block.Coded coded -> decode(provider, layout, settings.searchWindow(), coded);
+            case Block.Coded coded -> coding.decode(coded, provider);
         }, segment -> {
             bytes.addAndGet(segment.length);
             segments.accept(segment);
@@ -137,24 +120,11 @@ public final class Compressor {
         LOG.debug("Decompressed {} bytes", bytes.get());
     }
 
-    private static byte[] decode(ACBProvider provider, TripletLayout layout, SearchWindow window,
-                                 Block.Coded block)
-            throws MalformedStreamException {
-        SegmentBuffer segment = SegmentBuffer.empty();
-        FieldSource source = provider.reader(block.bytes());
-        new SegmentDecoder(provider.decoderDictionary(segment), layout, window).decode(segment, block.rawLength(), source);
-        return segment.toArray();
-    }
-
     private static byte[] requireSegmentSize(byte[] segment, int segmentSize) {
         if (segment.length < 1 || segment.length > segmentSize) {
             throw new IllegalArgumentException("A segment holds 1 to " + segmentSize + " bytes, not " + segment.length);
         }
         return segment;
-    }
-
-    /** One segment as coded, and what coding it did. */
-    private record CodedSegment(Block block, CompressionStats stats) {
     }
 
     /** Passes blocks on and adds up what coding them did; only the caller's thread uses it. */

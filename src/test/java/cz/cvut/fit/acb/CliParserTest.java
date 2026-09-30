@@ -58,6 +58,24 @@ class CliParserTest {
         assertThat(this.work("in", "out", "-bs").settings().entropyCoding()).isEqualTo(EntropyCoding.BIT_ARRAY);
     }
 
+    @Test
+    void theAssociativeCoderStartsFromItsOwnWidthsAndAnOptionStillOverridesThem() throws CliParser.UsageException {
+        CompressionSettings chosen = this.work("in", "out", "-tc", "acb").settings();
+        CompressionSettings narrower = this.work("in", "out", "-d", "5", "-tc", "acb").settings();
+
+        assertThat(chosen).isEqualTo(CompressionSettings.defaultsFor(TripletCoding.ACB));
+        assertThat(chosen.lengthBits()).isNotEqualTo(CompressionSettings.defaults().lengthBits());
+        assertThat(chosen.contextDepth()).isNotEqualTo(CompressionSettings.defaults().contextDepth());
+        assertThat(narrower).isEqualTo(chosen.withDistanceBits(5));
+    }
+
+    @Test
+    void anEntropyCodingTheAssociativeCoderDoesNotUseIsAUsageError() {
+        assertThatThrownBy(() -> this.work("in", "out", "-tc", "acb", "-bs")).isInstanceOf(CliParser.UsageException.class);
+        assertThatThrownBy(() -> this.work("in", "out", "-tc", "acb", "-ec", "context_arithmetic"))
+                .isInstanceOf(CliParser.UsageException.class);
+    }
+
 
     @Test
     void measuringIntoAFileNamesTheFile() throws CliParser.UsageException {

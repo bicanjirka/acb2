@@ -33,8 +33,9 @@ import java.util.stream.Stream;
  * </pre>
  *
  * (Use {@code :} instead of {@code ;} outside Windows.) Keys: {@code coders} (default all
- * coders), {@code d} (default 6), {@code l} (default 4,7), {@code depth} (default 10), {@code entropy} ({@code arith}, {@code bits}, {@code context};
- * default arith).
+ * coders), {@code d}, {@code l} and {@code depth} (default what the coder starts from, except that the
+ * layout coders are run at both 4 and 7 bits of length), {@code entropy} ({@code arith}, {@code bits},
+ * {@code context}; default arith, and a coder that does not use an entropy coding is left out of it).
  */
 public final class RatioHarness {
 
@@ -166,9 +167,9 @@ public final class RatioHarness {
 
     private static Stream<CompressionSettings> settingsFor(String[] options) {
         List<TripletCoding> coders = Arrays.asList(TripletCoding.values());
-        int[] distances = {6};
-        int[] lengths = {4, 7};
-        int[] depths = {CompressionSettings.defaults().contextDepth()};
+        int[] distances = null;
+        int[] lengths = null;
+        int[] depths = null;
         List<EntropyCoding> entropies = List.of(EntropyCoding.ADAPTIVE_ARITHMETIC);
         for (String option : options) {
             String[] keyValue = option.split("=", 2);
@@ -189,18 +190,26 @@ public final class RatioHarness {
         List<CompressionSettings> combinations = new ArrayList<>();
         for (EntropyCoding entropy : entropies) {
             for (TripletCoding coder : coders) {
-                for (int distance : distances) {
-                    for (int length : lengths) {
-                        for (int depth : depths) {
-                            combinations.add(CompressionSettings.defaults().withTripletCoding(coder)
-                                    .withEntropyCoding(entropy).withDistanceBits(distance).withLengthBits(length)
-                                    .withContextDepth(depth));
+                if (!coder.entropyCodings().contains(entropy)) {
+                    continue;
+                }
+                CompressionSettings start = CompressionSettings.defaultsFor(coder);
+                for (int distance : distances != null ? distances : new int[]{start.distanceBits()}) {
+                    for (int length : lengths != null ? lengths : defaultLengths(coder, start)) {
+                        for (int depth : depths != null ? depths : new int[]{start.contextDepth()}) {
+                            combinations.add(start.withEntropyCoding(entropy).withDistanceBits(distance)
+                                    .withLengthBits(length).withContextDepth(depth));
                         }
                     }
                 }
             }
         }
         return combinations.stream();
+    }
+
+    /** The layout coders are compared at a short and a long length field, as the thesis does. */
+    private static int[] defaultLengths(TripletCoding coder, CompressionSettings start) {
+        return coder.layoutCoder().isPresent() ? new int[]{4, 7} : new int[]{start.lengthBits()};
     }
 
     private static List<byte[]> read(Path corpus) throws IOException {

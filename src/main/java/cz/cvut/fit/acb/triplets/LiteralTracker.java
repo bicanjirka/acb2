@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.triplets;
 
+import cz.cvut.fit.acb.dictionary.ByteSet;
 import cz.cvut.fit.acb.dictionary.Dictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
 import cz.cvut.fit.acb.format.MalformedStreamException;
@@ -57,7 +58,7 @@ final class LiteralTracker {
         int length = this.sentLength;
         this.sentLength = 0;
         if (length == 0) {
-            return new LiteralContext(idx > 0 ? Byte.toUnsignedInt(this.segment.byteAt(idx - 1)) : -1, -1);
+            return new LiteralContext(this.byteBefore(idx), this.afterMiss(idx));
         }
         int content = this.dictionary.select(this.dictionary.contextRank(idx) - this.distance);
         int full = length + this.dictionary.impliedLength(idx, this.distance);
@@ -65,7 +66,25 @@ final class LiteralTracker {
         int previous = Byte.toUnsignedInt(this.segment.byteAt(content + (full - 1) % period));
         boolean endedOnMismatch = length < this.maxLength && full < this.matchLimit
                 && idx + full + 1 < this.segmentLength;
-        int excluded = endedOnMismatch ? Byte.toUnsignedInt(this.segment.byteAt(content + full % period)) : -1;
+        if (!endedOnMismatch) {
+            return new LiteralContext(previous, ByteSet.none());
+        }
+        ByteSet excluded = ByteSet.builder().addAll(this.dictionary.continuations(idx, content, full))
+                .add(Byte.toUnsignedInt(this.segment.byteAt(content + full % period))).build();
         return new LiteralContext(previous, excluded);
+    }
+
+    /**
+     * A literal alone follows a search that found no match, so it is none of the bytes the candidates
+     * start with. Near the end of the segment a match may have been cut back to nothing instead, and the
+     * literal may be one of them.
+     */
+    private ByteSet afterMiss(int idx) {
+        boolean cutBackPossible = this.segmentLength - idx - 1 < this.matchLimit;
+        return cutBackPossible ? ByteSet.none() : this.dictionary.continuations(idx, -1, 0);
+    }
+
+    private int byteBefore(int idx) {
+        return idx > 0 ? Byte.toUnsignedInt(this.segment.byteAt(idx - 1)) : -1;
     }
 }

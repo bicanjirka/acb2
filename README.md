@@ -44,12 +44,12 @@ file is the same for any number of threads.
 |---|---|---|
 | `-de`, `--decompress` | Decompress instead of compress | compress |
 | `-f`, `--force` | Overwrite output files that already exist | refuse |
-| `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1) | 6 |
-| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 |
-| `-tc C`, `--triplet-coder C` | Triplet coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp` | `valach` |
-| `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 |
-| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding | range coding |
-| `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and is about 4% smaller | `ADAPTIVE_ARITHMETIC` |
+| `-d N`, `--distance N` | Bits (1 to 16) for the distance field; max distance is 2^(N−1). For `acb`, the funnel of analogies takes 2^(N−1) entries from each side of a context | 6 |
+| `-l N`, `--length N` | Bits (1 to 16) for the length field; max length is 2^N − 1 | 7 (`acb`: 8) |
+| `-tc C`, `--triplet-coder C` | Coder: `simple`, `salomon`, `salomon2`, `valach`, `lcp`, or `acb` | `valach` |
+| `-cd N`, `--context-depth N` | Bytes (1 to 255) of context that order the dictionary | 10 (`acb`: 255) |
+| `-bs`, `--bit-stream-array` | Write triplet fields as plain bits instead of range coding (not for `acb`) | range coding |
+| `-ec C`, `--entropy-coder C` | `ADAPTIVE_ARITHMETIC`, `BIT_ARRAY`, or `CONTEXT_ARITHMETIC`, which models literals by the byte before them and leaves out the bytes that would have made the match longer, and is about 6% smaller (`acb` codes with models of its own and takes only the first) | `ADAPTIVE_ARITHMETIC` |
 | `-af F`, `--arith-freq F` | Initial range-coder frequencies for lengths (each coded length adds 32), comma-separated | all 1 |
 | `-j N`, `--threads N` | Threads that code segments at the same time; the output does not depend on it | the number of processors |
 | `-m [out]`, `--measure [out]` | Print time, sizes and ratio per file to `out` or stdout | off |
@@ -65,6 +65,12 @@ file is the same for any number of threads.
 - **valach**: no flag. Length 0 means `(literal)`; otherwise it writes
   `(length, distance, next byte)`.
 - **lcp**: laid out as `simple`, but the best match is the lexicographically smallest of the longest ones, and the length sent is the match length less the prefix it shares with the contents below it, which the decoder works out itself.
+- **acb**: Buyanovsky's own coder. Each step gathers the *funnel of analogies* of the context, the entries of
+  the dictionary whose contexts agree with it beyond chance, weighted by how far they agree and how near
+  they lie. It codes which of them continues the text (or none) by its weight, the length of the match
+  as what it has beyond the matches of the candidates weighed higher, and, when the match ended on a
+  mismatch, the literal, which cannot be a byte that a candidate would have matched with, and which the
+  funnel of the context after the match votes on. `docs/ALGORITHM.md` section 7 has every rule.
 
 ## Development
 

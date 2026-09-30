@@ -20,7 +20,8 @@ public final class CraftedStreams {
 
     /** A block of {@code rawLength} bytes that holds exactly {@code triplets}, laid out as the settings say. */
     public static CompressedStream oneBlock(CompressionSettings settings, int rawLength, Triplet... triplets) {
-        TripletLayout layout = settings.tripletCoding().layout(settings.distanceBits(), settings.lengthBits());
+        TripletLayout layout = settings.tripletCoding().layoutCoder().orElseThrow()
+                .layout(settings.distanceBits(), settings.lengthBits());
         return oneBlock(settings, rawLength, writer -> {
             for (Triplet triplet : triplets) {
                 layout.write(triplet, writer);

@@ -4,6 +4,7 @@ import cz.cvut.fit.acb.ACBProvider;
 import cz.cvut.fit.acb.CompressionSettings;
 import cz.cvut.fit.acb.ConfiguredACBProvider;
 import cz.cvut.fit.acb.coding.TripletWriter;
+import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
 import cz.cvut.fit.acb.dictionary.SegmentBuffer;
@@ -48,6 +49,11 @@ public final class InterceptingProvider implements ACBProvider {
     @Override
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
         return this.snapshots.observing(this.delegate.decoderDictionary(segment));
+    }
+
+    @Override
+    public AnalogyDictionary analogyDictionary(SegmentBuffer segment) {
+        return this.snapshots.observing(this.delegate.analogyDictionary(segment));
     }
 
     @Override

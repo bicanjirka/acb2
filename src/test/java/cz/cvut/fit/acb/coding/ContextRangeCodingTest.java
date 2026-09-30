@@ -1,5 +1,6 @@
 package cz.cvut.fit.acb.coding;
 
+import cz.cvut.fit.acb.dictionary.ByteSet;
 import cz.cvut.fit.acb.format.MalformedStreamException;
 import cz.cvut.fit.acb.triplets.LiteralContext;
 import cz.cvut.fit.acb.triplets.TripletFieldId;
@@ -16,9 +17,11 @@ class ContextRangeCodingTest {
 
     @Test
     void literalsComeBackWithTheContextsTheyWereWrittenWith() throws MalformedStreamException {
-        LiteralContext[] contexts = {LiteralContext.none(), new LiteralContext('a', -1), new LiteralContext('a', 'b'),
-                new LiteralContext(0, 255), new LiteralContext(255, 0), new LiteralContext('z', 'y')};
-        int[] literals = {'q', 'c', 'c', 0, 255, 'x'};
+        LiteralContext[] contexts = {LiteralContext.none(), new LiteralContext('a', ByteSet.none()),
+                new LiteralContext('a', ByteSet.of('b')), new LiteralContext(0, ByteSet.of(255)),
+                new LiteralContext(255, ByteSet.of(0)), new LiteralContext('z', ByteSet.of('y')),
+                new LiteralContext('z', ByteSet.of('a', 'b', 'c', 'w', 'y', 255))};
+        int[] literals = {'q', 'c', 'c', 0, 255, 'x', 'x'};
         ContextRangeTripletWriter writer = new ContextRangeTripletWriter(LengthFrequencies.flat());
         for (int i = 0; i < literals.length; i++) {
             writer.write(LENGTH, i, LiteralContext.none());
@@ -33,10 +36,10 @@ class ContextRangeCodingTest {
     }
 
     @Test
-    void aLiteralCannotBeTheByteItExcludes() {
+    void aLiteralCannotBeAByteItExcludes() {
         ContextRangeTripletWriter writer = new ContextRangeTripletWriter(LengthFrequencies.flat());
 
-        assertThatThrownBy(() -> writer.write(LITERAL, 'b', new LiteralContext('a', 'b')))
+        assertThatThrownBy(() -> writer.write(LITERAL, 'b', new LiteralContext('a', ByteSet.of('c', 'b'))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -47,7 +50,7 @@ class ContextRangeCodingTest {
         for (int i = 0; i < 2000; i++) {
             int previous = i % 2 == 0 ? 'a' : 'b';
             int literal = i % 2 == 0 ? 'x' : 'y';
-            contextual.write(LITERAL, literal, new LiteralContext(previous, -1));
+            contextual.write(LITERAL, literal, new LiteralContext(previous, ByteSet.none()));
             plain.write(LITERAL, literal);
         }
 

@@ -33,6 +33,11 @@ public final class IndexedDecoderDictionary implements DecoderDictionary {
     }
 
     @Override
+    public ByteSet continuations(int idx, int content, int length) {
+        return this.ranking.continuations(idx, content, length);
+    }
+
+    @Override
     public int contextRank(int idx) {
         return this.ranking.contextRankOf(idx);
     }

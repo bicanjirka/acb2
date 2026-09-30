@@ -38,18 +38,22 @@ java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarne
 given) · `ACBClient` (CLI, with `CliParser` and `CliRequest`) and `ACBFileIO` with `SegmentReader`,
 `SegmentWriter` and `CompressedWriter` (its file side) · `ACBProvider` and
 `ConfiguredACBProvider` (builds a segment's dictionaries, field writer and reader from a
-`CompressionSettings` record; a coder is one `TripletCoding` constant) · `dictionary` (+ the
+`CompressionSettings` record) · a coder is one `TripletCoding` constant, which carries a `Coder`: a
+`LayoutCoder` (layout, parser and `MatchRule`; its `SegmentCoding` runs the `triplets` pipeline) or the
+`AssociativeCoder` (`-tc acb`; its `SegmentCoding` runs `associative`) · `dictionary` (+ the
 `ContextIndex` behind it, in an encoder and a decoder view; a `MatchRule` constant carries its
-matcher) · `triplets` (the `Triplet`, the segment encoder and decoder that share one update rule;
-`coder`: the layouts and parsers) · `coding` (field↔byte: range coder with adaptive models, bit
-array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header, blocks, CRC32; `ContainerWriter` and
-`ContainerReader` do it a block at a time).
+matcher; the `AnalogyDictionary` and its funnels of analogies for `acb`) · `triplets` (the `Triplet`,
+the segment encoder and decoder that share one update rule; `coder`: the layouts and parsers) ·
+`associative` (Buyanovsky's coder: one step rule, `AssociativeSteps`, that the encoder and the decoder
+both run, and the models behind it) · `coding` (field↔byte: range coder with adaptive models, bit
+array, `CumulativeTable`) · `counts` (the Fenwick tree) · `format` (the on-disk container: header,
+blocks, CRC32; `ContainerWriter` and `ContainerReader` do it a block at a time).
 
 ## Boundaries
 
 - A compressed file carries its coding settings in a `format.StreamHeader`; decoding uses only
   those plus a free choice of dictionary structure. Any change to the container layout, the coder
-  codes, or how a coder lays out triplets bumps `ContainerFormat.VERSION`.
+  codes, how a coder lays out triplets, or what a coder's models code bumps `ContainerFormat.VERSION`.
 - Every block decodes on its own: the dictionary and the entropy models start empty in each.
 - Untrusted input is read only through `ContainerReader` (`ContainerFormat.decode` is its in-memory
   form), which verifies the checksum before trusting any of the stream and bounds every count before
@@ -68,7 +72,8 @@ array) · `counts` (the Fenwick tree) · `format` (the on-disk container: header
   `@Tag("slow")`, which only `-Pfull` runs.
 - Round trips run in memory through `Compressor`, over every `fixtures.CorpusFile` (classpath
   `in/`). `fixtures.InterceptingProvider` wraps its
-  components to snapshot dictionaries and check every triplet field. Files only in `@TempDir`.
+  components to snapshot dictionaries and check every triplet field of a layout coder. Files only in
+  `@TempDir`.
 - A combination with an open `TODO.md` defect is skipped in the grids with its reason, never
   passed; fixing it deletes the exclusion.
 - `RatioRegressionTest` pins compressed sizes: a change that improves the ratio lowers the pins in

@@ -66,13 +66,48 @@ class ChunkedContextIndexPropertiesTest {
         do {
             assertThat(up.rank()).isEqualTo(expectedUp.rank());
             assertThat(up.position()).isEqualTo(expectedUp.position());
+            assertThat(up.sharedWithPrevious()).isEqualTo(expectedUp.sharedWithPrevious());
         } while (moveBoth(up, expectedUp, true));
         do {
             assertThat(down.rank()).isEqualTo(expectedDown.rank());
             assertThat(down.position()).isEqualTo(expectedDown.position());
+            assertThat(down.sharedWithPrevious()).isEqualTo(expectedDown.sharedWithPrevious());
         } while (moveBoth(down, expectedDown, false));
         assertThat(up.rank()).isEqualTo(text.length - 1);
         assertThat(down.rank()).isZero();
+    }
+
+    @Property
+    void theEntriesAroundAPositionAreItsNeighboursInASortedListWithTheirSharedBytesAfterAnyInserts(
+            @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
+            @ForAll @IntRange(min = 1, max = 12) int reach, @ForAll long seed) {
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        SortedListContextIndex expected = new SortedListContextIndex(order);
+        for (int position : shuffledPositions(text.length, new Random(seed))) {
+            actual.insert(position);
+            expected.insert(position);
+        }
+        Surroundings found = new Surroundings(reach);
+        Surroundings wanted = new Surroundings(reach);
+
+        for (int position = 0; position <= text.length; position++) {
+            actual.around(position, reach, found);
+            expected.around(position, reach, wanted);
+
+            assertThat(found.belowCount()).as("below %d", position).isEqualTo(wanted.belowCount());
+            assertThat(found.aboveCount()).as("above %d", position).isEqualTo(wanted.aboveCount());
+            for (int i = 0; i < found.belowCount(); i++) {
+                assertThat(found.belowPositions()[i]).isEqualTo(wanted.belowPositions()[i]);
+                assertThat(found.belowShared()[i]).isEqualTo(wanted.belowShared()[i]);
+                assertThat(found.belowPrefixes()[i]).isEqualTo(wanted.belowPrefixes()[i]);
+            }
+            for (int i = 0; i < found.aboveCount(); i++) {
+                assertThat(found.abovePositions()[i]).isEqualTo(wanted.abovePositions()[i]);
+                assertThat(found.aboveShared()[i]).isEqualTo(wanted.aboveShared()[i]);
+                assertThat(found.abovePrefixes()[i]).isEqualTo(wanted.abovePrefixes()[i]);
+            }
+        }
     }
 
     /** Uniform bytes rarely tie, so half the texts use two letters to force equal contexts. */
