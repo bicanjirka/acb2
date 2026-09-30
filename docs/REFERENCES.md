@@ -64,7 +64,10 @@ them and quotes their numbers, and holds no text of theirs.
   2.1.4 "Results": the compressed sizes on `calgary.tar`, a tar of the 14 files, compressed as one file. Its row
   `acb 2.00a  LZ77  1997  George Buyanovsky  778,760  18.7  18.7` (size, compression and decompression time in
   process seconds on a 2 GHz T3200 under Windows Vista) is the README's and `harness.ReferenceResults`'s `ACB 2.00a`
-  row. The other rows here are the 14 files each compressed on its own, so the two are not quite alike.
+  row. The other rows here are the 14 files each compressed on its own, so the two are not quite alike, and the
+  same table shows the difference going both ways: bzip2 -9 860,097 and gzip -9 1,022,810 on the tar against
+  828,347 and 1,017,624 on the files, but LZMA (7zip 9.08a) 824,573 on the tar against 845,952 for xz -9 on the
+  files. A coder with a large window gains from the tar, as ACB 2.00 would; by how much it is not measured.
 
 ## What is this project's own
 
