@@ -166,13 +166,14 @@ replaced them; Tables 5.6 and 5.7 (the widths) by the ratio harness, which measu
 
 ## The prefix variant
 
-`lcp` (thesis section 3.3.1) sends the match length less the prefix the best content shares with the
+`lcp` (thesis section 3.3.1, [Bican]) sends the match length less the prefix the best content shares with the
 second best, and needs the best to be the smallest of the longest, so that the prefix is below the length.
 That is what makes it lose: it saves length bits and pays them back in distance, the smallest content being
-far from the context. L�har's master thesis (CTU FIT 2016, the ExCom module `acb2`) has the same idea,
-his "V1", and reports it 0.5% better than Valach's coder as the mean of the ratios of the Calgary files,
-which the same rule in `valach`'s layout reproduces (970,320 bytes against 974,670, 0.45%); its larger
-gain over his own baseline is that baseline's, which is 4% behind Valach's.
+far from the context. The master thesis of Adam Léhar [Léhar] (§3.5.1, "V1") has the same variant. By the
+ratios of its Table 5.5 the mean over the 18 Calgary files of V1 is 0.5% below that of Valach's coder [Valach],
+and the same rule in `valach`'s layout reproduces that here (970,320 bytes against 974,670, 0.45%). His
+comparison with his own earlier implementation, which shows more, is against a baseline whose mean on the
+same table is 4% above Valach's, so it does not measure the variant alone.
 
 `prefix` takes the prefix from the walk instead of from the order of contents (`ALGORITHM.md` 5.6):
 the best stays the nearest of the longest, and the prefix is what it shares with the candidates walked
@@ -240,7 +241,8 @@ cal14 out [options]`, decompress to a second directory, compare every file, sum 
 - **Calgary corpus:** `https://corpus.canterbury.ac.nz/resources/calgary.tar.gz`; the 14 classic files
   (`bib book1 book2 geo news obj1 obj2 paper1 paper2 pic progc progl progp trans`: drop paper3 to paper6),
   3,141,622 bytes. `gzip -9`, `bzip2 -9` and `xz -9` are run on each file.
-- **ExCom** (Valach's compressor, the source of `salomon2` and `valach`): the ACB module is in
+- **ExCom** ([ExCom], Šimek's and Řezníček's library under the LGPL version 3, the source of `salomon2` and
+  `valach` through its ACB module, which is Valach's [Valach]): the module is in
   `lib/method/acb`. Delete `#include <libio.h>` from `TripletCoder.hpp`, then build with
   `g++ -O2 -w -std=gnu++98 -fpermissive -DMETHOD_ACB -DMETHOD_ARITH -Iinclude -Ilib lib/*.cpp` and every
   `lib/method/**/*.cpp` except `dca/` and `ppm/`, then `src/app/main.cpp -lpthread`. Run `excom -m acb
@@ -256,6 +258,7 @@ cal14 out [options]`, decompress to a second directory, compare every file, sum 
   copy it. At its default level (`Kc 2`) it fails to decode book1; `Kc 0` round-trips all 14 files.
   The widths of the table in `ALGORITHM.md` 7.9 (128, 55 and 16 a side: 839,769, 846,912 and 875,872 bytes)
   were measured on builds with the funnel capped.
-- **The thesis**, for its tables: `https://dspace.cvut.cz/server/api/core/bitstreams/233480f8-4ebc-4960-8764-a9e1ae51650a/content`.
+- **The thesis** [Bican], for its tables: <http://hdl.handle.net/10467/68184>, the file
+  `https://dspace.cvut.cz/server/api/core/bitstreams/233480f8-4ebc-4960-8764-a9e1ae51650a/content`.
   The code that produced them is in this repository's history before commit `6b30a11`; it overwrites its
   input, so run it on copies.

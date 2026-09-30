@@ -5,10 +5,11 @@ compared against. Tests and reviews cite a rule by its section number (`ALGORITH
 is a specification of the current code, not a history: where a rule differs from its source, the
 difference is listed as a **Deviation**, and it is deleted from here in the commit that removes it.
 
-Sources: the CTU FIT master thesis this project accompanies (§1.2 basic method, §1.3 Salomon's
-modifications, §3.2.1 triplet variations, §3.3.1 second best content), Salomon's *Data
-Compression* (as the thesis describes it), Valach's ExCom (`salomon2`, `valach`), and
-Buyanovsky's own 1994 code and paper (section 7).
+Sources (full references in `REFERENCES.md`): the CTU FIT master thesis this project accompanies
+[Bican] (§1.2 basic method, §1.3 Salomon's modifications, §3.2.1 triplet variations, §3.3.1 second best
+content), Salomon's *Data Compression* [Salomon] (as the thesis describes it), the ExCom library [ExCom] and
+Valach's thesis [Valach] (`salomon2`, `valach`), and Buyanovsky's own 1994 code and paper [Buyanovsky]
+(section 7).
 
 ## 1. Terms
 
@@ -158,7 +159,8 @@ which 3.5 lists.
 
 ### 5.5 `lcp`: `(dist, len - lcp, literal)`
 
-Source: thesis §3.3.1.
+Source: thesis §3.3.1 [Bican]. The same variant is §3.5.1 ("V1") of [Léhar]. Both assignments say the variants were given by the
+supervisor; neither thesis says who devised this one.
 
 Laid out as `simple`, with a different rule for the best content. The **best** content is the
 lexicographically smallest one among those with the maximal match length `M`, where a match is
@@ -187,7 +189,7 @@ often further from the context than the nearest one, and it costs about half the
 
 ### 5.6 `prefix`: `(len, dist, literal)` with the length less a prefix
 
-Source: none; a variant of `lcp` (5.5). It is thesis �3.3.1's idea with the second content taken from the
+Source: none; a variant of this project's, of `lcp` (5.5) from [Bican] and [Léhar]. It is thesis §3.3.1's idea with the second content taken from the
 walk of 3.4 instead of from the order of contents, and it is the rule `acb` uses for its lengths (7.5).
 
 Laid out as `valach` (5.4): `len = 0` is followed by the literal alone, `len > 0` by `dist` and the literal.

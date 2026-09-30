@@ -1,7 +1,7 @@
 # ACB — Associative Coder of Buyanovsky
 
-A lossless compressor built for a master's thesis at CTU FIT. It is based on
-George Buyanovsky's associative coding. The input is split into segments, and each
+A lossless compressor built for a master's thesis at CTU FIT (Jiří Bican, 2017, supervised by
+Radomír Polách; `docs/REFERENCES.md`). It is based on George Buyanovsky's associative coding. The input is split into segments, and each
 segment is walked with a sorted dictionary of *contexts* (the bytes before a position) and
 *contents* (the bytes after it). Every step emits a triplet that names a content by its distance
 in the dictionary from the current context, together with a match length and, if needed, a literal
@@ -139,10 +139,17 @@ fails under the floors of `PerformanceBudget`. (Use `:` for `;` outside Windows.
 Working constraints and code style are in `CLAUDE.md`. Known gaps and planned work are in
 `TODO.md`.
 
+## Credits
+
+The method is George Buyanovsky's. The triplet forms `valach` and `salomon2` come from ExCom, the compression
+library of Filip Šimek and Jakub Řezníček, whose ACB module is Michal Valach's master's thesis; the variant
+`lcp` is in Adam Léhar's thesis as well as in the one this project accompanies. `docs/REFERENCES.md` has every reference and says what
+was taken from each; `docs/ALGORITHM.md` says, rule by rule, where this project follows a source and where not.
+
 ## Licence
 
 This is thesis work. Non-profit use is permitted under the terms in `acb-licence`.
 It contains no third-party code: the coders implement published algorithms (Salomon's, Valach's and
 Buyanovsky's) from their descriptions, and `acb` was written from his paper and a reading of his 1994
 reference code, which carries no licence and is not copied. The reference compressors in the table above
-were run, not included.
+were run, not included (ExCom is published under the GNU LGPL version 3).

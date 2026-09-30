@@ -28,6 +28,16 @@ a step of 12 bytes or more, not 3 * log2 of the size, gives 841,798 bytes and ab
   table one call at a time instead of setting an array was slower than two loops. About a quarter has to
   go to reach 2 MB/s, and none of these is worth more than a tenth.
 
+### The source of the `ACB 2.00a` Calgary figure
+
+The README table and `harness.ReferenceResults` give ACB 2.00a 778,760 bytes on the 14 Calgary files and credit
+"Mahoney's table". Mahoney's Large Text Compression Benchmark lists ACB 2.00c on enwik9, not on Calgary, and no
+page that gives 778,760 has been found again, so the credit is unverified.
+
+- **Where:** `README.md` ("How it compares"), `harness.ReferenceResults`, `docs/REFERENCES.md` ([Mahoney]).
+- **Approach:** find the page and cite it exactly, or measure ACB 2.00a itself (`ACB.EXE` is in the research folder
+  and needs a DOS emulator) and say so; drop the row if neither can be done.
+
 ### Beyond `AC.C`: the paper's own coding and ACB 2.00's modelling
 
 `AC.C` reaches 837 KB on Calgary and ACB 2.00 779 KB, and `acb` here 843 KB at `d = 6` and 835 KB at
