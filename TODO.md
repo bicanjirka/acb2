@@ -47,15 +47,59 @@ counts only the bits where it could differ. What ACB 2.00 models beyond `AC.C` i
 Calgary at `d = 6`: 734,658 bytes at about 0.9 MB/s both ways, one thread; `acb` does 1.5 and 1.6. A JFR profile
 over Calgary puts two fifths of the time in the dictionary (the funnels, the voting funnel and the inserts, as in
 `acb`), a sixth in the walk over the candidates (`Continuations.gather` and `keep`), a tenth in the counters, a
-twelfth in the mixer and as much in setting up each literal's distributions. Of the 10.5 million decisions,
-1.7 million are on a byte every live candidate agrees on; they take about 6% of the time and come in runs of one
-to three bytes mostly, so coding the runs as lengths, a format change, would buy about 3%. Keeping each
+twelfth in the mixer and as much in setting up each literal's distributions. The decisions over Calgary: 582,466
+escapes (the end at depth 0), 1,655,261 ends on a byte every live candidate agrees on (79 KB of output), 895,688
+ends where they differ (71 KB), 2,730,494 continuations (242 KB) and 4,655,690 bits of 590,090 literals. The
+agreeing ends take about 6% of the time and come in runs of one to three bytes mostly (of about 470,000 runs,
+five in six are under four bytes), so coding the runs as lengths, a format change, would buy about 3%. Keeping each
 counter's probability and count in one `int` gave 4%, one pass over the bytes for a literal's three
 distributions 2%, and mixing two banks in one pass 3%; keeping the mixer's banks in one array, and remembering
-each candidate's byte in `gather` so that `keep` reads no text, gave nothing.
+each candidate's byte in `gather` so that `keep` reads no text, gave nothing. Not yet tried: a literal still
+walks its 256 bytes twice, once in `MixedLiteralModel.fillAllowed` and once in `CumulativeTable.seal`; the
+distribution's sums could be the running sums of the counts plus the few votes, with `seal`'s halving (when the
+total passes 2^20, which a base total of at most 2^16 reaches only with very heavy votes) kept exactly as it is, since the output must not change.
 
 - **Where:** the dictionary, as in the `acb` entry above; `associative.Continuations`; the hashed tables of
   `MatchEndModel`, `ContinuationModel` and `MixedLiteralModel`.
 - **Approach:** the dictionary work of the `acb` entry serves both coders and is the most of what is left; after
   it, the cache misses of the hashed tables, which smaller tables or two counters to a cache line would cut, at
-  a change of the format. `d = 5` is 10% faster for 0.3%.
+  a change of the format. `d = 5` is 10% faster for 0.3%. Measure every step as the next entry says; the
+  harnesses cannot see a change of a few percent.
+
+### No harness can see a change of a few percent in speed
+
+`PerformanceHarness` and `RatioHarness` time the wall clock of one build, and on the development machine two
+runs of the same build differ by up to 10% (the clock speed drifts); `bench_java.sh` in the research folder
+adds the start of the JVM. The `acbx` speedups of 2 to 4% each were measured with a throwaway driver: both
+builds loaded in one JVM, each through its own `URLClassLoader` over its `target/classes` and the dependencies,
+a round trip of the 14 Calgary files by each in turn, alternating which goes first, timed by the CPU time of
+the thread (`ThreadMXBean.getCurrentThreadCpuTime`; `Compressor` codes on the calling thread by default), the
+CRC of the containers compared, and the minimum and median of 8 to 10 rounds of each printed. That resolves
+about 2%.
+
+- **Where:** `harness` (test sources), beside `PerformanceHarness`.
+- **Approach:** make that driver a harness, `SpeedComparison BASE_CLASSES DIR [coder] [rounds]`, which builds
+  the other class path from its own; the baseline is `target/classes` of a checkout of the commit compared
+  against (`git worktree add`, `mvn -q compile`). Say in `CLAUDE.md` that a change to a hot path is measured
+  with it.
+
+### The comparison table in the README predates the `acbx` speedup
+
+The times of "How it compares" were taken in one sitting on 2026-09-30, before the commit that made `acbx` 7%
+faster, so its two `acbx` rows (4.1 s / 3.9 s and 3.7 s / 3.6 s) are slow by about that much, and "about 1.7
+times its time" in the text after it is off with them. Timed again that afternoon, `acb`, unchanged, came out
+10% slower than in the table, so a row timed alone cannot be set beside the others.
+
+- **Where:** `README.md` ("How it compares" and the paragraph after it); `bench_java.sh`, `bench_ac.sh` and
+  `bench_excom.sh` in the research folder.
+- **Approach:** time every row again in one sitting, several runs each and the fastest taken, and change the date.
+
+### How much ACB 2.00 gains from coding Calgary as one tar
+
+The `ACB 2.00a` row is Mahoney's figure for `calgary.tar`, the 14 files as one file; every other row codes them
+apart. On the same table bzip2 and gzip lose on the tar and LZMA gains 2.5%, and ACB, whose frame is large,
+would gain too, by an amount no source gives (`docs/REFERENCES.md`, [Mahoney-DCE]).
+
+- **Where:** `README.md` ("How it compares"), `harness.ReferenceResults`, `docs/REFERENCES.md`.
+- **Approach:** run `ref/ACB/200C/ACB.EXE` from the research folder (2.00c; no 2.00a is there) in DOSBox on the
+  14 files apart and on `calgary.tar`, and give both, saying which version was run.
