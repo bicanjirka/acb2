@@ -86,13 +86,14 @@ The 14 classic files of the Calgary corpus (3,141,622 bytes), each compressed on
 added up, every row decompressed and compared. Times are wall-clock seconds on one machine, 2026-09-30;
 the other compressors are started once per file, this project's rows run the files in one JVM
 (`bench_java.sh`), so they include the start of the JVM and its warm-up. The `ACB 2.00a` row is from
-Mahoney's published table, on an older machine.
+Mahoney's *Data Compression Explained* (section 2.1.4), on an older machine and for `calgary.tar`, the 14 files
+compressed as one file, where the other rows compress each file on its own.
 
 | Compressor | Bytes | bits/byte | Compress / decompress |
 |---|---|---|---|
 | **`-tc acbx`** (`-d 6`) | 734,658 | 1.87 | 4.1 s / 3.9 s |
 | **`-tc acbx -d 5`** | 737,059 | 1.88 | 3.7 s / 3.6 s |
-| ACB 2.00a (Mahoney's table) | 778,760 | 1.98 | 18.7 s / 18.7 s |
+| ACB 2.00a (Mahoney, `calgary.tar`) | 778,760 | 1.98 | 18.7 s / 18.7 s |
 | bzip2 -9 | 828,347 | 2.11 | 0.5 s / 1.2 s |
 | **`-tc acb -d 8`** | 835,696 | 2.13 | 4.2 s / 3.8 s |
 | Buyanovsky's `AC.C` (1994), `Kc 0`, 1 MB frame | 837,107 | 2.13 | 18.9 s / 20.3 s |

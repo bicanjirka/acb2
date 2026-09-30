@@ -5,7 +5,8 @@ import java.util.List;
 /**
  * Other compressors on the Calgary corpus (the 14 classic files, 3,141,622 bytes, each compressed
  * on its own and summed), measured on the development machine on 2026-09-28. Shown beside the
- * harness's own rows when the input is that corpus.
+ * harness's own rows when the input is that corpus. The ACB 2.00a row is Mahoney's figure for
+ * {@code calgary.tar}, the 14 files compressed as one file (docs/REFERENCES.md, [Mahoney-DCE]).
  */
 final class ReferenceResults {
 
@@ -19,7 +20,7 @@ final class ReferenceResults {
 
     static List<Result> calgary() {
         return List.of(
-                new Result("ACB 2.00a (Mahoney table)", 778_760),
+                new Result("ACB 2.00a (Mahoney, calgary.tar)", 778_760),
                 new Result("bzip2 -9", 828_347),
                 new Result("AC.C 1994, Kc 0, 1 MB frame", 837_107),
                 new Result("xz -9", 845_952),

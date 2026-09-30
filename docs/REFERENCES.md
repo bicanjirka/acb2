@@ -59,8 +59,12 @@ them and quotes their numbers, and holds no text of theirs.
 - **Calgary corpus:** T. C. Bell, I. H. Witten, J. G. Cleary: *Modeling for text compression*, ACM Computing
   Surveys 21(4), 1989. The 14 classic files are used (`ARCHITECTURE.md`, "Reproducing the reference rows").
 - **[Mahoney]** Matt Mahoney: the *Large Text Compression Benchmark*, <http://mattmahoney.net/dc/text.html#2185>
-  (the ACB entry, the page [Bican] cites). The README credits its `ACB 2.00a` row (778,760 bytes on the 14
-  Calgary files) to Mahoney's tables; which page that figure comes from is not recorded yet (`TODO.md`).
+  (the ACB entry, the page [Bican] cites). It lists ACB 2.00c on enwik8 and enwik9 only.
+- **[Mahoney-DCE]** Matt Mahoney: *Data Compression Explained*, <http://mattmahoney.net/dc/dce.html>, section
+  2.1.4 "Results": the compressed sizes on `calgary.tar`, a tar of the 14 files, compressed as one file. Its row
+  `acb 2.00a  LZ77  1997  George Buyanovsky  778,760  18.7  18.7` (size, compression and decompression time in
+  process seconds on a 2 GHz T3200 under Windows Vista) is the README's and `harness.ReferenceResults`'s `ACB 2.00a`
+  row. The other rows here are the 14 files each compressed on its own, so the two are not quite alike.
 
 ## What is this project's own
 
