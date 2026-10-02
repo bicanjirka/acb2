@@ -19,7 +19,8 @@ public interface ContextIndex {
 
     /**
      * Copies the entries on either side of the place {@code position} would sort in, at most
-     * {@code reach} of each and no more than {@code into} holds, without a search for their ranks.
+     * {@code reach} of each and no more than {@code into} holds, without a search for their ranks, with how
+     * many bits of context the nearest on each side has in common with {@code position}.
      */
     void around(int position, int reach, Surroundings into);
 }

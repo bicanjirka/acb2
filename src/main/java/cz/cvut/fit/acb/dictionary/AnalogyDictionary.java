@@ -27,6 +27,9 @@ public interface AnalogyDictionary {
     /** The analogies of the context before {@code position}, weighted to tell which one continues the text. */
     Funnel funnel(int position);
 
-    /** The analogies of the context before {@code position}, weighted to vote on the byte that follows it. */
+    /**
+     * The analogies of the context before {@code position}, weighted to vote on the byte that follows it, and
+     * in no order of their weights, since votes add up the same in any.
+     */
     Funnel forecast(int position);
 }

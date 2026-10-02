@@ -5,29 +5,27 @@ The single place for outstanding design gaps and planned work; the source carrie
 
 ## Open gaps
 
-### `acb` runs at 1.5 MB/s, not 2
+### `acb` runs at 1.9 MB/s, not 2
 
-Calgary at `d = 6`: 843,240 bytes (under the 850 KB target) at 1.5 MB/s compressing and 1.6 decompressing,
-one thread (1.4 and 1.5 before its models dropped the Fenwick trees they never asked); `valach` does 2.5 and
-3.5 on the same machine. Timed inside the encoder, a step (5.55 bytes on average) costs about 3.6 us: the
-funnel of analogies of the context 0.7, the funnel that votes on the literal 0.6 and what is done with its
-votes 0.3, the inserts of the step's positions 1.0 (0.18 each), the comparison of the candidates with the
-text 0.5, the literal's distribution and coding 0.3, the length 0.2. Even with no funnels at all the coder
-does 2.15 MB/s, which is the inserts and the literal. Narrowing the funnel buys speed with ratio: `d = 5`
-gives 855,407 bytes at 1.8 MB/s and `d = 4` 878,363 at 2.1. Narrowing only the voting funnel to 16 a side
-costs 0.6%, and inserting only the first position of a step of 12 bytes or more, not 3 * log2 of the size,
-gives 841,798 bytes and about 3% speed.
+Calgary at `d = 6`: 843,240 bytes at 1.9 MB/s compressing and 2.1 decompressing, one thread; `valach` does
+2.5 and 3.5 on the same machine. It was 1.6 and 1.7 before the index kept, next to each entry, the bits it
+shares with the one before it and the byte after its context, so that a funnel is walked without reading the
+text (12% and 4%), before a distribution was summed only up to the symbol coded and a model's counts were
+copied into it in bulk (7%), and before the voting funnel was left unmerged, the index's tree of ranks was
+built only when a rank is asked for and its last lookups were kept right through the inserts after them (5%).
+A JFR profile now puts a quarter of the time in the lookups and the text comparisons of the index, a tenth
+in moving the entries of a chunk on an insert, a quarter in the funnels (the copies around a context, the
+walk and the merge), a tenth in the votes and the exclusions, and 5% in summing distributions. A lookup costs
+about 0.18 microseconds on book1, 0.04 of it to find the chunk, 0.08 to search the prefixes and 0.06 to read
+the text where prefixes are equal; searching three prefixes at a time, branch-free searches and a walk over
+equal prefixes by their shared bits were all slower.
 
-- **Where:** `dictionary.FunnelWalk`, `ChunkedContextIndex.locate`, `around` and `insert`, and the loops
-  over the funnel in `associative.AssociativeSteps` and `EncodingPort`.
-- **Approach:** find the place of the next context from the place of the last one rather than by a search
-  (the contexts of positions next to each other are related); keep the byte each entry's content starts
-  with in the low byte of its prefix, so that no candidate's text is read to compare it or to take its
-  vote (a separate array of those bytes was tried and gained nothing, the copy on every insert costing what
-  the reads saved); insert with fewer moves of the arrays. Building a funnel in two passes, the weights
-  and then the merge, took a funnel from 0.96 to 0.58 us, and giving a distribution's frequencies to a
-  table one call at a time instead of setting an array was slower than two loops. About a quarter has to
-  go to reach 2 MB/s, and none of these is worth more than a tenth.
+- **Where:** `dictionary.ChunkedContextIndex.locate` and `insert`, `FunnelWalk` and `Funnel`, the votes in
+  `associative.AssociativeSteps`, `coding.CumulativeTable`.
+- **Approach:** vote straight from the walk, without filling a funnel the votes do not need in order; sum a
+  distribution up to the coded symbol without keeping the sums when nothing asks for them again; find the
+  place of a position inside a match from that of the matching position of the chosen candidate, which is
+  next to it, rather than by a search. Measure every step with `harness.SpeedComparison`.
 
 ### Beyond `acbx`: the paper's bit-level coding and ACB 2.00's modelling
 
@@ -44,7 +42,7 @@ counts only the bits where it could differ. What ACB 2.00 models beyond `AC.C` i
 
 ### `acbx` runs at 0.9 MB/s
 
-Calgary at `d = 6`: 734,658 bytes at about 0.9 MB/s both ways, one thread; `acb` does 1.5 and 1.6. A JFR profile
+Calgary at `d = 6`: 734,658 bytes at about 0.95 MB/s both ways, one thread; `acb` does 1.9 and 2.1. A JFR profile
 over Calgary puts two fifths of the time in the dictionary (the funnels, the voting funnel and the inserts, as in
 `acb`), a sixth in the walk over the candidates (`Continuations.gather` and `keep`), a tenth in the counters, a
 twelfth in the mixer and as much in setting up each literal's distributions. The decisions over Calgary: 582,466

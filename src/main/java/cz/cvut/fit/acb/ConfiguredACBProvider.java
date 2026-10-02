@@ -34,8 +34,7 @@ public final class ConfiguredACBProvider implements ACBProvider {
 
     @Override
     public AnalogyDictionary analogyDictionary(SegmentBuffer segment) {
-        return new IndexedAnalogyDictionary(this.indexOver(segment), segment, this.settings.maxDistance(),
-                this.settings.contextDepth());
+        return new IndexedAnalogyDictionary(this.indexOver(segment), this.settings.maxDistance());
     }
 
     private ChunkedContextIndex indexOver(SegmentBuffer segment) {

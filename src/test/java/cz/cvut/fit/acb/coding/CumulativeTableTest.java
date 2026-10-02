@@ -61,6 +61,35 @@ class CumulativeTableTest {
     }
 
     @Test
+    void aTableStartedFromCountsHasTheirFrequenciesUpToItsSize() {
+        FrequencyCounts counts = new FrequencyCounts(new int[]{3, 1, 4, 1, 5});
+        CumulativeTable table = new CumulativeTable();
+
+        table.begin(counts, 3);
+        table.set(1, 0);
+        table.seal();
+
+        assertThat(table.total()).isEqualTo(7);
+        assertThat(table.cumulative(2)).isEqualTo(3);
+        assertThat(table.symbolAt(6)).isEqualTo(2);
+    }
+
+    @Test
+    void aTargetIsFoundAlikeBeforeAndAfterTheSumsUpToItAreAskedFor() {
+        CumulativeTable table = of(3, 0, 1, 4, 2);
+        int[] before = new int[table.total()];
+        for (int target = 0; target < table.total(); target++) {
+            before[target] = of(3, 0, 1, 4, 2).symbolAt(target);
+        }
+
+        table.cumulative(5);
+
+        for (int target = 0; target < table.total(); target++) {
+            assertThat(table.symbolAt(target)).as("target %d", target).isEqualTo(before[target]);
+        }
+    }
+
+    @Test
     void aTableRefilledForFewerSymbolsForgetsTheOldOnes() {
         CumulativeTable table = of(1, 1, 1, 1, 1);
 

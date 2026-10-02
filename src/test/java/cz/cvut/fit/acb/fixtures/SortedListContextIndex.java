@@ -48,6 +48,12 @@ public final class SortedListContextIndex implements ContextIndex {
     public void around(int position, int reach, Surroundings into) {
         into.clear();
         int rank = this.rank(position);
+        if (rank < this.entries.size()) {
+            into.agreeAbove(this.order.sharedBits(position, this.entries.get(rank)));
+        }
+        if (rank > 0) {
+            into.agreeBelow(this.order.sharedBits(position, this.entries.get(rank - 1)));
+        }
         this.copy(rank, Math.min(this.entries.size(), rank + reach), into, true);
         this.copy(Math.max(0, rank - reach), rank, into, false);
     }
@@ -56,17 +62,16 @@ public final class SortedListContextIndex implements ContextIndex {
     private void copy(int from, int to, Surroundings into, boolean above) {
         int count = to - from;
         int[] positions = new int[count];
-        long[] prefixes = new long[count];
-        byte[] shared = new byte[count];
+        int[] shared = new int[count];
         for (int i = 0; i < count; i++) {
             positions[i] = this.entries.get(from + i);
-            prefixes[i] = this.order.prefix(positions[i]);
-            shared[i] = (byte) this.cursorAt(from + i).sharedWithPrevious();
+            shared[i] = Surroundings.shared(this.cursorAt(from + i).sharedWithPrevious(),
+                    this.order.followingByte(positions[i]));
         }
         if (above) {
-            into.addAbove(positions, prefixes, shared, 0, count);
+            into.addAbove(positions, shared, 0, count);
         } else {
-            into.addBelow(positions, prefixes, shared, 0, count);
+            into.addBelow(positions, shared, 0, count);
         }
     }
 
@@ -93,7 +98,7 @@ public final class SortedListContextIndex implements ContextIndex {
             if (this.rank == 0) {
                 return 0;
             }
-            return SortedListContextIndex.this.order.sharedBytes(
+            return SortedListContextIndex.this.order.sharedBits(
                     SortedListContextIndex.this.entries.get(this.rank - 1), this.position());
         }
 

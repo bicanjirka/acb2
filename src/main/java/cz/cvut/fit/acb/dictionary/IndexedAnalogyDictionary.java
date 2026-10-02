@@ -14,14 +14,13 @@ public final class IndexedAnalogyDictionary implements AnalogyDictionary {
     private final Funnel forecast;
 
     /**
-     * {@code index} must order the positions of {@code segment}, the bytes known so far, by
-     * {@code depth} bytes of context.
+     * {@code index} must order the positions of a segment, the bytes known so far, by their contexts.
      *
      * @param reach the most candidates a funnel takes from either side of a context
      */
-    public IndexedAnalogyDictionary(ContextIndex index, SegmentBuffer segment, int reach, int depth) {
+    public IndexedAnalogyDictionary(ContextIndex index, int reach) {
         this.index = index;
-        this.walk = new FunnelWalk(index, segment, reach, depth);
+        this.walk = new FunnelWalk(index, reach);
         this.funnel = new Funnel(this.walk.capacity());
         this.forecast = new Funnel(this.walk.capacity());
     }
@@ -53,13 +52,13 @@ public final class IndexedAnalogyDictionary implements AnalogyDictionary {
 
     @Override
     public Funnel funnel(int position) {
-        this.walk.fill(position, Weighting.POSITION, this.funnel);
+        this.walk.fill(position, Weighting.POSITION, true, this.funnel);
         return this.funnel;
     }
 
     @Override
     public Funnel forecast(int position) {
-        this.walk.fill(position, Weighting.FORECAST, this.forecast);
+        this.walk.fill(position, Weighting.FORECAST, false, this.forecast);
         return this.forecast;
     }
 }

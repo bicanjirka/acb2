@@ -18,16 +18,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FunnelWalkTest {
 
     /**
-     * A candidate of a funnel: where its content starts, what it weighs, the bits its context agrees on and
-     * its distance in ranks from the context, above positive.
+     * A candidate of a funnel: where its content starts, the byte there, what it weighs, the bits its context
+     * agrees on and its distance in ranks from the context, above positive.
      */
-    private record Candidate(int position, int weight, int agreement, int distance) {
+    private record Candidate(int position, int firstByte, int weight, int agreement, int distance) {
     }
 
     private static List<Candidate> candidatesOf(Funnel funnel) {
         List<Candidate> candidates = new ArrayList<>();
         for (int i = 0; i < funnel.size(); i++) {
-            candidates.add(new Candidate(funnel.position(i), funnel.weight(i), funnel.agreement(i), funnel.distance(i)));
+            candidates.add(new Candidate(funnel.position(i), funnel.firstByte(i), funnel.weight(i), funnel.agreement(i),
+                    funnel.distance(i)));
         }
         return candidates;
     }
@@ -63,12 +64,13 @@ class FunnelWalkTest {
             }
             if (aboveWeight >= belowWeight) {
                 int entry = sorted.cursorAt(slot + above).position();
-                funnel.add(new Candidate(entry, aboveWeight, ContextBits.between(text, position, entry, depth), above + 1));
+                funnel.add(new Candidate(entry, Byte.toUnsignedInt(text[entry]), aboveWeight,
+                        ContextBits.between(text, position, entry, depth), above + 1));
                 above++;
             } else {
                 int entry = sorted.cursorAt(slot - 1 - below).position();
-                funnel.add(new Candidate(entry, belowWeight, ContextBits.between(text, position, entry, depth),
-                        -(below + 1)));
+                funnel.add(new Candidate(entry, Byte.toUnsignedInt(text[entry]), belowWeight,
+                        ContextBits.between(text, position, entry, depth), -(below + 1)));
                 below++;
             }
         }
@@ -81,14 +83,19 @@ class FunnelWalkTest {
 
     private static List<Candidate> walked(byte[] text, int chunkCapacity, int depth, int reach, Weighting weighting,
                                           int position, int entries) {
+        return walked(text, chunkCapacity, depth, reach, weighting, position, entries, true);
+    }
+
+    private static List<Candidate> walked(byte[] text, int chunkCapacity, int depth, int reach, Weighting weighting,
+                                          int position, int entries, boolean ordered) {
         SegmentBuffer segment = SegmentBuffer.of(text);
         ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment, depth), chunkCapacity);
         for (int entry = entries - 1; entry >= 0; entry--) {
             index.insert(entry);
         }
-        FunnelWalk walk = new FunnelWalk(index, segment, reach, depth);
+        FunnelWalk walk = new FunnelWalk(index, reach);
         Funnel funnel = new Funnel(walk.capacity());
-        walk.fill(position, weighting, funnel);
+        walk.fill(position, weighting, ordered, funnel);
         return candidatesOf(funnel);
     }
 
@@ -113,7 +120,7 @@ class FunnelWalkTest {
     }
 
     @Property
-    void theWalkOverTheSharedBytesOfNeighboursIsTheSortedListWalkOverComparedBytes(
+    void theWalkOverTheSharedBitsOfNeighboursIsTheSortedListWalkOverComparedBits(
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
             @ForAll @IntRange(min = 1, max = 20) int reach, @ForAll @IntRange(min = 1, max = 12) int depth,
             @ForAll Weighting weighting, @ForAll @IntRange(min = 0, max = 150) int position) {
@@ -122,6 +129,27 @@ class FunnelWalkTest {
         List<Candidate> actual = walked(text, chunkCapacity, depth, reach, weighting, at, at);
 
         assertThat(actual).isEqualTo(bruteForce(text, depth, reach, weighting, at, at));
+    }
+
+    @Property
+    void aWalkThatNeedNotBeOrderedTakesTheSameCandidatesAboveTheContextFirst(
+            @ForAll("texts") byte[] text, @ForAll @IntRange(min = 1, max = 20) int reach,
+            @ForAll Weighting weighting, @ForAll @IntRange(min = 0, max = 150) int position) {
+        int at = Math.min(position, text.length);
+        List<Candidate> ordered = walked(text, 4, 8, reach, weighting, at, at);
+
+        List<Candidate> unordered = walked(text, 4, 8, reach, weighting, at, at, false);
+
+        assertThat(unordered).containsExactlyInAnyOrderElementsOf(ordered);
+        int above = (int) unordered.stream().filter(candidate -> candidate.distance() > 0).count();
+        List<Integer> outward = new ArrayList<>();
+        for (int distance = 1; distance <= above; distance++) {
+            outward.add(distance);
+        }
+        for (int distance = 1; distance <= unordered.size() - above; distance++) {
+            outward.add(-distance);
+        }
+        assertThat(unordered).extracting(Candidate::distance).containsExactlyElementsOf(outward);
     }
 
     @Property
@@ -138,7 +166,7 @@ class FunnelWalkTest {
                 assertThat(entry).isLessThan(Math.max(at, 1)));
     }
 
-    /** Few letters make long agreements, which is where the walk over shared bytes could go wrong. */
+    /** Few letters make long agreements, which is where the walk over shared bits could go wrong. */
     @Provide
     Arbitrary<byte[]> texts() {
         Arbitrary<byte[]> anyBytes = Arbitraries.bytes().array(byte[].class).ofMinSize(1).ofMaxSize(150);

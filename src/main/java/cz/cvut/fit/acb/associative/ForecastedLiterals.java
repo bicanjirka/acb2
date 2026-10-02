@@ -21,26 +21,29 @@ final class ForecastedLiterals {
 
     private final FrequencyCounts frequencies = flat();
     private final int[] excludedIn = new int[SYMBOLS];
+    private final int[] excludedList = new int[SYMBOLS];
     private final int[] votedIn = new int[SYMBOLS];
     private final int[] votes = new int[SYMBOLS];
     private final int[] votedList = new int[SYMBOLS];
     private int literal = 1;
+    private int excludedCount;
     private int votedCount;
     private long voteTotal;
-    private boolean anyExcluded;
 
     /** Forgets the exclusions and votes of the last literal. */
     void reset() {
         this.literal++;
+        this.excludedCount = 0;
         this.votedCount = 0;
         this.voteTotal = 0;
-        this.anyExcluded = false;
     }
 
     /** The literal cannot be {@code symbol}. */
     void exclude(int symbol) {
-        this.excludedIn[symbol] = this.literal;
-        this.anyExcluded = true;
+        if (this.excludedIn[symbol] != this.literal) {
+            this.excludedIn[symbol] = this.literal;
+            this.excludedList[this.excludedCount++] = symbol;
+        }
     }
 
     /** A funnel candidate of weight {@code weight} says the literal is {@code symbol}; a byte left out gets no vote. */
@@ -58,12 +61,12 @@ final class ForecastedLiterals {
 
     /** @return whether some byte is possible */
     boolean fill(CumulativeTable table) {
-        table.begin(SYMBOLS);
-        long total = 0;
-        for (int symbol = 0; symbol < SYMBOLS; symbol++) {
-            int frequency = this.excludedIn[symbol] != this.literal ? this.frequencies.frequency(symbol) : 0;
-            table.set(symbol, frequency);
-            total += frequency;
+        table.begin(this.frequencies, SYMBOLS);
+        long total = this.frequencies.total();
+        for (int i = 0; i < this.excludedCount; i++) {
+            int symbol = this.excludedList[i];
+            total -= this.frequencies.frequency(symbol);
+            table.set(symbol, 0);
         }
         return this.voteInto(table, total);
     }
@@ -93,7 +96,7 @@ final class ForecastedLiterals {
 
     /** Whether any byte is left out. */
     boolean excludedAny() {
-        return this.anyExcluded;
+        return this.excludedCount > 0;
     }
 
     /** How often {@code symbol} came as a literal, in the model's units. */

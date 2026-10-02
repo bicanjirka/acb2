@@ -78,7 +78,7 @@ class ChunkedContextIndexPropertiesTest {
     }
 
     @Property
-    void theEntriesAroundAPositionAreItsNeighboursInASortedListWithTheirSharedBytesAfterAnyInserts(
+    void theEntriesAroundAPositionAreItsNeighboursInASortedListWithTheirSharedBitsAfterAnyInserts(
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
             @ForAll @IntRange(min = 1, max = 12) int reach, @ForAll long seed) {
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
@@ -97,17 +97,57 @@ class ChunkedContextIndexPropertiesTest {
 
             assertThat(found.belowCount()).as("below %d", position).isEqualTo(wanted.belowCount());
             assertThat(found.aboveCount()).as("above %d", position).isEqualTo(wanted.aboveCount());
+            assertThat(found.belowAgreement()).as("below %d", position).isEqualTo(wanted.belowAgreement());
+            assertThat(found.aboveAgreement()).as("above %d", position).isEqualTo(wanted.aboveAgreement());
             for (int i = found.capacity() - found.belowCount(); i < found.capacity(); i++) {
                 assertThat(found.belowPositions()[i]).isEqualTo(wanted.belowPositions()[i]);
                 assertThat(found.belowShared()[i]).isEqualTo(wanted.belowShared()[i]);
-                assertThat(found.belowPrefixes()[i]).isEqualTo(wanted.belowPrefixes()[i]);
             }
             for (int i = 0; i < found.aboveCount(); i++) {
                 assertThat(found.abovePositions()[i]).isEqualTo(wanted.abovePositions()[i]);
                 assertThat(found.aboveShared()[i]).isEqualTo(wanted.aboveShared()[i]);
-                assertThat(found.abovePrefixes()[i]).isEqualTo(wanted.abovePrefixes()[i]);
             }
         }
+    }
+
+    @Property
+    void placesLookedUpBeforeInsertsAreStillRightAfterThem(
+            @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
+            @ForAll @IntRange(min = 1, max = 6) int reach, @ForAll long seed) {
+        ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        SortedListContextIndex expected = new SortedListContextIndex(order);
+        Random random = new Random(seed);
+        Surroundings found = new Surroundings(reach);
+        Surroundings wanted = new Surroundings(reach);
+        int[] lookedUp = {0, 0};
+
+        for (int position : shuffledPositions(text.length, random)) {
+            if (random.nextInt(3) == 0) {
+                int slot = random.nextInt(lookedUp.length);
+                lookedUp[slot] = random.nextInt(text.length + 1);
+                actual.around(lookedUp[slot], reach, found);
+            }
+            actual.insert(position);
+            expected.insert(position);
+
+            for (int place : lookedUp) {
+                actual.around(place, reach, found);
+                expected.around(place, reach, wanted);
+                assertThat(positionsOf(found)).as("around %d", place).isEqualTo(positionsOf(wanted));
+            }
+        }
+    }
+
+    private static List<Integer> positionsOf(Surroundings surroundings) {
+        List<Integer> positions = new ArrayList<>();
+        for (int i = surroundings.capacity() - surroundings.belowCount(); i < surroundings.capacity(); i++) {
+            positions.add(surroundings.belowPositions()[i]);
+        }
+        for (int i = 0; i < surroundings.aboveCount(); i++) {
+            positions.add(surroundings.abovePositions()[i]);
+        }
+        return positions;
     }
 
     /** Uniform bytes rarely tie, so half the texts use two letters to force equal contexts. */

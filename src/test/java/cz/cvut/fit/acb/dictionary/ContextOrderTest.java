@@ -52,6 +52,30 @@ class ContextOrderTest {
     }
 
     @Test
+    void sharedBitsCountTheEqualTopBitsOfTheFirstByteThatDiffers() {
+        ContextOrder order = orderOf(DEPTH, 'a', 'x', 'c', 'x', 'q');
+
+        assertThat(order.sharedBits(2, 4)).isEqualTo(8 + 6);
+        assertThat(order.sharedBits(2, order.prefix(2), 4, order.prefix(4))).isEqualTo(8 + 6);
+    }
+
+    @Test
+    void sharedBitsStopWhereAContextEndsOrAtTheDepth() {
+        ContextOrder order = orderOf(2, 'a', 'b', 'a', 'b', 'a', 'b');
+
+        assertThat(order.sharedBits(2, 6)).isEqualTo(16);
+        assertThat(order.sharedBits(1, 5)).isEqualTo(8);
+        assertThat(order.sharedBits(1, order.prefix(1), 5, order.prefix(5))).isEqualTo(8);
+    }
+
+    @Test
+    void theFollowingByteIsTheOneAtThePosition() {
+        ContextOrder order = orderOf(DEPTH, 'a', 0xF0, 'c');
+
+        assertThat(order.followingByte(1)).isEqualTo(0xF0);
+    }
+
+    @Test
     void bytesBeyondTheDepthDoNotDecideTheOrder() {
         ContextOrder shallow = orderOf(2, 'x', 'b', 'c', 'a', 'b', 'c');
         ContextOrder deep = orderOf(3, 'x', 'b', 'c', 'a', 'b', 'c');

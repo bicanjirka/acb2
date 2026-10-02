@@ -106,7 +106,7 @@ final class MixedSteps implements StepRule {
         if (depth > 0) {
             Funnel votes = this.dictionary.forecast(at);
             for (int i = 0; i < votes.size(); i++) {
-                this.forecast.vote(Byte.toUnsignedInt(this.text.byteAt(votes.position(i))), votes.weight(i));
+                this.forecast.vote(votes.firstByte(i), votes.weight(i));
             }
             this.rememberRepeats(depth + 1);
         } else {

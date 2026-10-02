@@ -20,7 +20,7 @@ public interface ContextCursor {
 
     int position();
 
-    /** How many bytes of context the entry here has in common with the one before it; 0 for the first. */
+    /** How many bits of context the entry here has in common with the one before it; 0 for the first. */
     int sharedWithPrevious();
 
     /** @return whether there was a next rank; if not, the cursor stays where it is */

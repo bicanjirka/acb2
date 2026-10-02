@@ -6,11 +6,11 @@ public final class FunnelFixtures {
     private FunnelFixtures() {
     }
 
-    /** A funnel of the given positions and weights, in that order. */
+    /** A funnel of the given positions and weights, in that order, for tests that do not ask for first bytes. */
     public static Funnel funnelOf(int[] positions, int[] weights) {
         Funnel funnel = new Funnel(positions.length);
         for (int i = 0; i < positions.length; i++) {
-            funnel.add(positions[i], weights[i], 0, i + 1);
+            funnel.add(positions[i], 0, weights[i], 0, i + 1);
         }
         return funnel;
     }

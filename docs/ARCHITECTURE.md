@@ -82,16 +82,25 @@ position, the position at a rank, and the neighbours of a context. `ContextIndex
 split when full, with a Fenwick tree over the chunk sizes. The interface stays so that the brute-force
 oracle in the tests, and any structure the performance harness wants to compare, can stand in for it.
 
-Next to each position the index keeps the first eight bytes of its context as a number and the bytes that
-the entry has in common with the one before it. The searches compare the numbers and read the text only
-when two are equal, which is seldom: inserting every position of book1 at a context depth of 255, one
-insert costs 0.34 microseconds with the prefixes kept and not used, 0.27 comparing four-byte prefixes first
-and 0.24 with eight. The
-shared bytes are what lets the funnel of `acb` walk outward from a context and know how far each entry
-agrees with it without comparing bytes: of three entries in order, the first and the last have in common
-as many as the fewest of the two neighbours do. Chunks of 256 and 512 cost the same (0.24 and 0.25), 128
-and 1,024 a little more (0.27, 0.28), 2,048 and 64 much more (0.35, 0.43). Reading eight bytes at a time in
-the comparator made `valach` compress 13% faster at a depth of 10 and 21% at a depth of 255.
+Next to each position the index keeps the first eight bytes of its context as a number and, in one `int`,
+the bits of context the entry has in common with the one before it and the byte that follows its context.
+The searches compare the numbers and read the text only when two are equal, which is seldom: inserting
+every position of book1 at a context depth of 255, one insert costs 0.34 microseconds with the prefixes
+kept and not used, 0.27 comparing four-byte prefixes first and 0.24 with eight. Chunks of 256 and 512 cost
+the same (0.24 and 0.25), 128 and 1,024 a little more (0.27, 0.28), 2,048 and 64 much more (0.35, 0.43).
+Reading eight bytes at a time in the comparator made `valach` compress 13% faster at a depth of 10 and 21% at
+a depth of 255.
+
+The shared bits are what lets the funnel of `acb` walk outward from a context and know how far each entry
+agrees with it without reading the text: of three contexts in order, the first and the last have in common
+as many bits as the fewest of the two neighbours do, exactly, since over bits the middle one cannot differ
+from both at the same place. Kept as bytes, as they first were, they left the walk to read the text for the
+bit that broke every agreement of eight bytes or more; kept as bits they made `acb` 12% faster. The byte
+after the context spares reading the text for the first byte of a candidate's content, which the encoder
+compares first, an escape excludes and the second funnel votes for (4%). A lookup in the index of book1
+costs about 0.18 microseconds: 0.04 to find the chunk, 0.08 for the search of the prefixes and 0.06 for
+the text read where prefixes are equal; a search of three prefixes at a time and branch-free searches were
+slower, and so was a walk over the equal prefixes by their shared bytes, which read the text as often.
 
 The funnel of `acb` takes the entries around a context from the index as runs copied with `arraycopy`
 (`Surroundings`, primitive arrays refilled at every step), finds the weights of each side in a loop of its

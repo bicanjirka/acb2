@@ -7,12 +7,14 @@ import java.util.Objects;
 
 /**
  * A two-level sorted array: chunks of sorted positions, split when full, with a Fenwick tree over
- * the chunk sizes that turns a chunk into a rank and back. A position costs thirteen bytes, a lookup two
- * binary searches, and a neighbour is one array step. Next to every position are the first eight bytes of
- * its context, which the searches compare first and so seldom read the text, and how many bytes of
- * context it has in common with the position before it, which a walk along the order uses to know how
- * far each entry agrees with a context without comparing bytes. The last two lookups are remembered,
- * so a position looked up and then inserted is found once. The storage and the search stay in one
+ * the chunk sizes that turns a chunk into a rank and back, built the first time a rank is asked for. A
+ * position costs sixteen bytes, a lookup two binary searches, and a neighbour is one array step. Next to
+ * every position are the first eight bytes of its context, which the searches compare first and so seldom
+ * read the text, and in one {@code int} how many bits of context it has in common with the position before
+ * it and the byte that follows its context, from which a walk along the order knows how far each entry
+ * agrees with a context and what it goes on with, without reading the text. The last two places looked up
+ * to walk around or to rank are remembered and kept right through the inserts after them, so that a place
+ * looked up and inserted at a few inserts later is found once. The storage and the search stay in one
  * class: a split into a store and an index measured several percent slower in decoding.
  */
 public final class ChunkedContextIndex implements ContextIndex {
@@ -23,17 +25,18 @@ public final class ChunkedContextIndex implements ContextIndex {
     private final int chunkCapacity;
     private int[][] chunks = new int[4][];
     private long[][] prefixes = new long[4][];
-    private byte[][] shared = new byte[4][];
+    private int[][] shared = new int[4][];
     private int[] counts = new int[4];
     private long[] heads = new long[4];
     private final FenwickTree fenwick = new FenwickTree(4);
     private int chunkCount = 1;
+    /** Whether the tree is kept: only once a rank is asked for, which the associative coder never does. */
+    private boolean ranked;
     private int size;
     private int version;
     private final int[] rememberedPositions = {-1, -1};
     private final int[] rememberedChunks = new int[2];
     private final int[] rememberedOffsets = new int[2];
-    private final int[] rememberedVersions = {-1, -1};
     private int overwritten;
     private int foundChunk;
     private int foundOffset;
@@ -50,8 +53,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.chunkCapacity = chunkCapacity;
         this.chunks[0] = new int[chunkCapacity];
         this.prefixes[0] = new long[chunkCapacity];
-        this.shared[0] = new byte[chunkCapacity];
-        this.fenwick.rebuild(this.counts, this.chunkCount);
+        this.shared[0] = new int[chunkCapacity];
     }
 
     @Override
@@ -61,18 +63,19 @@ public final class ChunkedContextIndex implements ContextIndex {
 
     @Override
     public int rank(int position) {
-        this.locate(position);
-        return this.fenwick.sumBefore(this.foundChunk) + this.foundOffset;
+        this.locate(position, true);
+        return this.ranks().sumBefore(this.foundChunk) + this.foundOffset;
     }
 
     @Override
     public void insert(int position) {
-        this.locate(position);
+        this.locate(position, false);
         int chunk = this.foundChunk;
         int offset = this.foundOffset;
         if (this.counts[chunk] == this.chunkCapacity) {
             int kept = this.chunkCapacity / 2;
             this.splitChunk(chunk, kept);
+            this.rememberSplit(chunk, kept);
             if (offset > kept) {
                 chunk++;
                 offset -= kept;
@@ -81,7 +84,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         int count = this.counts[chunk];
         int[] target = this.chunks[chunk];
         long[] targetPrefixes = this.prefixes[chunk];
-        byte[] sharedBytes = this.shared[chunk];
+        int[] sharedBits = this.shared[chunk];
         int predecessor = offset > 0 ? target[offset - 1]
                 : chunk > 0 ? this.chunks[chunk - 1][this.counts[chunk - 1] - 1] : -1;
         long predecessorPrefix = offset > 0 ? targetPrefixes[offset - 1]
@@ -92,34 +95,37 @@ public final class ChunkedContextIndex implements ContextIndex {
                 : chunk + 1 < this.chunkCount ? this.prefixes[chunk + 1][0] : 0;
         System.arraycopy(target, offset, target, offset + 1, count - offset);
         System.arraycopy(targetPrefixes, offset, targetPrefixes, offset + 1, count - offset);
-        System.arraycopy(sharedBytes, offset, sharedBytes, offset + 1, count - offset);
+        System.arraycopy(sharedBits, offset, sharedBits, offset + 1, count - offset);
         target[offset] = position;
         long prefix = this.order.prefix(position);
         targetPrefixes[offset] = prefix;
         if (offset == 0) {
             this.heads[chunk] = prefix;
         }
-        sharedBytes[offset] = predecessor < 0 ? 0
-                : (byte) this.order.sharedBytes(predecessor, predecessorPrefix, position, prefix);
+        int fromPredecessor = predecessor < 0 ? 0
+                : this.order.sharedBits(predecessor, predecessorPrefix, position, prefix);
+        sharedBits[offset] = Surroundings.shared(fromPredecessor, this.order.followingByte(position));
         if (successor >= 0) {
-            byte toSuccessor = (byte) this.order.sharedBytes(position, prefix, successor, successorPrefix);
-            if (offset < count) {
-                sharedBytes[offset + 1] = toSuccessor;
-            } else {
-                this.shared[chunk + 1][0] = toSuccessor;
-            }
+            int toSuccessor = this.order.sharedBits(position, prefix, successor, successorPrefix);
+            int[] successorShared = offset < count ? sharedBits : this.shared[chunk + 1];
+            int at = offset < count ? offset + 1 : 0;
+            successorShared[at] = Surroundings.shared(toSuccessor, Surroundings.followingByte(successorShared[at]));
         }
         this.counts[chunk]++;
-        this.fenwick.add(chunk, 1);
+        if (this.ranked) {
+            this.fenwick.add(chunk, 1);
+        }
         this.size++;
         this.version++;
+        this.rememberInsert(position, chunk, offset);
     }
 
     @Override
     public ContextCursor cursorAt(int rank) {
         Objects.checkIndex(rank, this.size);
-        int chunk = this.fenwick.indexAt(rank);
-        return new Cursor(chunk, rank - this.fenwick.sumBefore(chunk), rank);
+        FenwickTree ranks = this.ranks();
+        int chunk = ranks.indexAt(rank);
+        return new Cursor(chunk, rank - ranks.sumBefore(chunk), rank);
     }
 
     @Override
@@ -128,7 +134,8 @@ public final class ChunkedContextIndex implements ContextIndex {
         if (this.size == 0) {
             return;
         }
-        this.locate(position);
+        this.locate(position, true);
+        long prefix = this.order.prefix(position);
         int chunk = this.foundChunk;
         int offset = this.foundOffset;
         int left = reach;
@@ -140,7 +147,11 @@ public final class ChunkedContextIndex implements ContextIndex {
                 offset = 0;
             }
             int run = Math.min(left, this.counts[chunk] - offset);
-            into.addAbove(this.chunks[chunk], this.prefixes[chunk], this.shared[chunk], offset, run);
+            if (into.aboveCount() == 0) {
+                into.agreeAbove(this.order.sharedBits(position, prefix, this.chunks[chunk][offset],
+                        this.prefixes[chunk][offset]));
+            }
+            into.addAbove(this.chunks[chunk], this.shared[chunk], offset, run);
             left -= run;
             offset += run;
         }
@@ -155,16 +166,23 @@ public final class ChunkedContextIndex implements ContextIndex {
                 offset = this.counts[chunk];
             }
             int run = Math.min(left, offset);
-            into.addBelow(this.chunks[chunk], this.prefixes[chunk], this.shared[chunk], offset - run, run);
+            if (into.belowCount() == 0) {
+                into.agreeBelow(this.order.sharedBits(position, prefix, this.chunks[chunk][offset - 1],
+                        this.prefixes[chunk][offset - 1]));
+            }
+            into.addBelow(this.chunks[chunk], this.shared[chunk], offset - run, run);
             left -= run;
             offset -= run;
         }
     }
 
-    /** Finds where {@code position} belongs, in {@link #foundChunk} and {@link #foundOffset}. */
-    private void locate(int position) {
+    /**
+     * Finds where {@code position} belongs, in {@link #foundChunk} and {@link #foundOffset}, and remembers it if
+     * asked to: a place looked up to walk around is often inserted at a few inserts later.
+     */
+    private void locate(int position, boolean remember) {
         for (int slot = 0; slot < this.rememberedPositions.length; slot++) {
-            if (this.rememberedPositions[slot] == position && this.rememberedVersions[slot] == this.version) {
+            if (this.rememberedPositions[slot] == position) {
                 this.foundChunk = this.rememberedChunks[slot];
                 this.foundOffset = this.rememberedOffsets[slot];
                 return;
@@ -199,12 +217,37 @@ public final class ChunkedContextIndex implements ContextIndex {
         }
         this.foundChunk = chunk;
         this.foundOffset = low;
-        int slot = this.overwritten;
-        this.overwritten = 1 - slot;
-        this.rememberedPositions[slot] = position;
-        this.rememberedChunks[slot] = chunk;
-        this.rememberedOffsets[slot] = low;
-        this.rememberedVersions[slot] = this.version;
+        if (remember) {
+            int slot = this.overwritten;
+            this.overwritten = 1 - slot;
+            this.rememberedPositions[slot] = position;
+            this.rememberedChunks[slot] = chunk;
+            this.rememberedOffsets[slot] = low;
+        }
+    }
+
+    /** Keeps the remembered places where they are after the upper part of {@code chunk} from {@code kept} on moved out. */
+    private void rememberSplit(int chunk, int kept) {
+        for (int slot = 0; slot < this.rememberedPositions.length; slot++) {
+            if (this.rememberedChunks[slot] > chunk) {
+                this.rememberedChunks[slot]++;
+            } else if (this.rememberedChunks[slot] == chunk && this.rememberedOffsets[slot] > kept) {
+                this.rememberedChunks[slot]++;
+                this.rememberedOffsets[slot] -= kept;
+            }
+        }
+    }
+
+    /** Keeps the remembered places where they are after {@code position} went in at {@code offset} of {@code chunk}. */
+    private void rememberInsert(int position, int chunk, int offset) {
+        for (int slot = 0; slot < this.rememberedPositions.length; slot++) {
+            int remembered = this.rememberedPositions[slot];
+            if (remembered >= 0 && remembered != position && this.rememberedChunks[slot] == chunk
+                    && (this.rememberedOffsets[slot] > offset || this.rememberedOffsets[slot] == offset
+                    && this.order.compare(position, remembered) < 0)) {
+                this.rememberedOffsets[slot]++;
+            }
+        }
     }
 
     /** Whether the entry sorts before {@code position}; the bytes are read only if the prefixes are equal. */
@@ -231,7 +274,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         System.arraycopy(this.heads, chunk + 1, this.heads, chunk + 2, this.chunkCount - chunk - 1);
         int[] upper = new int[this.chunkCapacity];
         long[] upperPrefixes = new long[this.chunkCapacity];
-        byte[] upperShared = new byte[this.chunkCapacity];
+        int[] upperShared = new int[this.chunkCapacity];
         System.arraycopy(this.chunks[chunk], kept, upper, 0, moved);
         System.arraycopy(this.prefixes[chunk], kept, upperPrefixes, 0, moved);
         System.arraycopy(this.shared[chunk], kept, upperShared, 0, moved);
@@ -242,7 +285,18 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.counts[chunk + 1] = moved;
         this.counts[chunk] = kept;
         this.chunkCount++;
-        this.fenwick.rebuild(this.counts, this.chunkCount);
+        if (this.ranked) {
+            this.fenwick.rebuild(this.counts, this.chunkCount);
+        }
+    }
+
+    /** The tree of the chunk sizes, built the first time it is asked for and kept from then on. */
+    private FenwickTree ranks() {
+        if (!this.ranked) {
+            this.fenwick.rebuild(this.counts, this.chunkCount);
+            this.ranked = true;
+        }
+        return this.fenwick;
     }
 
     private final class Cursor implements ContextCursor {
@@ -263,7 +317,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         public int rank() {
             this.requireUnchanged();
             if (this.rank < 0) {
-                this.rank = ChunkedContextIndex.this.fenwick.sumBefore(this.chunk) + this.offset;
+                this.rank = ChunkedContextIndex.this.ranks().sumBefore(this.chunk) + this.offset;
             }
             return this.rank;
         }
@@ -277,7 +331,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         @Override
         public int sharedWithPrevious() {
             this.requireUnchanged();
-            return ChunkedContextIndex.this.shared[this.chunk][this.offset] & 0xFF;
+            return Surroundings.sharedBits(ChunkedContextIndex.this.shared[this.chunk][this.offset]);
         }
 
         @Override

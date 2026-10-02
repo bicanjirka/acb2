@@ -23,25 +23,36 @@ final class LastBytesOrder implements ContextOrder {
     }
 
     @Override
+    public int followingByte(int position) {
+        return Byte.toUnsignedInt(this.segment.bytes()[position]);
+    }
+
+    @Override
     public long prefix(int position) {
         return ContextAgreement.nearestBytes(this.segment.bytes(), position,
                 Math.min(Math.min(position, this.depth), Long.BYTES));
     }
 
     @Override
-    public int sharedBytes(int first, long firstPrefix, int second, long secondPrefix) {
+    public int sharedBits(int first, long firstPrefix, int second, long secondPrefix) {
         int limit = Math.min(Math.min(first, second), this.depth);
         long difference = firstPrefix ^ secondPrefix;
         if (difference != 0) {
-            return Math.min(limit, Long.numberOfLeadingZeros(difference) >>> 3);
+            return Math.min(limit << 3, Long.numberOfLeadingZeros(difference));
         }
-        return limit <= Long.BYTES ? limit
-                : ContextAgreement.commonBytesFrom(this.segment.bytes(), first, second, Long.BYTES, limit);
+        if (limit <= Long.BYTES) {
+            return limit << 3;
+        }
+        byte[] bytes = this.segment.bytes();
+        return ContextAgreement.bitsAfter(bytes, first, second,
+                ContextAgreement.commonBytesFrom(bytes, first, second, Long.BYTES, limit), limit);
     }
 
     @Override
-    public int sharedBytes(int first, int second) {
-        return ContextAgreement.commonBytes(this.segment.bytes(), first, second,
-                Math.min(Math.min(first, second), this.depth));
+    public int sharedBits(int first, int second) {
+        byte[] bytes = this.segment.bytes();
+        int limit = Math.min(Math.min(first, second), this.depth);
+        return ContextAgreement.bitsAfter(bytes, first, second, ContextAgreement.commonBytes(bytes, first, second, limit),
+                limit);
     }
 }

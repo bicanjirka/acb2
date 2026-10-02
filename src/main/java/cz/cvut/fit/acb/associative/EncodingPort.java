@@ -33,7 +33,11 @@ final class EncodingPort implements StepPort {
     public int position(int idx, Funnel funnel, CumulativeTable table) {
         int best = 0;
         int bestLength = 0;
+        int first = Byte.toUnsignedInt(this.text.byteAt(idx));
         for (int i = 0; i < funnel.size(); i++) {
+            if (funnel.firstByte(i) != first) {
+                continue;
+            }
             int content = funnel.position(i);
             int length = this.text.commonLength(idx, content, Math.min(this.maxLength, idx - content));
             if (length > bestLength) {

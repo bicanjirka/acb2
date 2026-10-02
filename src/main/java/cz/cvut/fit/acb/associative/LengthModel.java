@@ -34,10 +34,7 @@ final class LengthModel {
 
     /** Makes the distribution of the excesses {@code 0 .. allowed - 1}, and forgets the shared lengths. */
     void fill(CumulativeTable table, int allowed) {
-        table.begin(allowed);
-        for (int excess = 0; excess < allowed; excess++) {
-            table.set(excess, this.frequencies.frequency(excess));
-        }
+        table.begin(this.frequencies, allowed);
         long total = this.frequencies.total();
         for (int i = 0; i < this.touchedCount; i++) {
             int excess = this.touched[i];

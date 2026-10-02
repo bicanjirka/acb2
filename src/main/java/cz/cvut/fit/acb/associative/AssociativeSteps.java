@@ -57,7 +57,7 @@ final class AssociativeSteps implements StepRule {
         this.positions.record(funnel, choice == 0);
         if (choice == 0) {
             for (int i = 0; i < funnel.size(); i++) {
-                this.literals.exclude(this.byteAt(funnel.position(i)));
+                this.literals.exclude(funnel.firstByte(i));
             }
             this.literal(idx);
             return 1;
@@ -91,7 +91,7 @@ final class AssociativeSteps implements StepRule {
         }
         Funnel forecast = this.dictionary.forecast(idx + length);
         for (int i = 0; i < forecast.size(); i++) {
-            this.literals.vote(this.byteAt(forecast.position(i)), forecast.weight(i));
+            this.literals.vote(forecast.firstByte(i), forecast.weight(i));
         }
         this.literal(idx + length);
         return length + 1;
@@ -105,11 +105,13 @@ final class AssociativeSteps implements StepRule {
      */
     private int commonWithChosen(int idx, Funnel funnel, int chosen) {
         int content = funnel.position(chosen);
+        int contentByte = funnel.firstByte(chosen);
         int known = 0;
         for (int i = 0; i < funnel.size(); i++) {
             if (i != chosen) {
                 int other = funnel.position(i);
-                this.common[i] = this.text.commonLength(other, content, idx - Math.max(other, content));
+                this.common[i] = funnel.firstByte(i) != contentByte ? 0
+                        : this.text.commonLength(other, content, idx - Math.max(other, content));
                 if (i < chosen && this.common[i] > known) {
                     known = this.common[i];
                 }

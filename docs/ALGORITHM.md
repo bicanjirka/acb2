@@ -275,10 +275,11 @@ bytes before `idx` (otherwise the funnel is empty):
 - The weights grow with the agreement and fall with the distance in ranks, which the paper asks of them
   and does not fix; the formula is the shape that `AC.C` uses.
 
-Sorted as they are, the agreement only falls outward, and the agreement of an entry is the least of that
-of the entry before it and the bytes the two have in common. So the dictionary keeps, next to each entry,
-how much it shares with the one before it, and the first bytes of its context, and the walk compares
-bytes only for the two entries next to `idx`. This implements the rule above and changes nothing in it.
+Sorted as they are, the agreement only falls outward, and the agreement of an entry, to the bit, is the
+least of that of the entry before it and the bits the two have in common. So the dictionary keeps, next to
+each entry, how many bits it shares with the one before it, the first bytes of its context and the byte
+that follows it, and the walk compares bytes only for the two entries next to `idx`. This implements the
+rule above and changes nothing in it.
 
 **7.3 The step.** The encoder finds for every candidate `j` of the funnel the match `T(j)`: how many bytes
 `s[idx ..]` has in common with the content of `j`, at most `L` and never more than `idx - j`, so that a
