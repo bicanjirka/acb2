@@ -83,48 +83,49 @@ file is the same for any number of threads.
 ## How it compares
 
 The 14 classic files of the Calgary corpus (3,141,622 bytes), each compressed on its own and the sizes
-added up, every row decompressed and compared. Times are wall-clock seconds on one machine, 2026-09-30;
-the other compressors are started once per file, this project's rows run the files in one JVM
-(`bench_java.sh`), so they include the start of the JVM and its warm-up. The `ACB 2.00a` row is from
+added up, every row decompressed and compared. Times are wall-clock seconds on one machine, every row
+timed in one sitting on 2026-10-02 and the fastest of five runs taken; the other compressors are started
+once per file, this project's rows run the files in one JVM (`bench_java.sh`), so they include the start
+of the JVM and its warm-up. The `ACB 2.00a` row is from
 Mahoney's *Data Compression Explained* (section 2.1.4), on an older machine and for `calgary.tar`, the 14 files
 compressed as one file, where the other rows compress each file on its own.
 
 | Compressor | Bytes | bits/byte | Compress / decompress |
 |---|---|---|---|
-| **`-tc acbx`** (`-d 6`) | 734,658 | 1.87 | 4.1 s / 3.9 s |
-| **`-tc acbx -d 5`** | 737,059 | 1.88 | 3.7 s / 3.6 s |
+| **`-tc acbx`** (`-d 6`) | 734,658 | 1.87 | 3.9 s / 3.6 s |
+| **`-tc acbx -d 5`** | 737,059 | 1.88 | 3.4 s / 3.3 s |
 | ACB 2.00a (Mahoney, `calgary.tar`) | 778,760 | 1.98 | 18.7 s / 18.7 s |
-| bzip2 -9 | 828,347 | 2.11 | 0.5 s / 1.2 s |
-| **`-tc acb -d 8`** | 835,696 | 2.13 | 4.2 s / 3.8 s |
-| Buyanovsky's `AC.C` (1994), `Kc 0`, 1 MB frame | 837,107 | 2.13 | 18.9 s / 20.3 s |
-| **`-tc acb -d 7`** | 837,618 | 2.13 | 3.2 s / 3.0 s |
-| **`-tc acb`** (`-d 6`) | 843,240 | 2.15 | 2.5 s / 2.4 s |
-| xz -9 | 845,952 | 2.15 | 1.0 s / 0.8 s |
-| `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 8.0 s / 9.0 s |
+| bzip2 -9 | 828,347 | 2.11 | 0.6 s / 0.5 s |
+| **`-tc acb -d 8`** | 835,696 | 2.13 | 4.1 s / 3.7 s |
+| Buyanovsky's `AC.C` (1994), `Kc 0`, 1 MB frame | 837,107 | 2.13 | 16.7 s / 17.8 s |
+| **`-tc acb -d 7`** | 837,618 | 2.13 | 3.1 s / 2.9 s |
+| **`-tc acb`** (`-d 6`) | 843,240 | 2.15 | 2.6 s / 2.4 s |
+| xz -9 | 845,952 | 2.15 | 1.2 s / 0.4 s |
+| `AC.C`, `Kc 0`, its default 256 KB frame | 849,813 | 2.16 | 7.3 s / 8.2 s |
 | **`-tc acb -d 5`** | 855,407 | 2.18 | 2.2 s / 2.1 s |
-| `-tc prefix -ec CONTEXT_ARITHMETIC -d 10` | 868,318 | 2.21 | 8.7 s / 5.0 s |
-| `-tc prefix -ec CONTEXT_ARITHMETIC` | 878,273 | 2.24 | 2.7 s / 2.3 s |
-| `-tc valach -ec CONTEXT_ARITHMETIC -d 10` | 912,571 | 2.32 | 6.2 s / 3.7 s |
-| `-tc valach -ec CONTEXT_ARITHMETIC` | 916,945 | 2.33 | 2.5 s / 2.0 s |
-| `-tc salomon2 -ec CONTEXT_ARITHMETIC` | 917,050 | 2.34 | 2.4 s / 2.2 s |
-| `-tc simple -ec CONTEXT_ARITHMETIC` | 933,678 | 2.38 | 2.4 s / 2.1 s |
+| `-tc prefix -ec CONTEXT_ARITHMETIC -d 10` | 868,318 | 2.21 | 8.2 s / 4.6 s |
+| `-tc prefix -ec CONTEXT_ARITHMETIC` | 878,273 | 2.24 | 2.5 s / 2.2 s |
+| `-tc valach -ec CONTEXT_ARITHMETIC -d 10` | 912,571 | 2.32 | 5.8 s / 3.3 s |
+| `-tc valach -ec CONTEXT_ARITHMETIC` | 916,945 | 2.33 | 2.2 s / 1.9 s |
+| `-tc salomon2 -ec CONTEXT_ARITHMETIC` | 917,050 | 2.34 | 2.3 s / 1.9 s |
+| `-tc simple -ec CONTEXT_ARITHMETIC` | 933,678 | 2.38 | 2.2 s / 1.9 s |
 | `-tc prefix` | 935,923 | 2.38 | 2.0 s / 1.5 s |
-| `-tc lcp -ec CONTEXT_ARITHMETIC` | 936,816 | 2.39 | 3.4 s / 2.8 s |
-| ExCom `acb` `d=10` | 967,714 | 2.46 | 3.2 s / 1.4 s |
-| ExCom `acb` `d=8` | 972,911 | 2.48 | 2.0 s / 1.3 s |
-| `-tc valach` (the default) | 974,670 | 2.48 | 1.7 s / 1.3 s |
-| `-tc salomon2` | 974,777 | 2.48 | 1.7 s / 1.3 s |
-| ExCom `acb` defaults | 988,420 | 2.52 | 1.5 s / 1.3 s |
-| `-tc simple` | 991,407 | 2.52 | 1.6 s / 1.2 s |
-| `-tc salomon -ec CONTEXT_ARITHMETIC` | 993,980 | 2.53 | 2.0 s / 1.6 s |
-| `-tc lcp` | 994,471 | 2.53 | 2.2 s / 1.7 s |
-| `-tc salomon` | 1,008,201 | 2.57 | 1.8 s / 1.3 s |
-| gzip -9 | 1,017,624 | 2.59 | 0.4 s / 0.7 s |
+| `-tc lcp -ec CONTEXT_ARITHMETIC` | 936,816 | 2.39 | 3.0 s / 2.6 s |
+| ExCom `acb` `d=10` | 967,714 | 2.46 | 2.9 s / 1.2 s |
+| ExCom `acb` `d=8` | 972,911 | 2.48 | 1.7 s / 1.2 s |
+| `-tc valach` (the default) | 974,670 | 2.48 | 1.6 s / 1.3 s |
+| `-tc salomon2` | 974,777 | 2.48 | 1.6 s / 1.3 s |
+| ExCom `acb` defaults | 988,420 | 2.52 | 1.3 s / 1.2 s |
+| `-tc simple` | 991,407 | 2.52 | 1.6 s / 1.3 s |
+| `-tc salomon -ec CONTEXT_ARITHMETIC` | 993,980 | 2.53 | 1.9 s / 1.5 s |
+| `-tc lcp` | 994,471 | 2.53 | 2.1 s / 1.6 s |
+| `-tc salomon` | 1,008,201 | 2.57 | 1.7 s / 1.3 s |
+| gzip -9 | 1,017,624 | 2.59 | 0.6 s / 0.4 s |
 
 `acb` is Buyanovsky's coder: at `-d 8` it beats `AC.C` with its widest funnel and the 1 MB frame, and at
 `-d 6` it is under `xz -9`, at a sixth of the time of `AC.C`. `acbx` codes the same funnels byte by byte with
 mixed models and is where the ratio is: 13% smaller than `acb` and under the figure given for ACB 2.00a,
-at about 1.7 times its time. Its models of the text before a step are worth 6% of that (786,340 bytes
+at about 1.5 times its time. Its models of the text before a step are worth 6% of that (786,340 bytes
 without them). The five coders
 of the thesis are Salomon's and Valach's layouts of a triplet; the best of them at the defaults is 16%
 larger than `acb` (9% with the literal modelling of `CONTEXT_ARITHMETIC`), and `prefix` 11% (4%). In the ratio harness one thread

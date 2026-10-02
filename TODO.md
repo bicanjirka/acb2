@@ -66,17 +66,6 @@ total passes 2^20, which a base total of at most 2^16 reaches only with very hea
   a change of the format. `d = 5` is 10% faster for 0.3%. Measure every step with
   `harness.SpeedComparison`; the other harnesses cannot see a change of a few percent.
 
-### The comparison table in the README predates the `acbx` speedup
-
-The times of "How it compares" were taken in one sitting on 2026-09-30, before the commit that made `acbx` 7%
-faster, so its two `acbx` rows (4.1 s / 3.9 s and 3.7 s / 3.6 s) are slow by about that much, and "about 1.7
-times its time" in the text after it is off with them. Timed again that afternoon, `acb`, unchanged, came out
-10% slower than in the table, so a row timed alone cannot be set beside the others.
-
-- **Where:** `README.md` ("How it compares" and the paragraph after it); `bench_java.sh`, `bench_ac.sh` and
-  `bench_excom.sh` in the research folder.
-- **Approach:** time every row again in one sitting, several runs each and the fastest taken, and change the date.
-
 ### How much ACB 2.00 gains from coding Calgary as one tar
 
 The `ACB 2.00a` row is Mahoney's figure for `calgary.tar`, the 14 files as one file; every other row codes them
