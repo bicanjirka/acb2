@@ -22,9 +22,9 @@ class ChunkedContextIndexPropertiesTest {
     @Property
     void afterAnyInsertsItAgreesWithASortedListOnEveryRankAndEveryPosition(
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
-            @ForAll long seed) {
+            @ForAll boolean walks, @ForAll long seed) {
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
-        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity, walks);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         Random random = new Random(seed);
 
@@ -51,7 +51,7 @@ class ChunkedContextIndexPropertiesTest {
                                                     @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
                                                     @ForAll long seed) {
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
-        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity, true);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         for (int position = 0; position < text.length; position++) {
             actual.insert(position);
@@ -82,7 +82,7 @@ class ChunkedContextIndexPropertiesTest {
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
             @ForAll @IntRange(min = 1, max = 12) int reach, @ForAll long seed) {
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
-        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity, true);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         for (int position : shuffledPositions(text.length, new Random(seed))) {
             actual.insert(position);
@@ -115,7 +115,7 @@ class ChunkedContextIndexPropertiesTest {
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 2, max = 9) int chunkCapacity,
             @ForAll @IntRange(min = 1, max = 6) int reach, @ForAll long seed) {
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
-        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity);
+        ChunkedContextIndex actual = new ChunkedContextIndex(order, chunkCapacity, true);
         SortedListContextIndex expected = new SortedListContextIndex(order);
         Random random = new Random(seed);
         Surroundings found = new Surroundings(reach);

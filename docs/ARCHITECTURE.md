@@ -79,11 +79,14 @@ code bumps `ContainerFormat.VERSION`, and a golden file per coder, checked in un
 The dictionary keeps the positions of a segment sorted by their contexts, and needs the rank of a new
 position, the position at a rank, and the neighbours of a context. `ContextIndex` is that interface and
 `ChunkedContextIndex` its one production implementation: a two-level sorted array, chunks of 512 positions
-split when full, with a Fenwick tree over the chunk sizes. The interface stays so that the brute-force
-oracle in the tests, and any structure the performance harness wants to compare, can stand in for it.
+split when full, with a Fenwick tree over the chunk sizes, built the first time a rank is asked for, which
+`acb` and `acbx` never do. The interface stays so that the brute-force oracle in the tests, and any structure
+the performance harness wants to compare, can stand in for it.
 
-Next to each position the index keeps the first eight bytes of its context as a number and, in one `int`,
-the bits of context the entry has in common with the one before it and the byte that follows its context.
+Next to each position the index keeps the first eight bytes of its context as a number, and an index for the
+walks of `acb` and `acbx` keeps, in one `int` more, the bits of context the entry has in common with the one
+before it and the byte that follows its context. The coders of triplets never walk and take an index that keeps
+none of that: kept for them too, it made `valach` a tenth slower to compress and a sixth slower to decode.
 The searches compare the numbers and read the text only when two are equal, which is seldom: inserting
 every position of book1 at a context depth of 255, one insert costs 0.34 microseconds with the prefixes
 kept and not used, 0.27 comparing four-byte prefixes first and 0.24 with eight. Chunks of 256 and 512 cost
@@ -99,15 +102,17 @@ bit that broke every agreement of eight bytes or more; kept as bits they made `a
 after the context spares reading the text for the first byte of a candidate's content, which the encoder
 compares first, an escape excludes and the second funnel votes for (4%). A lookup in the index of book1
 costs about 0.18 microseconds: 0.04 to find the chunk, 0.08 for the search of the prefixes and 0.06 for
-the text read where prefixes are equal; a search of three prefixes at a time and branch-free searches were
-slower, and so was a walk over the equal prefixes by their shared bytes, which read the text as often.
+the text read where prefixes are equal; what was tried to cut it is in "What made `acb` faster" below.
 
 The funnel of `acb` takes the entries around a context from the index as runs copied with `arraycopy`
 (`Surroundings`, primitive arrays refilled at every step), finds the weights of each side in a loop of its
 own and merges the sides after; choosing between the sides entry by entry cost a funnel of 62 candidates
 0.96 microseconds and this 0.58, a lookup of the place of the context being 0.21 of it. Every insert, too,
 is two thirds a lookup (0.165 of 0.23 microseconds), which is why the inserts of a step's 5.55 positions
-are the largest single cost of a step of `acb`.
+are the largest single cost of a step of `acb`. The two places a step looks up to walk around, that of its
+context and that of the forecast after the match, are kept right through the inserts that follow, so that
+inserting at them searches no more. The second funnel, which only votes, is neither merged nor filled: the walk
+hands each vote to the literal model as it goes, since the votes add up the same in any order.
 
 ### The thesis comparison of three structures
 
@@ -232,10 +237,10 @@ Calgary, 6.7% below `acb`. It is still an LZ77 coder: a step is a copy from the 
 its decoder copies.
 
 The price is speed. A decision is a mix of seven inputs in two banks, and a matched byte costs at least one:
-Calgary takes 10.5 million, 4.7 of them the bits of literals. A JFR profile over Calgary puts two fifths of the
-time in the dictionary, the same code as `acb`'s, a sixth in the walk over the candidates, a tenth in the
-counters (mostly waiting on memory for the large hashed tables), a twelfth in mixing and learning and as much in
-setting up each literal's distributions. `acbx` codes Calgary at about 0.9 MB/s against `acb`'s 1.5. The
+Calgary takes 10.5 million, 4.7 of them the bits of literals. A JFR profile over Calgary puts a quarter of the
+time in mixing and learning with the counters it mixes (mostly waiting on memory for the large hashed tables), a
+quarter in the walk over the candidates, a quarter in the dictionary, the same code as `acb`'s, and a sixteenth in
+setting up each literal's distributions. `acbx` codes Calgary at about 1.05 MB/s against `acb`'s 2.25. The
 decisions on a byte every live candidate agrees on are 1.7 million of them and about 6% of the time, in runs of
 one to three bytes mostly, so coding the runs as lengths would save little. The funnel can be narrower than
 `acb`'s at little cost (`d = 5` is 0.3% larger and 10% faster).
@@ -264,7 +269,36 @@ further, gets the length almost free from the neighbours, and rarely spends a fu
 Compressing Calgary at the defaults, on the machine of the time: before the chunked index 0.45 MB/s
 compressing and 0.8 decompressing, against 1.4 MB/s for ExCom in C++ with the same model; after the index
 and the range coder 1.8 and 2.4; after the block format 1.7 and 3.5; with the comparator, prefixes and
-shared bytes of the index about 2.5 and 3.5 (ratio harness, one thread, a faster machine than the first three).
+shared bytes of the index about 2.5 and 3.5 (ratio harness, one thread, a faster machine than the first three);
+with an index that keeps nothing for walks, 3.4 and 4.2 (the machine of the last).
+
+### What made `acb` faster
+
+`acb` at `d = 6` went from 1.6 MB/s compressing and 1.7 decompressing to 2.25 and 2.3 (ratio harness, Calgary,
+one thread, a laptop whose clock drifts by up to 10% between runs), writing the same bytes throughout. Each
+change was timed with `harness.SpeedComparison` against the build before it; the shares are of the time:
+
+| Change | Compress | Decompress |
+|---|---|---|
+| The index keeps the bits an entry shares with the one before it, not the bytes: the walk reads no text | 12% | 11% |
+| A distribution summed only up to the symbol coded, a model's counts copied in bulk | 7% | 8% |
+| Matches compared eight bytes at a time instead of with `Arrays.mismatch`, which is slow for a few bytes | 7% | 4% |
+| The tree of ranks built only when asked for, the places looked up kept through the inserts, the voting funnel not merged | 5% | 5% |
+| The voting funnel not filled at all: the walk hands over the votes as it goes | 3% | 5% |
+| The first byte of each candidate's content kept with it | 4% | 4% |
+| A vote with no branch: the votes are cleared after a literal, not told apart by a stamp | 3% | 4% |
+| The encoder's one cumulative sum added up without keeping the sums on the way | 2% | - |
+| Exclusions and shared lengths with no branch, candidates of the right first byte listed without one | 3% | 3% |
+
+Tried and given up, every one of them slower or no faster: a search of three prefixes at a time, which the
+processor could fetch together; branch-free binary searches; a walk over the entries of equal prefixes by their
+shared bytes instead of a binary search, which read the text as often (2.7 times a lookup on book1 that met
+equal prefixes); votes added up
+over a run of neighbours that go on with the same byte; a merge of the two sides of a funnel without a branch;
+chunks of 128 or 256 entries. A JFR profile now puts nearly half of the time of `acb` in the index (the lookups,
+the text read where prefixes are equal, and moving the entries of a chunk on an insert), a fifth in the funnel
+and a twentieth in the votes; what could cut the lookups is in `TODO.md`, under `acbx`, whose dictionary is the
+same.
 
 ## Measuring
 

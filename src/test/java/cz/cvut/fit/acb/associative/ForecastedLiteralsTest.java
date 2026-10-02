@@ -74,11 +74,31 @@ class ForecastedLiteralsTest {
     void everyByteExcludedLeavesNothingToCode() {
         ForecastedLiterals literals = new ForecastedLiterals();
         literals.reset();
-        for (int symbol = 0; symbol < 256; symbol++) {
-            literals.exclude(symbol);
+        for (int round = 0; round < 2; round++) {
+            for (int symbol = 0; symbol < 256; symbol++) {
+                literals.exclude(symbol);
+            }
         }
 
         assertThat(literals.fill(new CumulativeTable())).isFalse();
+    }
+
+    @Test
+    void votesForEveryByteAreAllCounted() {
+        ForecastedLiterals literals = new ForecastedLiterals();
+        CumulativeTable table = new CumulativeTable();
+        literals.reset();
+        for (int round = 0; round < 2; round++) {
+            for (int symbol = 0; symbol < 256; symbol++) {
+                literals.vote(symbol, 1);
+            }
+        }
+
+        literals.fill(table);
+
+        for (int symbol = 0; symbol < 256; symbol++) {
+            assertThat(table.frequency(symbol)).as("byte %d", symbol).isEqualTo(1 + 256 * 2 / 512);
+        }
     }
 
     @Test

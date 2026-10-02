@@ -16,20 +16,22 @@ final class LengthModel {
 
     private final FrequencyCounts frequencies;
     private final int[] boosts;
+    /** The excesses shared, in a slot more than there are excesses, which a share writes to whether it is new or not. */
     private final int[] touched;
     private int touchedCount;
 
     LengthModel(int[] startingTable) {
         this.frequencies = new FrequencyCounts(startingTable);
         this.boosts = new int[startingTable.length];
-        this.touched = new int[startingTable.length];
+        this.touched = new int[startingTable.length + 1];
     }
 
     /** Notes a candidate after the chosen one that shares exactly {@code excess + floor} bytes with it. */
     void share(int excess) {
-        if (this.boosts[excess]++ == 0) {
-            this.touched[this.touchedCount++] = excess;
-        }
+        int before = this.boosts[excess];
+        this.touched[this.touchedCount] = excess;
+        this.touchedCount += before == 0 ? 1 : 0;
+        this.boosts[excess] = before + 1;
     }
 
     /** Makes the distribution of the excesses {@code 0 .. allowed - 1}, and forgets the shared lengths. */

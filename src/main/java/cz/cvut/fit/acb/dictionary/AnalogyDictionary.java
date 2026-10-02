@@ -28,8 +28,8 @@ public interface AnalogyDictionary {
     Funnel funnel(int position);
 
     /**
-     * The analogies of the context before {@code position}, weighted to vote on the byte that follows it, and
-     * in no order of their weights, since votes add up the same in any.
+     * Lets the analogies of the context before {@code position} vote on the byte that follows it, each with
+     * its weight for that, in no order of the weights, since votes add up the same in any.
      */
-    Funnel forecast(int position);
+    void forecast(int position, Ballot ballot);
 }

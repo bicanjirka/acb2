@@ -18,26 +18,37 @@ final class EncodingPort implements StepPort {
 
     private final SegmentBuffer text;
     private final int maxLength;
+    private final int[] alike;
     private final RangeEncoder encoder = new RangeEncoder();
     private final CostTally costs = new CostTally();
     private int matchLength;
 
-    /** @param text the whole segment */
-    EncodingPort(SegmentBuffer text, int maxLength) {
+    /**
+     * @param text the whole segment
+     * @param funnelCapacity the most candidates a funnel holds
+     */
+    EncodingPort(SegmentBuffer text, int maxLength, int funnelCapacity) {
         this.text = text;
         this.maxLength = maxLength;
+        this.alike = new int[funnelCapacity];
     }
 
-    /** The first candidate with the longest match, matched against the text and never past {@code idx}. */
+    /**
+     * The first candidate with the longest match, matched against the text and never past {@code idx}. Only
+     * the candidates that start with the byte at {@code idx} are matched, listed first without a branch.
+     */
     @Override
     public int position(int idx, Funnel funnel, CumulativeTable table) {
+        int first = Byte.toUnsignedInt(this.text.byteAt(idx));
+        int alike = 0;
+        for (int i = 0; i < funnel.size(); i++) {
+            this.alike[alike] = i;
+            alike += funnel.firstByte(i) == first ? 1 : 0;
+        }
         int best = 0;
         int bestLength = 0;
-        int first = Byte.toUnsignedInt(this.text.byteAt(idx));
-        for (int i = 0; i < funnel.size(); i++) {
-            if (funnel.firstByte(i) != first) {
-                continue;
-            }
+        for (int k = 0; k < alike; k++) {
+            int i = this.alike[k];
             int content = funnel.position(i);
             int length = this.text.commonLength(idx, content, Math.min(this.maxLength, idx - content));
             if (length > bestLength) {

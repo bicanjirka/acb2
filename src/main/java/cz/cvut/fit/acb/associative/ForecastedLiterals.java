@@ -2,6 +2,7 @@ package cz.cvut.fit.acb.associative;
 
 import cz.cvut.fit.acb.coding.CumulativeTable;
 import cz.cvut.fit.acb.coding.FrequencyCounts;
+import cz.cvut.fit.acb.dictionary.Ballot;
 
 import java.util.Arrays;
 
@@ -10,10 +11,12 @@ import java.util.Arrays;
  * the funnel of the context before it is asked, the bytes that funnel votes for. A vote adds to a byte
  * a share of the model's total as big as its share of all the votes, more when the votes are heavy.
  * The exclusions and the votes of a literal are set first, then it is coded, then {@link #update}
- * counts it. The arrays are overwritten in place, and a literal's entries are told from the last one's
- * by a stamp, so that starting a literal costs nothing.
+ * counts it. The arrays are overwritten in place, and a literal's exclusions are told from the last one's
+ * by a stamp, so that starting a literal costs nothing; its votes are cleared, those of the bytes voted for
+ * only, so that a vote has nothing to decide: one that decided whether its byte was voted for already measured
+ * slower.
  */
-final class ForecastedLiterals {
+final class ForecastedLiterals implements Ballot {
 
     private static final int SYMBOLS = 256;
     /** A byte whose votes weigh at least this much counts double in the mixture, and more for each doubling. */
@@ -21,10 +24,11 @@ final class ForecastedLiterals {
 
     private final FrequencyCounts frequencies = flat();
     private final int[] excludedIn = new int[SYMBOLS];
-    private final int[] excludedList = new int[SYMBOLS];
-    private final int[] votedIn = new int[SYMBOLS];
+    /** The bytes left out, in a slot more than there are bytes, which an exclusion writes to whether it counts or not. */
+    private final int[] excludedList = new int[SYMBOLS + 1];
     private final int[] votes = new int[SYMBOLS];
-    private final int[] votedList = new int[SYMBOLS];
+    /** The bytes voted for, with a slot to spare as {@link #excludedList} has. */
+    private final int[] votedList = new int[SYMBOLS + 1];
     private int literal = 1;
     private int excludedCount;
     private int votedCount;
@@ -34,29 +38,29 @@ final class ForecastedLiterals {
     void reset() {
         this.literal++;
         this.excludedCount = 0;
+        for (int i = 0; i < this.votedCount; i++) {
+            this.votes[this.votedList[i]] = 0;
+        }
         this.votedCount = 0;
         this.voteTotal = 0;
     }
 
     /** The literal cannot be {@code symbol}. */
     void exclude(int symbol) {
-        if (this.excludedIn[symbol] != this.literal) {
-            this.excludedIn[symbol] = this.literal;
-            this.excludedList[this.excludedCount++] = symbol;
-        }
+        this.excludedList[this.excludedCount] = symbol;
+        this.excludedCount += this.excludedIn[symbol] != this.literal ? 1 : 0;
+        this.excludedIn[symbol] = this.literal;
     }
 
     /** A funnel candidate of weight {@code weight} says the literal is {@code symbol}; a byte left out gets no vote. */
-    void vote(int symbol, int weight) {
-        if (this.excludedIn[symbol] != this.literal) {
-            if (this.votedIn[symbol] != this.literal) {
-                this.votedIn[symbol] = this.literal;
-                this.votes[symbol] = 0;
-                this.votedList[this.votedCount++] = symbol;
-            }
-            this.votes[symbol] += weight;
-            this.voteTotal += weight;
-        }
+    @Override
+    public void vote(int symbol, int weight) {
+        int counted = this.excludedIn[symbol] != this.literal ? weight : 0;
+        int before = this.votes[symbol];
+        this.votedList[this.votedCount] = symbol;
+        this.votedCount += ((before - 1) & -counted) >>> 31;
+        this.votes[symbol] = before + counted;
+        this.voteTotal += counted;
     }
 
     /** @return whether some byte is possible */

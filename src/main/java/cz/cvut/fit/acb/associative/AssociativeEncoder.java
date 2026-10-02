@@ -25,7 +25,7 @@ public final class AssociativeEncoder {
                               int reach, int maxLength, int[] lengthStart) {
         this.dictionary = dictionary;
         this.segment = segment;
-        this.port = new EncodingPort(segment, maxLength);
+        this.port = new EncodingPort(segment, maxLength, 2 * reach);
         this.steps = variant.steps(dictionary, segment, segment.length(), maxLength, lengthStart, 2 * reach,
                 this.port);
     }

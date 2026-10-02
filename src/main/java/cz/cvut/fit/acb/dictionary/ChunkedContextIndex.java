@@ -8,13 +8,15 @@ import java.util.Objects;
 /**
  * A two-level sorted array: chunks of sorted positions, split when full, with a Fenwick tree over
  * the chunk sizes that turns a chunk into a rank and back, built the first time a rank is asked for. A
- * position costs sixteen bytes, a lookup two binary searches, and a neighbour is one array step. Next to
+ * position costs twelve bytes, a lookup two binary searches, and a neighbour is one array step. Next to
  * every position are the first eight bytes of its context, which the searches compare first and so seldom
- * read the text, and in one {@code int} how many bits of context it has in common with the position before
- * it and the byte that follows its context, from which a walk along the order knows how far each entry
- * agrees with a context and what it goes on with, without reading the text. The last two places looked up
- * to walk around or to rank are remembered and kept right through the inserts after them, so that a place
- * looked up and inserted at a few inserts later is found once. The storage and the search stay in one
+ * read the text. An index {@link #forWalks for walks} keeps four bytes more, in one {@code int} how many bits
+ * of context the position has in common with the one before it and the byte that follows its context, from
+ * which a walk along the order knows how far each entry agrees with a context and what it goes on with,
+ * without reading the text; an index {@link #forRanks for ranks} keeps none, since keeping them made the coders
+ * of triplets, which never walk, a tenth slower to compress and a sixth slower to decode. The last two places
+ * looked up to walk around or to rank are remembered and kept right through the inserts after them, so that a
+ * place looked up and inserted at a few inserts later is found once. The storage and the search stay in one
  * class: a split into a store and an index measured several percent slower in decoding.
  */
 public final class ChunkedContextIndex implements ContextIndex {
@@ -23,6 +25,7 @@ public final class ChunkedContextIndex implements ContextIndex {
 
     private final ContextOrder order;
     private final int chunkCapacity;
+    private final boolean walks;
     private int[][] chunks = new int[4][];
     private long[][] prefixes = new long[4][];
     private int[][] shared = new int[4][];
@@ -41,19 +44,29 @@ public final class ChunkedContextIndex implements ContextIndex {
     private int foundChunk;
     private int foundOffset;
 
-    public ChunkedContextIndex(ContextOrder order) {
-        this(order, DEFAULT_CHUNK_CAPACITY);
-    }
-
-    ChunkedContextIndex(ContextOrder order, int chunkCapacity) {
+    /** @param walks whether it keeps what {@link #around} hands out */
+    ChunkedContextIndex(ContextOrder order, int chunkCapacity, boolean walks) {
         if (chunkCapacity < 2) {
             throw new IllegalArgumentException("a chunk holds at least two positions: " + chunkCapacity);
         }
         this.order = order;
         this.chunkCapacity = chunkCapacity;
+        this.walks = walks;
         this.chunks[0] = new int[chunkCapacity];
         this.prefixes[0] = new long[chunkCapacity];
-        this.shared[0] = new int[chunkCapacity];
+        if (walks) {
+            this.shared[0] = new int[chunkCapacity];
+        }
+    }
+
+    /** An index that ranks and walks: {@link #around} and {@link ContextCursor#sharedWithPrevious} can be asked. */
+    public static ChunkedContextIndex forWalks(ContextOrder order) {
+        return new ChunkedContextIndex(order, DEFAULT_CHUNK_CAPACITY, true);
+    }
+
+    /** An index that only ranks: {@link #around} and {@link ContextCursor#sharedWithPrevious} are refused. */
+    public static ChunkedContextIndex forRanks(ContextOrder order) {
+        return new ChunkedContextIndex(order, DEFAULT_CHUNK_CAPACITY, false);
     }
 
     @Override
@@ -84,32 +97,16 @@ public final class ChunkedContextIndex implements ContextIndex {
         int count = this.counts[chunk];
         int[] target = this.chunks[chunk];
         long[] targetPrefixes = this.prefixes[chunk];
-        int[] sharedBits = this.shared[chunk];
-        int predecessor = offset > 0 ? target[offset - 1]
-                : chunk > 0 ? this.chunks[chunk - 1][this.counts[chunk - 1] - 1] : -1;
-        long predecessorPrefix = offset > 0 ? targetPrefixes[offset - 1]
-                : chunk > 0 ? this.prefixes[chunk - 1][this.counts[chunk - 1] - 1] : 0;
-        int successor = offset < count ? target[offset]
-                : chunk + 1 < this.chunkCount ? this.chunks[chunk + 1][0] : -1;
-        long successorPrefix = offset < count ? targetPrefixes[offset]
-                : chunk + 1 < this.chunkCount ? this.prefixes[chunk + 1][0] : 0;
+        long prefix = this.order.prefix(position);
+        if (this.walks) {
+            this.share(position, prefix, chunk, offset, count);
+        }
         System.arraycopy(target, offset, target, offset + 1, count - offset);
         System.arraycopy(targetPrefixes, offset, targetPrefixes, offset + 1, count - offset);
-        System.arraycopy(sharedBits, offset, sharedBits, offset + 1, count - offset);
         target[offset] = position;
-        long prefix = this.order.prefix(position);
         targetPrefixes[offset] = prefix;
         if (offset == 0) {
             this.heads[chunk] = prefix;
-        }
-        int fromPredecessor = predecessor < 0 ? 0
-                : this.order.sharedBits(predecessor, predecessorPrefix, position, prefix);
-        sharedBits[offset] = Surroundings.shared(fromPredecessor, this.order.followingByte(position));
-        if (successor >= 0) {
-            int toSuccessor = this.order.sharedBits(position, prefix, successor, successorPrefix);
-            int[] successorShared = offset < count ? sharedBits : this.shared[chunk + 1];
-            int at = offset < count ? offset + 1 : 0;
-            successorShared[at] = Surroundings.shared(toSuccessor, Surroundings.followingByte(successorShared[at]));
         }
         this.counts[chunk]++;
         if (this.ranked) {
@@ -118,6 +115,34 @@ public final class ChunkedContextIndex implements ContextIndex {
         this.size++;
         this.version++;
         this.rememberInsert(position, chunk, offset);
+    }
+
+    /**
+     * Makes room for {@code position} at {@code offset} of {@code chunk}, which holds {@code count} entries,
+     * among what is kept for walks, and keeps there what it shares with the entries on either side of it; the
+     * entries themselves are not moved yet.
+     */
+    private void share(int position, long prefix, int chunk, int offset, int count) {
+        int fromPredecessor = 0;
+        if (offset > 0 || chunk > 0) {
+            int before = offset > 0 ? chunk : chunk - 1;
+            int at = offset > 0 ? offset - 1 : this.counts[before] - 1;
+            fromPredecessor = this.order.sharedBits(this.chunks[before][at], this.prefixes[before][at], position,
+                    prefix);
+        }
+        int after = offset < count ? chunk : chunk + 1;
+        int successor = offset < count ? offset : 0;
+        boolean followed = after < this.chunkCount;
+        int toSuccessor = followed ? this.order.sharedBits(position, prefix, this.chunks[after][successor],
+                this.prefixes[after][successor]) : 0;
+        int[] sharedBits = this.shared[chunk];
+        System.arraycopy(sharedBits, offset, sharedBits, offset + 1, count - offset);
+        sharedBits[offset] = Surroundings.shared(fromPredecessor, this.order.followingByte(position));
+        if (followed) {
+            int[] successorShared = this.shared[after];
+            int at = after == chunk ? offset + 1 : 0;
+            successorShared[at] = Surroundings.shared(toSuccessor, Surroundings.followingByte(successorShared[at]));
+        }
     }
 
     @Override
@@ -130,6 +155,7 @@ public final class ChunkedContextIndex implements ContextIndex {
 
     @Override
     public void around(int position, int reach, Surroundings into) {
+        this.requireWalks();
         into.clear();
         if (this.size == 0) {
             return;
@@ -274,19 +300,27 @@ public final class ChunkedContextIndex implements ContextIndex {
         System.arraycopy(this.heads, chunk + 1, this.heads, chunk + 2, this.chunkCount - chunk - 1);
         int[] upper = new int[this.chunkCapacity];
         long[] upperPrefixes = new long[this.chunkCapacity];
-        int[] upperShared = new int[this.chunkCapacity];
         System.arraycopy(this.chunks[chunk], kept, upper, 0, moved);
         System.arraycopy(this.prefixes[chunk], kept, upperPrefixes, 0, moved);
-        System.arraycopy(this.shared[chunk], kept, upperShared, 0, moved);
         this.chunks[chunk + 1] = upper;
         this.prefixes[chunk + 1] = upperPrefixes;
-        this.shared[chunk + 1] = upperShared;
+        if (this.walks) {
+            int[] upperShared = new int[this.chunkCapacity];
+            System.arraycopy(this.shared[chunk], kept, upperShared, 0, moved);
+            this.shared[chunk + 1] = upperShared;
+        }
         this.heads[chunk + 1] = upperPrefixes[0];
         this.counts[chunk + 1] = moved;
         this.counts[chunk] = kept;
         this.chunkCount++;
         if (this.ranked) {
             this.fenwick.rebuild(this.counts, this.chunkCount);
+        }
+    }
+
+    private void requireWalks() {
+        if (!this.walks) {
+            throw new IllegalStateException("An index for ranks keeps nothing for walks");
         }
     }
 
@@ -331,6 +365,7 @@ public final class ChunkedContextIndex implements ContextIndex {
         @Override
         public int sharedWithPrevious() {
             this.requireUnchanged();
+            ChunkedContextIndex.this.requireWalks();
             return Surroundings.sharedBits(ChunkedContextIndex.this.shared[this.chunk][this.offset]);
         }
 

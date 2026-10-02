@@ -6,10 +6,11 @@ import java.util.Arrays;
  * A distribution made afresh for one symbol, from frequencies the caller sets one by one or copies from a
  * model: the cumulative sums the range coder needs, and the symbol a target falls in. A frequency of 0 makes
  * a symbol impossible. One table is refilled at every step of a segment, so it keeps its arrays and
- * overwrites them in place. The cumulative sums are
- * found only as far as they are asked for, since coding one symbol needs those up to it: over Calgary the
- * literals of {@code acb} take symbols in the lower half and the lengths of its matches the first few. It is
- * not shared between threads.
+ * overwrites them in place. The cumulative sums are found only as far as they are asked for, since coding
+ * one symbol needs those up to it: over Calgary the literals of {@code acb} take symbols in the lower half and
+ * the lengths of its matches the first few. The first sum asked for is added up without keeping the sums on
+ * the way, from whichever end is nearer, which is all an encoder asks; from the second on they are kept. It
+ * is not shared between threads.
  */
 public final class CumulativeTable {
 
@@ -20,6 +21,8 @@ public final class CumulativeTable {
     private long total;
     /** How many of the cumulative sums are found: those of the symbols up to this one. */
     private int summed;
+    /** Whether a cumulative sum was asked for since the distribution ended. */
+    private boolean asked;
 
     /** Starts a distribution over {@code symbols} symbols, all of frequency 0 until the caller sets them. */
     public void begin(int symbols) {
@@ -73,6 +76,7 @@ public final class CumulativeTable {
         }
         this.total = total;
         this.summed = 0;
+        this.asked = false;
         return total > 0;
     }
 
@@ -86,9 +90,14 @@ public final class CumulativeTable {
 
     /** The frequencies of all the symbols before {@code symbol}. */
     public int cumulative(int symbol) {
-        if (symbol > this.summed) {
-            this.sumUpTo(symbol);
+        if (symbol <= this.summed) {
+            return this.cumulative[symbol];
         }
+        if (!this.asked) {
+            this.asked = true;
+            return symbol <= this.size / 2 ? this.sum(0, symbol) : (int) (this.total - this.sum(symbol, this.size));
+        }
+        this.sumUpTo(symbol);
         return this.cumulative[symbol];
     }
 
@@ -136,5 +145,15 @@ public final class CumulativeTable {
             total += this.frequencies[i];
         }
         return total;
+    }
+
+    /** The frequencies of the symbols {@code from .. to - 1} added up, in a sealed table, whose total fits an int. */
+    private int sum(int from, int to) {
+        int[] frequencies = this.frequencies;
+        int sum = 0;
+        for (int i = from; i < to; i++) {
+            sum += frequencies[i];
+        }
+        return sum;
     }
 }

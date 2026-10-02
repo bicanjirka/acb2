@@ -24,21 +24,24 @@ public final class ConfiguredACBProvider implements ACBProvider {
 
     @Override
     public EncoderDictionary encoderDictionary(SegmentBuffer segment) {
-        return new IndexedEncoderDictionary(this.indexOver(segment), segment, this.settings.searchWindow());
+        return new IndexedEncoderDictionary(ChunkedContextIndex.forRanks(this.orderOf(segment)), segment,
+                this.settings.searchWindow());
     }
 
     @Override
     public DecoderDictionary decoderDictionary(SegmentBuffer segment) {
-        return new IndexedDecoderDictionary(this.indexOver(segment), segment, this.settings.searchWindow());
+        return new IndexedDecoderDictionary(ChunkedContextIndex.forRanks(this.orderOf(segment)), segment,
+                this.settings.searchWindow());
     }
 
     @Override
     public AnalogyDictionary analogyDictionary(SegmentBuffer segment) {
-        return new IndexedAnalogyDictionary(this.indexOver(segment), this.settings.maxDistance());
+        return new IndexedAnalogyDictionary(ChunkedContextIndex.forWalks(this.orderOf(segment)),
+                this.settings.maxDistance());
     }
 
-    private ChunkedContextIndex indexOver(SegmentBuffer segment) {
-        return new ChunkedContextIndex(ContextOrder.byLastBytes(segment, this.settings.contextDepth()));
+    private ContextOrder orderOf(SegmentBuffer segment) {
+        return ContextOrder.byLastBytes(segment, this.settings.contextDepth());
     }
 
     @Override

@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -83,20 +85,27 @@ class FunnelWalkTest {
 
     private static List<Candidate> walked(byte[] text, int chunkCapacity, int depth, int reach, Weighting weighting,
                                           int position, int entries) {
-        return walked(text, chunkCapacity, depth, reach, weighting, position, entries, true);
+        FunnelWalk walk = new FunnelWalk(indexOf(text, chunkCapacity, depth, entries), reach);
+        Funnel funnel = new Funnel(walk.capacity());
+        walk.fill(position, weighting, funnel);
+        return candidatesOf(funnel);
     }
 
-    private static List<Candidate> walked(byte[] text, int chunkCapacity, int depth, int reach, Weighting weighting,
-                                          int position, int entries, boolean ordered) {
+    /** The votes of a walk, each as the byte voted for and the weight of the vote. */
+    private static List<List<Integer>> votesOf(byte[] text, int depth, int reach, Weighting weighting, int position) {
+        FunnelWalk walk = new FunnelWalk(indexOf(text, 4, depth, position), reach);
+        List<List<Integer>> votes = new ArrayList<>();
+        walk.vote(position, weighting, (symbol, weight) -> votes.add(List.of(symbol, weight)));
+        return votes;
+    }
+
+    private static ChunkedContextIndex indexOf(byte[] text, int chunkCapacity, int depth, int entries) {
         SegmentBuffer segment = SegmentBuffer.of(text);
-        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment, depth), chunkCapacity);
+        ChunkedContextIndex index = new ChunkedContextIndex(ContextOrder.byLastBytes(segment, depth), chunkCapacity, true);
         for (int entry = entries - 1; entry >= 0; entry--) {
             index.insert(entry);
         }
-        FunnelWalk walk = new FunnelWalk(index, reach);
-        Funnel funnel = new Funnel(walk.capacity());
-        walk.fill(position, weighting, ordered, funnel);
-        return candidatesOf(funnel);
+        return index;
     }
 
     @Test
@@ -132,24 +141,21 @@ class FunnelWalkTest {
     }
 
     @Property
-    void aWalkThatNeedNotBeOrderedTakesTheSameCandidatesAboveTheContextFirst(
+    void theVotesForEachByteAddUpToTheWeightsOfTheCandidatesOfTheFunnelThatStartWithIt(
             @ForAll("texts") byte[] text, @ForAll @IntRange(min = 1, max = 20) int reach,
             @ForAll Weighting weighting, @ForAll @IntRange(min = 0, max = 150) int position) {
         int at = Math.min(position, text.length);
-        List<Candidate> ordered = walked(text, 4, 8, reach, weighting, at, at);
-
-        List<Candidate> unordered = walked(text, 4, 8, reach, weighting, at, at, false);
-
-        assertThat(unordered).containsExactlyInAnyOrderElementsOf(ordered);
-        int above = (int) unordered.stream().filter(candidate -> candidate.distance() > 0).count();
-        List<Integer> outward = new ArrayList<>();
-        for (int distance = 1; distance <= above; distance++) {
-            outward.add(distance);
+        Map<Integer, Integer> weights = new TreeMap<>();
+        for (Candidate candidate : walked(text, 4, 8, reach, weighting, at, at)) {
+            weights.merge(candidate.firstByte(), candidate.weight(), Integer::sum);
         }
-        for (int distance = 1; distance <= unordered.size() - above; distance++) {
-            outward.add(-distance);
+
+        Map<Integer, Integer> votes = new TreeMap<>();
+        for (List<Integer> vote : votesOf(text, 8, reach, weighting, at)) {
+            votes.merge(vote.get(0), vote.get(1), Integer::sum);
         }
-        assertThat(unordered).extracting(Candidate::distance).containsExactlyElementsOf(outward);
+
+        assertThat(votes).isEqualTo(weights);
     }
 
     @Property

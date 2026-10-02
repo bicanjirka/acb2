@@ -1,5 +1,8 @@
 package cz.cvut.fit.acb.dictionary;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /**
@@ -8,6 +11,8 @@ import java.util.Arrays;
  */
 public final class SegmentBuffer {
 
+    /** Eight bytes at a time, the first the lowest, so that the first that differs is found by a count of trailing zeros. */
+    private static final VarHandle LONGS = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
     private static final int INITIAL_CAPACITY = 64;
     private static final int MAX_CAPACITY = Integer.MAX_VALUE - 8;
 
@@ -71,15 +76,24 @@ public final class SegmentBuffer {
 
     /**
      * How many bytes, at most {@code limit}, are equal from {@code first} on and from {@code second}
-     * on, without reading past the known bytes.
+     * on, without reading past the known bytes. Eight bytes are compared at a time, which measured faster than
+     * {@link Arrays#mismatch} for the few bytes a match mostly has.
      */
     public int commonLength(int first, int second, int limit) {
         int count = Math.min(limit, this.length - Math.max(first, second));
-        if (count <= 0 || this.bytes[first] != this.bytes[second]) {
-            return 0;
+        byte[] bytes = this.bytes;
+        int agreed = 0;
+        while (count - agreed >= Long.BYTES) {
+            long difference = (long) LONGS.get(bytes, first + agreed) ^ (long) LONGS.get(bytes, second + agreed);
+            if (difference != 0) {
+                return agreed + (Long.numberOfTrailingZeros(difference) >>> 3);
+            }
+            agreed += Long.BYTES;
         }
-        int mismatch = Arrays.mismatch(this.bytes, first, first + count, this.bytes, second, second + count);
-        return mismatch < 0 ? count : mismatch;
+        while (agreed < count && bytes[first + agreed] == bytes[second + agreed]) {
+            agreed++;
+        }
+        return agreed;
     }
 
     /**

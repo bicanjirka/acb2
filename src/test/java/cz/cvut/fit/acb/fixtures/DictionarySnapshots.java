@@ -1,6 +1,7 @@
 package cz.cvut.fit.acb.fixtures;
 
 import cz.cvut.fit.acb.dictionary.AnalogyDictionary;
+import cz.cvut.fit.acb.dictionary.Ballot;
 import cz.cvut.fit.acb.dictionary.ByteSet;
 import cz.cvut.fit.acb.dictionary.DecoderDictionary;
 import cz.cvut.fit.acb.dictionary.EncoderDictionary;
@@ -234,8 +235,8 @@ public final class DictionarySnapshots {
         }
 
         @Override
-        public Funnel forecast(int position) {
-            return this.delegate.forecast(position);
+        public void forecast(int position, Ballot ballot) {
+            this.delegate.forecast(position, ballot);
         }
     }
 }

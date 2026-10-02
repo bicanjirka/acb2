@@ -22,14 +22,14 @@ class ChunkedContextIndexTest {
     }
 
     private static ChunkedContextIndex indexOver(int length) {
-        return new ChunkedContextIndex(ContextOrder.byLastBytes(SegmentBuffer.of(new byte[length]), DEPTH));
+        return ChunkedContextIndex.forRanks(ContextOrder.byLastBytes(SegmentBuffer.of(new byte[length]), DEPTH));
     }
 
     @Test
     void aTextThatFillsManyDefaultChunksInPositionOrderAgreesWithASortedList() {
         byte[] text = textOfTwoLetters(3_000);
         ContextOrder order = ContextOrder.byLastBytes(SegmentBuffer.of(text), DEPTH);
-        ChunkedContextIndex actual = new ChunkedContextIndex(order);
+        ChunkedContextIndex actual = ChunkedContextIndex.forWalks(order);
         SortedListContextIndex expected = new SortedListContextIndex(order);
 
         for (int position = 0; position < text.length; position++) {
@@ -61,6 +61,15 @@ class ChunkedContextIndexTest {
 
         assertThatThrownBy(() -> index.cursorAt(1)).isInstanceOf(IndexOutOfBoundsException.class);
         assertThatThrownBy(() -> index.cursorAt(-1)).isInstanceOf(IndexOutOfBoundsException.class);
+    }
+
+    @Test
+    void anIndexForRanksRefusesAWalk() {
+        ChunkedContextIndex index = indexOver(4);
+        index.insert(0);
+
+        assertThatThrownBy(() -> index.around(2, 1, new Surroundings(1))).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> index.cursorAt(0).sharedWithPrevious()).isInstanceOf(IllegalStateException.class);
     }
 
     @Test

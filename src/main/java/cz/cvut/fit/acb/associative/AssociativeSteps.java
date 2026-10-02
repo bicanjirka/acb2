@@ -26,6 +26,7 @@ final class AssociativeSteps implements StepRule {
     private final ForecastedLiterals literals = new ForecastedLiterals();
     private final CumulativeTable table = new CumulativeTable();
     private final int[] common;
+    private final int[] alike;
 
     /**
      * @param text the bytes known so far: all of them for the encoder, those decoded for the decoder
@@ -41,6 +42,7 @@ final class AssociativeSteps implements StepRule {
         this.maxLength = maxLength;
         this.lengths = new LengthModel(lengthStart);
         this.common = new int[funnelCapacity];
+        this.alike = new int[funnelCapacity];
         this.port = port;
     }
 
@@ -89,33 +91,34 @@ final class AssociativeSteps implements StepRule {
                 || !this.excludeContinuations(idx, funnel, chosen, length)) {
             return length;
         }
-        Funnel forecast = this.dictionary.forecast(idx + length);
-        for (int i = 0; i < forecast.size(); i++) {
-            this.literals.vote(forecast.firstByte(i), forecast.weight(i));
-        }
+        this.dictionary.forecast(idx + length, this.literals);
         this.literal(idx + length);
         return length + 1;
     }
 
     /**
      * Finds how many bytes each candidate shares with the chosen content, over the bytes before
-     * {@code idx}, which both sides have.
+     * {@code idx}, which both sides have. Only the candidates that start with the same byte are compared,
+     * and they are listed first without a branch, since which of them do is hard to foresee.
      *
      * @return the most the candidates before the chosen one share with it
      */
     private int commonWithChosen(int idx, Funnel funnel, int chosen) {
         int content = funnel.position(chosen);
         int contentByte = funnel.firstByte(chosen);
-        int known = 0;
+        int alike = 0;
         for (int i = 0; i < funnel.size(); i++) {
-            if (i != chosen) {
-                int other = funnel.position(i);
-                this.common[i] = funnel.firstByte(i) != contentByte ? 0
-                        : this.text.commonLength(other, content, idx - Math.max(other, content));
-                if (i < chosen && this.common[i] > known) {
-                    known = this.common[i];
-                }
-            }
+            this.common[i] = 0;
+            this.alike[alike] = i;
+            alike += (funnel.firstByte(i) == contentByte ? 1 : 0) & (i != chosen ? 1 : 0);
+        }
+        int known = 0;
+        for (int k = 0; k < alike; k++) {
+            int i = this.alike[k];
+            int other = funnel.position(i);
+            int shared = this.text.commonLength(other, content, idx - Math.max(other, content));
+            this.common[i] = shared;
+            known = Math.max(known, i < chosen ? shared : 0);
         }
         return known;
     }
