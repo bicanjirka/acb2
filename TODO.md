@@ -63,25 +63,8 @@ total passes 2^20, which a base total of at most 2^16 reaches only with very hea
   `MatchEndModel`, `ContinuationModel` and `MixedLiteralModel`.
 - **Approach:** the dictionary work of the `acb` entry serves both coders and is the most of what is left; after
   it, the cache misses of the hashed tables, which smaller tables or two counters to a cache line would cut, at
-  a change of the format. `d = 5` is 10% faster for 0.3%. Measure every step as the next entry says; the
-  harnesses cannot see a change of a few percent.
-
-### No harness can see a change of a few percent in speed
-
-`PerformanceHarness` and `RatioHarness` time the wall clock of one build, and on the development machine two
-runs of the same build differ by up to 10% (the clock speed drifts); `bench_java.sh` in the research folder
-adds the start of the JVM. The `acbx` speedups of 2 to 4% each were measured with a throwaway driver: both
-builds loaded in one JVM, each through its own `URLClassLoader` over its `target/classes` and the dependencies,
-a round trip of the 14 Calgary files by each in turn, alternating which goes first, timed by the CPU time of
-the thread (`ThreadMXBean.getCurrentThreadCpuTime`; `Compressor` codes on the calling thread by default), the
-CRC of the containers compared, and the minimum and median of 8 to 10 rounds of each printed. That resolves
-about 2%.
-
-- **Where:** `harness` (test sources), beside `PerformanceHarness`.
-- **Approach:** make that driver a harness, `SpeedComparison BASE_CLASSES DIR [coder] [rounds]`, which builds
-  the other class path from its own; the baseline is `target/classes` of a checkout of the commit compared
-  against (`git worktree add`, `mvn -q compile`). Say in `CLAUDE.md` that a change to a hot path is measured
-  with it.
+  a change of the format. `d = 5` is 10% faster for 0.3%. Measure every step with
+  `harness.SpeedComparison`; the other harnesses cannot see a change of a few percent.
 
 ### The comparison table in the README predates the `acbx` speedup
 

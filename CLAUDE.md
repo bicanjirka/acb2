@@ -15,6 +15,7 @@ mvn test -Dtest=RoundTripTest#someSentenceName
 mvn package && java -jar target/acb.jar input output [options]
 java -jar target/acb.jar input.acb output -de   # settings come from the file
 java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarness DIR   # or PerformanceHarness
+java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.SpeedComparison BASE_CLASSES DIR [coder] [rounds]
 ```
 
 `target/acb.jar` is shaded (dependencies bundled); the entry point is
@@ -99,7 +100,9 @@ and `ContainerReader` do it a block at a time).
 - Where a harness run shows a cost, the hot paths (range coder, frequency model, context index,
   dictionary search) keep primitive arrays, in-place mutation and lazily filled slots, and
   `ChunkedContextIndex` stays past the size limit; the class Javadoc says what was measured. Run both
-  harnesses before and after touching them, and keep the mutation inside the leaf class.
+  harnesses before and after touching them, and keep the mutation inside the leaf class. A change to a
+  hot path is measured with `harness.SpeedComparison` against a build of the commit before it
+  (`git worktree add`, `mvn -q compile`); the other harnesses cannot see a few percent.
 - Catch `Exception`, never `Throwable`; log or rethrow, never swallow or `printStackTrace`.
 - Tests: behaviour-sentence method names, arrange/act/assert separated by blank lines,
   hand-written fakes, no Mockito.

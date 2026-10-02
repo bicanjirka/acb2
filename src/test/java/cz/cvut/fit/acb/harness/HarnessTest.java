@@ -60,6 +60,30 @@ class HarnessTest {
     }
 
     @Test
+    void theSpeedComparisonFindsThatABuildSetBesideItselfWritesTheSameContainers() throws Exception {
+        Files.writeString(this.corpus.resolve("a"), "mississippi mississippi");
+        Files.writeString(this.corpus.resolve("b"), "swiss miss swiss miss");
+        Path own = SpeedComparison.ownClasses();
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+
+        SpeedComparison.Comparison comparison = SpeedComparison.run(own, own, this.corpus, "valach", 2,
+                new PrintStream(captured, true, StandardCharsets.UTF_8));
+
+        assertThat(comparison.identical()).isTrue();
+        assertThat(comparison.base().containerBytes()).isPositive();
+        assertThat(captured.toString(StandardCharsets.UTF_8)).contains("2 files, 44 bytes", "change/base",
+                "the containers are identical");
+    }
+
+    @Test
+    void theSpeedComparisonRejectsFewerThanOneRound() throws Exception {
+        Path own = SpeedComparison.ownClasses();
+
+        assertThatThrownBy(() -> SpeedComparison.run(own, own, this.corpus, "valach", 0,
+                new PrintStream(new ByteArrayOutputStream()))).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void thePerformanceHarnessPassesWhenNoCoderHasAFloor() {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
 

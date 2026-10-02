@@ -143,11 +143,15 @@ mvn verify -Pfull                               # also the tests tagged slow
 mvn -q package -DskipTests
 java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.RatioHarness DIR [key=a,b ...]
 java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.PerformanceHarness
+java -cp "target/acb.jar;target/test-classes" cz.cvut.fit.acb.harness.SpeedComparison BASE_CLASSES DIR [coder] [rounds]
 ```
 
 The ratio harness compresses a directory (the Calgary corpus, say) with each coder and setting asked for,
 checks every file round-trips and prints size, speed and what each field cost; the performance harness
-fails under the floors of `PerformanceBudget`. (Use `:` for `;` outside Windows.)
+fails under the floors of `PerformanceBudget`. The speed comparison sets this build beside another
+(`BASE_CLASSES`, the `target/classes` of a checkout of the commit compared against) in one JVM, times
+both by the CPU time of the thread in alternating rounds and checks they wrote the same; it resolves about
+2%, where two runs of the other harnesses can differ by 10%. (Use `:` for `;` outside Windows.)
 
 Working constraints and code style are in `CLAUDE.md`. Known gaps and planned work are in
 `TODO.md`.
