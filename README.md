@@ -8,6 +8,11 @@ in the dictionary from the current context, together with a match length and, if
 byte. An entropy coder then turns the triplets of a segment into a block of bytes, and a segment
 that does not shrink is stored as it is. Every block is independent of the others.
 
+This project continues my master's thesis work. The thesis code dates from 2016–2017; in 2026 I
+reworked it: a test safety net, a range coder of its own, independent blocks coded in parallel,
+Buyanovsky's own coder (`acb`) and a context-mixing variant (`acbx`). The git history covers both
+stages. To my knowledge, it is the only Java implementation of ACB.
+
 ## Build
 
 Needs Java 25 and Maven.
@@ -80,12 +85,24 @@ file is the same for any number of threads.
   one or two bytes before, mixed as a context-mixing coder does. Not from a source; 13% smaller than `acb`, at
   about 55% of its speed. `docs/ALGORITHM.md` section 9 has every rule.
 
+### Example
+
+```
+$ java -jar target/acb.jar book1 book1.acb -tc acb -m
+book1	time: 890 ms	in: 768771 B	out: 240536 B	ratio: 0.3129
+$ java -jar target/acb.jar book1.acb book1.out -de -m
+book1.acb	time: 864 ms	in: 240536 B	out: 768771 B	ratio: 3.1961
+```
+
+`book1` is a 768 KB English novel from the Calgary corpus. It shrinks to 31% of its size, and
+decompression gives back the identical file.
+
 ## How it compares
 
 The 14 classic files of the Calgary corpus (3,141,622 bytes), each compressed on its own and the sizes
 added up, every row decompressed and compared. Times are wall-clock seconds on one machine, every row
 timed in one sitting on 2026-10-02 and the fastest of five runs taken; the other compressors are started
-once per file, this project's rows run the files in one JVM (`bench_java.sh`), so they include the start
+once per file, this project's rows run the files in one JVM, so they include the start
 of the JVM and its warm-up. The `ACB 2.00a` row is from
 Mahoney's *Data Compression Explained* (section 2.1.4), on an older machine and for `calgary.tar`, the 14 files
 compressed as one file, where the other rows compress each file on its own.
@@ -133,6 +150,37 @@ codes `acb` at `-d 6` at about 2.25 MB/s and decodes it at 2.3, `acbx` at 1.05 a
 segments is coded on all the processors (`-j`). `docs/ALGORITHM.md` has the rules of every coder and
 `docs/ARCHITECTURE.md` why the code is as it is and what was measured to get there.
 
+## Tech stack
+
+- **Java 25** and Maven, shaded into one runnable jar
+- Apache Commons CLI 1.11 for the command line, Log4j 2.26 for logging
+- **JUnit 6.1**, **jqwik 1.10** (property-based round-trip tests) and **AssertJ 3.27**; golden files
+  pin the format of every coder
+- JaCoCo coverage, Spotless formatting and Checkstyle 14.1, all run by `mvn verify`
+
+## Design notes
+
+`docs/ARCHITECTURE.md` has the full reasoning and the measurements behind it. In short:
+
+- **A pure core.** `Compressor` turns bytes into a stream and back in memory. It touches no file and
+  no console, keeps no state between calls and starts no thread of its own. The command line and file
+  I/O are thin adapters around it, and they work one 1 MB segment at a time, so the heap does not limit
+  the file size.
+- **The encoder and the decoder run the same step code.** A coder's step is written once, and a
+  "port" either codes a symbol (encoder) or reads one (decoder). A decision only one side could take
+  has nowhere to be written. This rules out the bug that made the thesis's LCP coder write streams it
+  could not decode.
+- **Independent blocks.** Each segment starts with an empty dictionary and empty models. That costs
+  0.03% of size on Calgary and buys parallel coding on both sides, output that is the same for any
+  number of threads, stored blocks for incompressible data and damage that stays inside one block. A
+  CRC-32 checks the container before anything in it is trusted.
+- **Format changes can't slip through.** Any change to what a coder writes bumps the container
+  version, and a golden file per coder fails the build if the version bump is forgotten.
+- **The dictionary index is chosen by measurement.** It is a two-level sorted array (chunks of 512
+  positions) with a Fenwick tree over the chunk sizes. Each entry caches the first 8 bytes of its
+  context as a number, and the search reads the text only on ties. Chunk sizes, cached prefixes and
+  memory layout were benchmarked with the project's own harnesses.
+
 ## Development
 
 ```bash
@@ -156,6 +204,14 @@ both by the CPU time of the thread in alternating rounds and checks they wrote t
 
 Working constraints and code style are in `CLAUDE.md`. Known gaps and planned work are in
 `TODO.md`.
+
+## How it is built
+
+The 2016–2017 thesis code is my own. I use the 2026 rework to learn agentic coding with
+[Claude Code](https://claude.com/claude-code), in a way that is fun and rewarding. Claude Code writes the
+code and commits every change, so the 2026 commits are co-authored with it. I steer it and review its
+design decisions, aiming for clean code and a clean architecture. `CLAUDE.md` holds the constraints it
+works under.
 
 ## Credits
 
